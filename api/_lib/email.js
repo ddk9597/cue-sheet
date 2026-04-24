@@ -35,9 +35,42 @@ async function sendLoginCodeEmail({ email, code, expiresMinutes }) {
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Resend send failed: ${response.status} ${body}`);
+    throw await buildSendEmailError(response);
   }
+}
+
+async function buildSendEmailError(response) {
+  const rawBody = await response.text();
+  let providerMessage = "";
+
+  try {
+    const parsed = JSON.parse(rawBody);
+    providerMessage = typeof parsed?.message === "string" ? parsed.message : "";
+  } catch {
+    providerMessage = rawBody.trim();
+  }
+
+  const error = new Error(mapProviderErrorMessage(response.status, providerMessage));
+  error.statusCode = response.status;
+  return error;
+}
+
+function mapProviderErrorMessage(statusCode, providerMessage) {
+  if (
+    statusCode === 403 &&
+    providerMessage.includes("only send testing emails to your own email address")
+  ) {
+    return [
+      "현재 메일 발송 계정은 테스트 모드라서 계정 본인 이메일로만 인증코드를 보낼 수 있습니다.",
+      "다른 주소로 보내려면 Resend에서 도메인을 인증하고, 그 도메인 주소를 발신자로 설정해야 합니다.",
+    ].join(" ");
+  }
+
+  if (providerMessage) {
+    return providerMessage;
+  }
+
+  return "인증코드 메일 발송에 실패했습니다.";
 }
 
 function buildHtmlTemplate(code, expiresMinutes) {
