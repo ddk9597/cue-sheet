@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>큐시트 페이지</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Cue Sheet</p>
+      <h1 class="logo-title">
+        <img class="hero-logo" src="./imgs/logo.png" alt="ㅅㅁㅅ">
+      </h1>
+      <p class="hero-copy">
+        곡 순서와 우측 튜닝 칸을 함께 보면서 통기타, 일렉기타, 베이스의 연속 세팅 가능 여부를 확인합니다.
+      </p>
+    </section>
+
+    <section class="panel summary-panel" aria-label="총 소요 시간">
+      <div class="summary-main">
+        <div>
+          <p class="panel-label">총 소요 시간</p>
+          <strong id="totalDuration" class="total-duration">00:00:00</strong>
+        </div>
+        <p id="saveStatus" class="save-status" aria-live="polite">
+          현재 순서가 로컬에 저장되어 있습니다.
+        </p>
+      </div>
+      <div class="summary-actions">
+        <button id="saveButton" class="primary-button" type="button">최종 저장</button>
+        <button id="clearAllButton" class="ghost-button" type="button">전체 삭제</button>
+      </div>
+      <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
+        <div class="tap-meter-main">
+          <div>
+            <p class="panel-label">BPM 클릭 측정기</p>
+            <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
+          </div>
+          <p id="tapTempoStatus" class="save-status" aria-live="polite">
+            박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
+          </p>
+        </div>
+        <div class="tap-meter-actions">
+          <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
+          <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
+          <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel form-panel" aria-label="큐시트 입력">
+      <form id="cueForm" class="cue-form">
+        <label class="field">
+          <span>제목</span>
+          <input
+            id="titleInput"
+            name="title"
+            type="text"
+            maxlength="60"
+            placeholder="예: 오프닝 멘트"
+            required
+          >
+        </label>
+
+        <label class="field bpm-field">
+          <span>BPM</span>
+          <input
+            id="bpmInput"
+            name="bpm"
+            type="text"
+            inputmode="numeric"
+            maxlength="3"
+            placeholder="예: 120"
+          >
+        </label>
+
+        <label class="field">
+          <span>시간</span>
+          <input
+            id="durationInput"
+            name="duration"
+            type="text"
+            inputmode="numeric"
+            placeholder="MM:SS"
+            required
+          >
+        </label>
+
+        <button class="primary-button" type="submit">항목 추가</button>
+      </form>
+      <p class="hint">시간은 `MM:SS` 형식으로 입력합니다. BPM은 등록 후 목록에서도 수정할 수 있고, 옆 버튼으로 메트로놈을 재생합니다.</p>
+    </section>
+
+    <section class="panel list-panel" aria-label="큐시트 목록">
+      <div class="list-scroll">
+        <div class="list-header">
+          <span>이동</span>
+          <span>제목</span>
+          <span>BPM</span>
+          <span>시간</span>
+          <span>통기타</span>
+          <span>일렉기타</span>
+          <span>베이스</span>
+          <span>관리</span>
+        </div>
+        <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
+        <ul id="cueList" class="cue-list"></ul>
+        <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="cueItemTemplate">
+    <li class="cue-item" draggable="true">
+      <button class="drag-handle" type="button" aria-label="순서 이동" title="드래그하여 순서 이동">
+        <span class="drag-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+      <div class="cue-main">
+        <strong class="cue-title"></strong>
+      </div>
+      <div class="bpm-cell">
+        <input
+          class="bpm-list-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="3"
+          aria-label="BPM"
+          placeholder="BPM"
+        >
+        <button
+          class="metronome-button"
+          type="button"
+          aria-label="메트로놈 재생"
+          aria-pressed="false"
+          title="메트로놈 재생"
+        >
+          <span class="metronome-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+      <span class="cue-duration"></span>
+      <label class="tuning-cell" data-field="acousticTuning">
+        <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
+          <option value="standard">정튜닝</option>
+          <option value="half-down">하프다운</option>
+          <option value="inactive">쉬는타임</option>
+        </select>
+      </label>
+      <label class="tuning-cell" data-field="electricTuning">
+        <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
+          <option value="standard">정튜닝</option>
+          <option value="half-down">하프다운</option>
+        </select>
+      </label>
+      <label class="tuning-cell" data-field="bassTuning">
+        <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
+          <option value="standard">정튜닝</option>
+          <option value="half-down">하프다운</option>
+          <option value="d-drop">D 드랍</option>
+          <option value="inactive">쉬는타임</option>
+        </select>
+      </label>
+      <button class="delete-button" type="button">삭제</button>
+    </li>
+  </template>
+
+  <script src="./script.js"></script>
+</body>
+</html>
