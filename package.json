@@ -1,0 +1,12 @@
+{
+  "name": "cue-sheet",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "vercel:dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1"
+  }
+}

@@ -1,4 +1,5 @@
-const STORAGE_KEY = "cue-sheet-items";
+const LOCAL_STORAGE_KEY = "cue-sheet-items";
+const CUES_API_ENDPOINT = "/api/cues";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
 const ELECTRIC_TUNING_FIELD = "electricTuning";
 const BASS_TUNING_FIELD = "bassTuning";
@@ -13,6 +14,9 @@ const TUNING_D_DROP = "d-drop";
 const TUNING_INACTIVE = "inactive";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
+const STORAGE_MODE_LOADING = "loading";
+const STORAGE_MODE_DATABASE = "database";
+const STORAGE_MODE_LOCAL = "local";
 
 const cueForm = document.querySelector("#cueForm");
 const titleInput = document.querySelector("#titleInput");
@@ -31,17 +35,18 @@ const tapTempoValue = document.querySelector("#tapTempoValue");
 const tapTempoStatus = document.querySelector("#tapTempoStatus");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
 
-let savedCues = loadCues();
-let cues = cloneCues(savedCues);
+let savedCues = [];
+let cues = [];
 let armedDragId = null;
 let activeMetronomeId = null;
 let metronomeTimer = null;
 let metronomeAudioContext = null;
 let tapTempoClicks = [];
 let measuredTapBpm = "";
-
-render();
-updateTapTempoState();
+let storageMode = STORAGE_MODE_LOADING;
+let saveInFlight = false;
+let databaseSeedRequired = false;
+let storageWarningMessage = "";
 
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -77,20 +82,35 @@ cueForm.addEventListener("submit", (event) => {
   titleInput.focus();
 });
 
-saveButton.addEventListener("click", () => {
-  const didSave = persistCues(cues);
+saveButton.addEventListener("click", async () => {
+  if (saveInFlight || storageMode === STORAGE_MODE_LOADING) {
+    return;
+  }
+
+  saveInFlight = true;
+  updateActionState();
+
+  const didSave = await persistCurrentCues(cues);
+
+  saveInFlight = false;
 
   if (!didSave) {
-    alert("로컬 저장에 실패했습니다.");
+    updateActionState();
+    alert(
+      storageMode === STORAGE_MODE_DATABASE
+        ? "DB 저장에 실패했습니다. 현재 목록은 이 브라우저에만 보관되었습니다."
+        : "이 브라우저에 저장하지 못했습니다.",
+    );
     return;
   }
 
   savedCues = cloneCues(cues);
+  databaseSeedRequired = false;
   updateActionState(true);
 });
 
 clearAllButton.addEventListener("click", () => {
-  if (!cues.length) {
+  if (!cues.length || storageMode === STORAGE_MODE_LOADING) {
     return;
   }
 
@@ -302,49 +322,188 @@ window.addEventListener("pagehide", () => {
   stopMetronome();
 });
 
-function loadCues() {
+bootstrap();
+
+async function bootstrap() {
+  const localCues = loadLocalCues();
+
+  savedCues = cloneCues(localCues);
+  cues = cloneCues(localCues);
+
+  render();
+  updateTapTempoState();
+  await initializeStorage(localCues);
+}
+
+async function initializeStorage(localCues) {
+  const remoteResult = await loadRemoteCues();
+
+  if (!remoteResult.ok) {
+    storageMode = STORAGE_MODE_LOCAL;
+    storageWarningMessage = remoteResult.message;
+    updateActionState();
+    return;
+  }
+
+  storageMode = STORAGE_MODE_DATABASE;
+  storageWarningMessage = "";
+
+  if (!remoteResult.items.length && localCues.length) {
+    cues = cloneCues(localCues);
+    savedCues = [];
+    databaseSeedRequired = true;
+    render();
+    return;
+  }
+
+  const remoteCues = cloneCues(remoteResult.items);
+
+  databaseSeedRequired = false;
+  savedCues = remoteCues;
+  cues = cloneCues(remoteCues);
+  persistLocalCues(remoteCues);
+  render();
+}
+
+function loadLocalCues() {
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved = window.localStorage.getItem(LOCAL_STORAGE_KEY);
 
     if (!saved) {
       return [];
     }
 
-    const parsed = JSON.parse(saved);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((item) => (
-      typeof item?.id === "string" &&
-      typeof item?.title === "string" &&
-      Number.isFinite(item?.seconds)
-    )).map((item) => ({
-      id: item.id,
-      title: item.title,
-      bpm: normalizeBpm(item.bpm),
-      seconds: item.seconds,
-      acousticTuning: normalizeTuning(ACOUSTIC_TUNING_FIELD, item.acousticTuning),
-      electricTuning: normalizeTuning(ELECTRIC_TUNING_FIELD, item.electricTuning),
-      bassTuning: normalizeTuning(BASS_TUNING_FIELD, item.bassTuning),
-    }));
+    return normalizeCueCollection(JSON.parse(saved));
   } catch {
     return [];
   }
 }
 
-function cloneCues(items) {
-  return items.map((item) => ({ ...item }));
-}
-
-function persistCues(items) {
+function persistLocalCues(items) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items));
     return true;
   } catch {
     return false;
   }
+}
+
+async function loadRemoteCues() {
+  try {
+    const response = await fetch(CUES_API_ENDPOINT, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 503) {
+        return {
+          ok: false,
+          message: "DB가 아직 연결되지 않았습니다.",
+        };
+      }
+
+      return {
+        ok: false,
+        message: "DB에서 큐시트를 불러오지 못했습니다.",
+      };
+    }
+
+    const payload = await response.json();
+
+    return {
+      ok: true,
+      items: normalizeCueCollection(payload.items),
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "DB에 연결할 수 없어 로컬 저장 모드로 동작합니다.",
+    };
+  }
+}
+
+async function persistRemoteCues(items) {
+  try {
+    const response = await fetch(CUES_API_ENDPOINT, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ items }),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function persistCurrentCues(items) {
+  const nextItems = normalizeCueCollection(items);
+  const localSaved = persistLocalCues(nextItems);
+
+  if (storageMode !== STORAGE_MODE_DATABASE) {
+    return localSaved;
+  }
+
+  const remoteSaved = await persistRemoteCues(nextItems);
+
+  return localSaved && remoteSaved;
+}
+
+function normalizeCueCollection(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items
+    .map((item, index) => normalizeCueRecord(item, index))
+    .filter(Boolean);
+}
+
+function normalizeCueRecord(item, index) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const title = typeof item.title === "string" ? item.title.trim() : "";
+  const seconds = Number(item.seconds);
+
+  if (!title || !Number.isInteger(seconds) || seconds < 0) {
+    return null;
+  }
+
+  return {
+    id: normalizeCueId(item.id, index),
+    title: title.slice(0, 60),
+    bpm: normalizeBpm(item.bpm),
+    seconds,
+    acousticTuning: normalizeTuning(ACOUSTIC_TUNING_FIELD, item.acousticTuning),
+    electricTuning: normalizeTuning(ELECTRIC_TUNING_FIELD, item.electricTuning),
+    bassTuning: normalizeTuning(BASS_TUNING_FIELD, item.bassTuning),
+  };
+}
+
+function normalizeCueId(value, index) {
+  if (typeof value !== "string") {
+    return `cue-${index + 1}`;
+  }
+
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return `cue-${index + 1}`;
+  }
+
+  return normalized.slice(0, 120);
+}
+
+function cloneCues(items) {
+  return items.map((item) => ({ ...item }));
 }
 
 function render() {
@@ -701,22 +860,64 @@ function hasPendingChanges() {
 
 function updateActionState(saved = false) {
   const dirty = hasPendingChanges();
+  const needsAttention = dirty || databaseSeedRequired;
 
-  saveButton.disabled = !dirty;
-  clearAllButton.disabled = cues.length === 0;
-  saveStatus.classList.toggle("is-dirty", dirty);
+  saveButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || !dirty;
+  clearAllButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || cues.length === 0;
+  saveStatus.classList.toggle("is-dirty", needsAttention);
+  saveStatus.classList.toggle(
+    "is-error",
+    storageMode === STORAGE_MODE_LOCAL && Boolean(storageWarningMessage),
+  );
+
+  if (storageMode === STORAGE_MODE_LOADING) {
+    saveButton.textContent = "불러오는 중";
+    saveStatus.textContent = "DB와 저장 상태를 확인하는 중입니다.";
+    return;
+  }
+
+  saveButton.textContent = storageMode === STORAGE_MODE_DATABASE ? "DB 저장" : "최종 저장";
+
+  if (saveInFlight) {
+    saveStatus.textContent = storageMode === STORAGE_MODE_DATABASE
+      ? "현재 순서를 DB에 저장하는 중입니다."
+      : "현재 순서를 이 브라우저에 저장하는 중입니다.";
+    return;
+  }
 
   if (saved) {
-    saveStatus.textContent = "현재 순서를 로컬에 저장했습니다.";
+    saveStatus.textContent = storageMode === STORAGE_MODE_DATABASE
+      ? "현재 순서를 DB와 브라우저에 저장했습니다."
+      : "현재 순서를 이 브라우저에 저장했습니다.";
+    return;
+  }
+
+  if (storageMode === STORAGE_MODE_DATABASE) {
+    if (databaseSeedRequired) {
+      saveStatus.textContent = "DB가 비어 있습니다. 최종 저장을 누르면 현재 목록을 DB에 올립니다.";
+      return;
+    }
+
+    if (dirty) {
+      saveStatus.textContent = "저장되지 않은 변경사항이 있습니다. 최종 저장을 누르면 DB에 반영됩니다.";
+      return;
+    }
+
+    saveStatus.textContent = "현재 순서가 DB와 브라우저에 저장되어 있습니다.";
     return;
   }
 
   if (dirty) {
-    saveStatus.textContent = "저장되지 않은 변경사항이 있습니다. 최종 저장을 눌러 고정하세요.";
+    saveStatus.textContent = "DB 연결 전입니다. 최종 저장을 누르면 이 브라우저에만 저장됩니다.";
     return;
   }
 
-  saveStatus.textContent = "현재 순서가 로컬에 저장되어 있습니다.";
+  if (storageWarningMessage) {
+    saveStatus.textContent = `${storageWarningMessage} 현재 순서는 이 브라우저에 저장됩니다.`;
+    return;
+  }
+
+  saveStatus.textContent = "현재 순서가 이 브라우저에 저장되어 있습니다.";
 }
 
 function getDragAfterElement(container, pointerY) {

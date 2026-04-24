@@ -162,6 +162,10 @@ select {
   color: var(--accent-deep);
 }
 
+.save-status.is-error {
+  color: var(--accent-deep);
+}
+
 .cue-form {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(96px, 120px) minmax(180px, 0.8fr) auto;
