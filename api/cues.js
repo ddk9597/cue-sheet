@@ -1,6 +1,6 @@
-const { getSessionUser } = require("./_lib/auth");
 const { normalizeCueList } = require("./_lib/cues");
 const { LEGACY_STORAGE_ROW_ID, ensureSchema, getSql } = require("./_lib/db");
+const { validateSavePassword } = require("./_lib/save-password");
 const { methodNotAllowed, readJsonBody, sendJson } = require("./_lib/http");
 
 module.exports = async (request, response) => {
@@ -21,66 +21,68 @@ module.exports = async (request, response) => {
 
   try {
     await ensureSchema(sql);
-    const sessionUser = await getSessionUser(sql, request);
-
-    if (!sessionUser) {
-      sendJson(response, 401, {
-        error: "unauthorized",
-        message: "이메일 로그인 후 사용할 수 있습니다.",
-      });
-      return;
-    }
 
     if (request.method === "GET") {
-      const rows = await sql.query(
-        [
-          "SELECT items, updated_at FROM user_cue_sheet_state",
-          "WHERE user_id = $1 LIMIT 1",
-        ].join(" "),
-        [sessionUser.id],
+      const legacyRows = await sql.query(
+        "SELECT items, updated_at FROM cue_sheet_state WHERE id = $1 LIMIT 1",
+        [LEGACY_STORAGE_ROW_ID],
       );
-      const row = rows[0];
+      const legacyRow = legacyRows[0];
+      const legacyItems = normalizeCueList(legacyRow?.items);
 
-      if (!row) {
-        const legacyRows = await sql.query(
-          "SELECT items, updated_at FROM cue_sheet_state WHERE id = $1 LIMIT 1",
-          [LEGACY_STORAGE_ROW_ID],
-        );
-        const legacyRow = legacyRows[0];
-
+      if (legacyRow && legacyItems.length) {
         sendJson(response, 200, {
-          items: normalizeCueList(legacyRow?.items),
-          updatedAt: legacyRow?.updated_at ?? null,
-          email: sessionUser.email,
+          items: legacyItems,
+          updatedAt: legacyRow.updated_at ?? null,
         });
         return;
       }
 
+      const latestUserRows = await sql.query(
+        [
+          "SELECT items, updated_at FROM user_cue_sheet_state",
+          "ORDER BY updated_at DESC NULLS LAST LIMIT 1",
+        ].join(" "),
+      );
+      const latestUserRow = latestUserRows[0];
+
       sendJson(response, 200, {
-        items: normalizeCueList(row.items),
-        updatedAt: row.updated_at ?? null,
-        email: sessionUser.email,
+        items: latestUserRow ? normalizeCueList(latestUserRow.items) : legacyItems,
+        updatedAt: latestUserRow?.updated_at ?? legacyRow?.updated_at ?? null,
       });
       return;
     }
 
     const payload = await readJsonBody(request);
+    const passwordResult = await validateSavePassword(sql, request, payload.password);
+
+    if (!passwordResult.ok) {
+      sendJson(response, passwordResult.reset ? 429 : 401, {
+        error: "invalid_save_password",
+        message: passwordResult.message,
+        attempts: passwordResult.attempts,
+        maxAttempts: passwordResult.maxAttempts,
+        ip: passwordResult.ip,
+        reset: passwordResult.reset,
+      });
+      return;
+    }
+
     const items = normalizeCueList(payload.items);
     const rows = await sql.query(
       [
-        "INSERT INTO user_cue_sheet_state (user_id, items, updated_at)",
+        "INSERT INTO cue_sheet_state (id, items, updated_at)",
         "VALUES ($1, $2::jsonb, NOW())",
-        "ON CONFLICT (user_id)",
+        "ON CONFLICT (id)",
         "DO UPDATE SET items = EXCLUDED.items, updated_at = NOW()",
         "RETURNING updated_at",
       ].join(" "),
-      [sessionUser.id, JSON.stringify(items)],
+      [LEGACY_STORAGE_ROW_ID, JSON.stringify(items)],
     );
 
     sendJson(response, 200, {
       items,
       updatedAt: rows[0]?.updated_at ?? null,
-      email: sessionUser.email,
     });
   } catch (error) {
     if (error instanceof SyntaxError) {

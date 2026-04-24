@@ -89,6 +89,14 @@ async function ensureSchemaLocked(sql) {
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
     ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS save_password_attempts (",
+      "ip_address TEXT PRIMARY KEY,",
+      "failure_count INTEGER NOT NULL DEFAULT 0,",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
   } finally {
     await sql.query("SELECT pg_advisory_unlock($1)", [SCHEMA_LOCK_ID]);
   }
