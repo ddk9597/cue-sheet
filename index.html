@@ -18,6 +18,48 @@
       </p>
     </section>
 
+    <section class="panel auth-panel" aria-label="이메일 로그인">
+      <div class="auth-header">
+        <div>
+          <p class="panel-label">이메일 로그인</p>
+          <strong id="authTitle" class="auth-title">로그인 상태를 확인하는 중입니다.</strong>
+        </div>
+        <button id="logoutButton" class="ghost-button" type="button" hidden>로그아웃</button>
+      </div>
+      <form id="requestCodeForm" class="auth-form">
+        <label class="field">
+          <span>이메일</span>
+          <input
+            id="emailInput"
+            name="email"
+            type="email"
+            autocomplete="email"
+            placeholder="예: you@example.com"
+            required
+          >
+        </label>
+        <button id="requestCodeButton" class="primary-button" type="submit">인증코드 받기</button>
+      </form>
+      <form id="verifyCodeForm" class="auth-form auth-form-compact" hidden>
+        <label class="field">
+          <span>인증코드</span>
+          <input
+            id="codeInput"
+            name="code"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="6자리 코드"
+            required
+          >
+        </label>
+        <button id="verifyCodeButton" class="primary-button" type="submit">로그인</button>
+      </form>
+      <p id="authStatus" class="save-status" aria-live="polite">
+        이메일 로그인 후 사용자별 큐시트를 저장할 수 있습니다.
+      </p>
+    </section>
+
     <section class="panel summary-panel" aria-label="총 소요 시간">
       <div class="summary-main">
         <div>

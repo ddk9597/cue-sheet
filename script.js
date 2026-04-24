@@ -1,5 +1,10 @@
-const LOCAL_STORAGE_KEY = "cue-sheet-items";
 const CUES_API_ENDPOINT = "/api/cues";
+const AUTH_SESSION_ENDPOINT = "/api/auth/session";
+const AUTH_REQUEST_CODE_ENDPOINT = "/api/auth/request-code";
+const AUTH_VERIFY_CODE_ENDPOINT = "/api/auth/verify-code";
+const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
+const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
+const USER_STORAGE_PREFIX = "cue-sheet-user-cache:";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
 const ELECTRIC_TUNING_FIELD = "electricTuning";
 const BASS_TUNING_FIELD = "bassTuning";
@@ -17,7 +22,19 @@ const TAP_TEMPO_MAX_TAPS = 8;
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
+const AUTH_STATE_LOADING = "loading";
+const AUTH_STATE_GUEST = "guest";
+const AUTH_STATE_AUTHENTICATED = "authenticated";
 
+const requestCodeForm = document.querySelector("#requestCodeForm");
+const verifyCodeForm = document.querySelector("#verifyCodeForm");
+const emailInput = document.querySelector("#emailInput");
+const codeInput = document.querySelector("#codeInput");
+const requestCodeButton = document.querySelector("#requestCodeButton");
+const verifyCodeButton = document.querySelector("#verifyCodeButton");
+const logoutButton = document.querySelector("#logoutButton");
+const authTitle = document.querySelector("#authTitle");
+const authStatus = document.querySelector("#authStatus");
 const cueForm = document.querySelector("#cueForm");
 const titleInput = document.querySelector("#titleInput");
 const bpmInput = document.querySelector("#bpmInput");
@@ -44,9 +61,115 @@ let metronomeAudioContext = null;
 let tapTempoClicks = [];
 let measuredTapBpm = "";
 let storageMode = STORAGE_MODE_LOADING;
+let authState = AUTH_STATE_LOADING;
+let authBusy = false;
+let authenticatedEmail = "";
+let pendingEmail = "";
+let authMessage = "";
+let emailLoginConfigured = false;
+let databaseConfigured = false;
 let saveInFlight = false;
 let databaseSeedRequired = false;
 let storageWarningMessage = "";
+
+requestCodeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (authBusy || authState === AUTH_STATE_LOADING) {
+    return;
+  }
+
+  const email = normalizeEmail(emailInput.value);
+
+  if (!isValidEmail(email)) {
+    authMessage = "올바른 이메일 주소를 입력하세요.";
+    updateAuthUi();
+    emailInput.focus();
+    return;
+  }
+
+  authBusy = true;
+  authMessage = "인증코드를 보내는 중입니다.";
+  updateAuthUi();
+
+  const result = await requestLoginCode(email);
+
+  authBusy = false;
+
+  if (!result.ok) {
+    authMessage = result.message;
+    updateAuthUi();
+    return;
+  }
+
+  pendingEmail = email;
+  emailInput.value = email;
+  codeInput.value = "";
+  authMessage = `${maskEmail(email)}로 인증코드를 보냈습니다. 메일함에서 6자리 코드를 확인하세요.`;
+  updateAuthUi();
+  codeInput.focus();
+});
+
+verifyCodeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (authBusy || !pendingEmail) {
+    return;
+  }
+
+  const code = codeInput.value.trim();
+
+  if (!/^\d{6}$/.test(code)) {
+    authMessage = "6자리 인증코드를 입력하세요.";
+    updateAuthUi();
+    codeInput.focus();
+    codeInput.select();
+    return;
+  }
+
+  authBusy = true;
+  authMessage = "로그인 처리 중입니다.";
+  updateAuthUi();
+
+  const result = await verifyLoginCode(pendingEmail, code);
+
+  authBusy = false;
+
+  if (!result.ok) {
+    authMessage = result.message;
+    updateAuthUi();
+    codeInput.focus();
+    codeInput.select();
+    return;
+  }
+
+  authenticatedEmail = result.email;
+  pendingEmail = "";
+  authState = AUTH_STATE_AUTHENTICATED;
+  authMessage = `${result.email}로 로그인되었습니다. 저장된 큐시트를 불러옵니다.`;
+  await initializeStorageForEmail(result.email);
+  updateAuthUi();
+});
+
+logoutButton.addEventListener("click", async () => {
+  if (authBusy) {
+    return;
+  }
+
+  authBusy = true;
+  authMessage = "로그아웃하는 중입니다.";
+  updateAuthUi();
+
+  await logoutSession();
+
+  authBusy = false;
+  authenticatedEmail = "";
+  pendingEmail = "";
+  authState = AUTH_STATE_GUEST;
+  authMessage = "로그아웃되었습니다. 이메일 로그인 후 DB 저장이 가능합니다.";
+  initializeGuestStorage();
+  updateAuthUi();
+});
 
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -83,7 +206,11 @@ cueForm.addEventListener("submit", (event) => {
 });
 
 saveButton.addEventListener("click", async () => {
-  if (saveInFlight || storageMode === STORAGE_MODE_LOADING) {
+  if (
+    saveInFlight ||
+    storageMode === STORAGE_MODE_LOADING ||
+    authState !== AUTH_STATE_AUTHENTICATED
+  ) {
     return;
   }
 
@@ -98,8 +225,8 @@ saveButton.addEventListener("click", async () => {
     updateActionState();
     alert(
       storageMode === STORAGE_MODE_DATABASE
-        ? "DB 저장에 실패했습니다. 현재 목록은 이 브라우저에만 보관되었습니다."
-        : "이 브라우저에 저장하지 못했습니다.",
+        ? "DB 저장에 실패했습니다. 다시 로그인하거나 잠시 후 다시 시도하세요."
+        : "현재는 DB 저장이 불가능합니다.",
     );
     return;
   }
@@ -325,23 +452,80 @@ window.addEventListener("pagehide", () => {
 bootstrap();
 
 async function bootstrap() {
-  const localCues = loadLocalCues();
+  render();
+  updateTapTempoState();
+  updateAuthUi();
+  await restoreSession();
+}
+
+async function restoreSession() {
+  authState = AUTH_STATE_LOADING;
+  storageMode = STORAGE_MODE_LOADING;
+  updateAuthUi();
+  updateActionState();
+
+  const sessionResult = await fetchSession();
+
+  emailLoginConfigured = sessionResult.emailLoginConfigured;
+  databaseConfigured = sessionResult.databaseConfigured;
+
+  if (sessionResult.authenticated) {
+    authState = AUTH_STATE_AUTHENTICATED;
+    authenticatedEmail = sessionResult.email;
+    pendingEmail = "";
+    authMessage = `${sessionResult.email}로 로그인되었습니다. 저장된 큐시트를 확인합니다.`;
+    await initializeStorageForEmail(sessionResult.email);
+    updateAuthUi();
+    return;
+  }
+
+  authState = AUTH_STATE_GUEST;
+  authenticatedEmail = "";
+  pendingEmail = "";
+  authMessage = sessionResult.message || "이메일 로그인 후 사용자별 큐시트를 저장할 수 있습니다.";
+  initializeGuestStorage();
+  updateAuthUi();
+}
+
+function initializeGuestStorage() {
+  const localCues = loadLocalCues("");
 
   savedCues = cloneCues(localCues);
   cues = cloneCues(localCues);
-
+  storageMode = STORAGE_MODE_LOCAL;
+  databaseSeedRequired = false;
+  storageWarningMessage = databaseConfigured
+    ? ""
+    : "DB 연결이 아직 설정되지 않았습니다.";
   render();
-  updateTapTempoState();
-  await initializeStorage(localCues);
 }
 
-async function initializeStorage(localCues) {
+async function initializeStorageForEmail(email) {
+  const localCues = loadLocalCues(email);
+
+  savedCues = cloneCues(localCues);
+  cues = cloneCues(localCues);
+  storageMode = STORAGE_MODE_LOADING;
+  databaseSeedRequired = false;
+  storageWarningMessage = "";
+  render();
+
   const remoteResult = await loadRemoteCues();
+
+  if (remoteResult.authExpired) {
+    authState = AUTH_STATE_GUEST;
+    authenticatedEmail = "";
+    pendingEmail = "";
+    authMessage = "로그인이 만료되었습니다. 다시 로그인하세요.";
+    initializeGuestStorage();
+    updateAuthUi();
+    return;
+  }
 
   if (!remoteResult.ok) {
     storageMode = STORAGE_MODE_LOCAL;
     storageWarningMessage = remoteResult.message;
-    updateActionState();
+    render();
     return;
   }
 
@@ -358,16 +542,15 @@ async function initializeStorage(localCues) {
 
   const remoteCues = cloneCues(remoteResult.items);
 
-  databaseSeedRequired = false;
   savedCues = remoteCues;
   cues = cloneCues(remoteCues);
-  persistLocalCues(remoteCues);
+  persistLocalCues(remoteCues, email);
   render();
 }
 
-function loadLocalCues() {
+function loadLocalCues(email) {
   try {
-    const saved = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    const saved = window.localStorage.getItem(getStorageKey(email));
 
     if (!saved) {
       return [];
@@ -379,12 +562,127 @@ function loadLocalCues() {
   }
 }
 
-function persistLocalCues(items) {
+function persistLocalCues(items, email = authenticatedEmail) {
   try {
-    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items));
+    window.localStorage.setItem(
+      getStorageKey(email),
+      JSON.stringify(normalizeCueCollection(items)),
+    );
     return true;
   } catch {
     return false;
+  }
+}
+
+function getStorageKey(email) {
+  if (!email) {
+    return ANONYMOUS_STORAGE_KEY;
+  }
+
+  return `${USER_STORAGE_PREFIX}${normalizeEmail(email)}`;
+}
+
+async function fetchSession() {
+  try {
+    const response = await fetch(AUTH_SESSION_ENDPOINT, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const payload = await safeReadJson(response);
+
+    return {
+      authenticated: Boolean(payload.authenticated && payload.email),
+      email: payload.email || "",
+      databaseConfigured: Boolean(payload.databaseConfigured),
+      emailLoginConfigured: Boolean(payload.emailLoginConfigured),
+      message: payload.message || "",
+    };
+  } catch {
+    return {
+      authenticated: false,
+      email: "",
+      databaseConfigured: false,
+      emailLoginConfigured: false,
+      message: "로그인 상태를 확인하지 못했습니다. 새로고침 후 다시 시도하세요.",
+    };
+  }
+}
+
+async function requestLoginCode(email) {
+  try {
+    const response = await fetch(AUTH_REQUEST_CODE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: payload.message || "인증코드 발송에 실패했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      email: payload.email || email,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "인증코드를 보내지 못했습니다.",
+    };
+  }
+}
+
+async function verifyLoginCode(email, code) {
+  try {
+    const response = await fetch(AUTH_VERIFY_CODE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email, code }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: payload.message || "로그인에 실패했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      email: payload.email || email,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "로그인 요청을 완료하지 못했습니다.",
+    };
+  }
+}
+
+async function logoutSession() {
+  try {
+    await fetch(AUTH_LOGOUT_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+  } catch {
+    authMessage = "로그아웃 요청을 완료하지 못했습니다. 브라우저를 새로고침해 주세요.";
   }
 }
 
@@ -396,6 +694,15 @@ async function loadRemoteCues() {
         Accept: "application/json",
       },
     });
+    const payload = await safeReadJson(response);
+
+    if (response.status === 401) {
+      return {
+        ok: false,
+        authExpired: true,
+        message: payload.message || "로그인이 필요합니다.",
+      };
+    }
 
     if (!response.ok) {
       if (response.status === 503) {
@@ -407,11 +714,9 @@ async function loadRemoteCues() {
 
       return {
         ok: false,
-        message: "DB에서 큐시트를 불러오지 못했습니다.",
+        message: payload.message || "DB에서 큐시트를 불러오지 못했습니다.",
       };
     }
-
-    const payload = await response.json();
 
     return {
       ok: true,
@@ -420,7 +725,7 @@ async function loadRemoteCues() {
   } catch {
     return {
       ok: false,
-      message: "DB에 연결할 수 없어 로컬 저장 모드로 동작합니다.",
+      message: "DB에 연결할 수 없어 로컬 캐시만 사용합니다.",
     };
   }
 }
@@ -435,16 +740,31 @@ async function persistRemoteCues(items) {
       },
       body: JSON.stringify({ items }),
     });
+    const payload = await safeReadJson(response);
 
-    return response.ok;
+    if (response.status === 401) {
+      return {
+        ok: false,
+        authExpired: true,
+        message: payload.message || "로그인이 만료되었습니다.",
+      };
+    }
+
+    return {
+      ok: response.ok,
+      message: payload.message || "",
+    };
   } catch {
-    return false;
+    return {
+      ok: false,
+      message: "저장 요청을 완료하지 못했습니다.",
+    };
   }
 }
 
 async function persistCurrentCues(items) {
   const nextItems = normalizeCueCollection(items);
-  const localSaved = persistLocalCues(nextItems);
+  const localSaved = persistLocalCues(nextItems, authenticatedEmail);
 
   if (storageMode !== STORAGE_MODE_DATABASE) {
     return localSaved;
@@ -452,7 +772,17 @@ async function persistCurrentCues(items) {
 
   const remoteSaved = await persistRemoteCues(nextItems);
 
-  return localSaved && remoteSaved;
+  if (remoteSaved.authExpired) {
+    authState = AUTH_STATE_GUEST;
+    authenticatedEmail = "";
+    pendingEmail = "";
+    authMessage = "로그인이 만료되었습니다. 다시 로그인하세요.";
+    initializeGuestStorage();
+    updateAuthUi();
+    return false;
+  }
+
+  return localSaved && remoteSaved.ok;
 }
 
 function normalizeCueCollection(items) {
@@ -859,10 +1189,20 @@ function hasPendingChanges() {
 }
 
 function updateActionState(saved = false) {
+  if (storageMode !== STORAGE_MODE_LOADING) {
+    persistLocalCues(cues, authenticatedEmail);
+  }
+
   const dirty = hasPendingChanges();
   const needsAttention = dirty || databaseSeedRequired;
+  const isAuthenticated = authState === AUTH_STATE_AUTHENTICATED;
 
-  saveButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || !dirty;
+  saveButton.disabled = (
+    !isAuthenticated ||
+    storageMode === STORAGE_MODE_LOADING ||
+    saveInFlight ||
+    !dirty
+  );
   clearAllButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || cues.length === 0;
   saveStatus.classList.toggle("is-dirty", needsAttention);
   saveStatus.classList.toggle(
@@ -870,54 +1210,93 @@ function updateActionState(saved = false) {
     storageMode === STORAGE_MODE_LOCAL && Boolean(storageWarningMessage),
   );
 
-  if (storageMode === STORAGE_MODE_LOADING) {
-    saveButton.textContent = "불러오는 중";
-    saveStatus.textContent = "DB와 저장 상태를 확인하는 중입니다.";
+  saveButton.textContent = isAuthenticated ? "DB 저장" : "이메일 로그인 필요";
+
+  if (authState === AUTH_STATE_LOADING || storageMode === STORAGE_MODE_LOADING) {
+    saveStatus.textContent = "로그인과 저장 상태를 확인하는 중입니다.";
     return;
   }
 
-  saveButton.textContent = storageMode === STORAGE_MODE_DATABASE ? "DB 저장" : "최종 저장";
+  if (!isAuthenticated) {
+    saveStatus.textContent = emailLoginConfigured
+      ? "이메일 로그인 후 사용자별 큐시트를 DB에 저장할 수 있습니다. 현재 작업은 이 브라우저에만 남습니다."
+      : "이메일 로그인 메일 발송 설정이 아직 완료되지 않았습니다.";
+    return;
+  }
 
   if (saveInFlight) {
     saveStatus.textContent = storageMode === STORAGE_MODE_DATABASE
       ? "현재 순서를 DB에 저장하는 중입니다."
-      : "현재 순서를 이 브라우저에 저장하는 중입니다.";
+      : "현재 순서를 브라우저에 임시 저장하는 중입니다.";
     return;
   }
 
   if (saved) {
     saveStatus.textContent = storageMode === STORAGE_MODE_DATABASE
-      ? "현재 순서를 DB와 브라우저에 저장했습니다."
-      : "현재 순서를 이 브라우저에 저장했습니다.";
+      ? `현재 순서를 ${authenticatedEmail} 계정의 DB에 저장했습니다.`
+      : "DB 저장에 실패해 이 브라우저에만 보관했습니다.";
     return;
   }
 
   if (storageMode === STORAGE_MODE_DATABASE) {
     if (databaseSeedRequired) {
-      saveStatus.textContent = "DB가 비어 있습니다. 최종 저장을 누르면 현재 목록을 DB에 올립니다.";
+      saveStatus.textContent = "처음 로그인한 계정입니다. DB 저장을 누르면 현재 목록이 이 이메일 계정에 저장됩니다.";
       return;
     }
 
     if (dirty) {
-      saveStatus.textContent = "저장되지 않은 변경사항이 있습니다. 최종 저장을 누르면 DB에 반영됩니다.";
+      saveStatus.textContent = "저장되지 않은 변경사항이 있습니다. DB 저장을 누르면 현재 이메일 계정에 반영됩니다.";
       return;
     }
 
-    saveStatus.textContent = "현재 순서가 DB와 브라우저에 저장되어 있습니다.";
+    saveStatus.textContent = `현재 순서가 ${authenticatedEmail} 계정에 저장되어 있습니다.`;
     return;
   }
 
   if (dirty) {
-    saveStatus.textContent = "DB 연결 전입니다. 최종 저장을 누르면 이 브라우저에만 저장됩니다.";
+    saveStatus.textContent = "DB 연결에 문제가 있어 현재 작업은 이 브라우저에만 남습니다.";
     return;
   }
 
-  if (storageWarningMessage) {
-    saveStatus.textContent = `${storageWarningMessage} 현재 순서는 이 브라우저에 저장됩니다.`;
+  saveStatus.textContent = storageWarningMessage || "DB 연결에 문제가 있어 브라우저 캐시만 사용 중입니다.";
+}
+
+function updateAuthUi() {
+  requestCodeForm.hidden = authState === AUTH_STATE_AUTHENTICATED;
+  verifyCodeForm.hidden = authState === AUTH_STATE_AUTHENTICATED || !pendingEmail;
+  logoutButton.hidden = authState !== AUTH_STATE_AUTHENTICATED;
+
+  emailInput.disabled = authBusy || !emailLoginConfigured || authState === AUTH_STATE_LOADING;
+  requestCodeButton.disabled = authBusy || !emailLoginConfigured || authState === AUTH_STATE_LOADING;
+  codeInput.disabled = authBusy;
+  verifyCodeButton.disabled = authBusy || !pendingEmail;
+  logoutButton.disabled = authBusy;
+
+  if (authState === AUTH_STATE_LOADING) {
+    authTitle.textContent = "로그인 상태를 확인하는 중입니다.";
+    authStatus.textContent = "세션과 DB 연결을 확인하는 중입니다.";
     return;
   }
 
-  saveStatus.textContent = "현재 순서가 이 브라우저에 저장되어 있습니다.";
+  if (authState === AUTH_STATE_AUTHENTICATED) {
+    authTitle.textContent = authenticatedEmail;
+    authStatus.textContent = authMessage || `${authenticatedEmail}로 로그인되어 있습니다.`;
+    return;
+  }
+
+  authTitle.textContent = "이메일 인증 로그인";
+
+  if (!emailLoginConfigured) {
+    authStatus.textContent = "이메일 로그인 설정이 아직 완료되지 않았습니다. RESEND_API_KEY와 AUTH_EMAIL_FROM이 필요합니다.";
+    return;
+  }
+
+  if (pendingEmail) {
+    authStatus.textContent = authMessage || `${maskEmail(pendingEmail)}로 인증코드를 보냈습니다.`;
+    return;
+  }
+
+  authStatus.textContent = authMessage || "이메일 로그인 후 각 이메일 계정별로 큐시트를 저장할 수 있습니다.";
 }
 
 function getDragAfterElement(container, pointerY) {
@@ -957,4 +1336,35 @@ function syncCueOrderWithDom() {
 
   cues = nextCues;
   updateActionState();
+}
+
+async function safeReadJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+}
+
+function maskEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+  const [localPart = "", domain = ""] = normalizedEmail.split("@");
+
+  if (!domain) {
+    return normalizedEmail;
+  }
+
+  if (localPart.length <= 2) {
+    return `${localPart[0] || ""}*@${domain}`;
+  }
+
+  return `${localPart.slice(0, 2)}***@${domain}`;
 }

@@ -88,6 +88,35 @@ select {
   font-size: 1rem;
 }
 
+.auth-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-title {
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  line-height: 1.3;
+}
+
+.auth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.auth-form-compact {
+  grid-template-columns: minmax(0, 240px) auto;
+}
+
 .panel {
   margin-bottom: 18px;
   padding: 22px;
@@ -529,10 +558,22 @@ select {
     flex-direction: column;
   }
 
+  .auth-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .auth-form,
+  .auth-form-compact {
+    grid-template-columns: 1fr;
+  }
+
   .summary-actions .primary-button,
   .summary-actions .ghost-button,
   .tap-meter-actions .tap-button,
-  .tap-meter-actions .ghost-button {
+  .tap-meter-actions .ghost-button,
+  .auth-form .primary-button,
+  .auth-form .ghost-button {
     width: 100%;
   }
 
