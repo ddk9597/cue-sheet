@@ -43,6 +43,9 @@ const cueItemTemplate = document.querySelector("#cueItemTemplate");
 const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
 const practiceMonthSummary = document.querySelector("#practiceMonthSummary");
 const practiceCalendar = document.querySelector("#practiceCalendar");
+const practiceMobileDateLabel = document.querySelector("#practiceMobileDateLabel");
+const practiceMobileTotal = document.querySelector("#practiceMobileTotal");
+const practiceJumpToFormButton = document.querySelector("#practiceJumpToFormButton");
 const practicePrevMonthButton = document.querySelector("#practicePrevMonthButton");
 const practiceTodayButton = document.querySelector("#practiceTodayButton");
 const practiceNextMonthButton = document.querySelector("#practiceNextMonthButton");
@@ -55,6 +58,7 @@ const practiceDayLabel = document.querySelector("#practiceDayLabel");
 const practiceDaySummary = document.querySelector("#practiceDaySummary");
 const practiceSessionList = document.querySelector("#practiceSessionList");
 const practiceEmptyState = document.querySelector("#practiceEmptyState");
+const practiceEntryCard = document.querySelector("#practice-entry-card");
 const cueEditorPanel = document.querySelector("#cue-editor");
 const cueListPanel = document.querySelector("#cue-list-panel");
 
@@ -262,6 +266,16 @@ practiceUseCueDurationButton.addEventListener("click", () => {
   practiceDurationInput.value = formatPracticeInputDuration(totalMinutes);
   practiceDurationInput.focus();
   practiceDurationInput.select();
+});
+
+practiceJumpToFormButton.addEventListener("click", () => {
+  practiceEntryCard.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+  window.requestAnimationFrame(() => {
+    practiceDurationInput.focus();
+  });
 });
 
 practiceForm.addEventListener("submit", (event) => {
@@ -819,11 +833,14 @@ function renderPracticeMonthGrid() {
 function renderPracticeSelectionSummary() {
   const entries = getPracticeEntries(selectedPracticeDate);
   const totalMinutes = entries.reduce((sum, entry) => sum + entry.minutes, 0);
-
-  practiceDayLabel.textContent = formatPracticeDateLabel(selectedPracticeDate);
-  practiceDaySummary.textContent = totalMinutes
+  const summaryText = totalMinutes
     ? `${entries.length}회 기록, 총 ${formatMinutesLabel(totalMinutes)}`
     : "선택한 날짜에 기록된 연습시간이 없습니다.";
+
+  practiceDayLabel.textContent = formatPracticeDateLabel(selectedPracticeDate);
+  practiceDaySummary.textContent = summaryText;
+  practiceMobileDateLabel.textContent = formatPracticeDateLabel(selectedPracticeDate);
+  practiceMobileTotal.textContent = summaryText;
 
   practiceSessionList.innerHTML = "";
   practiceEmptyState.hidden = entries.length > 0;

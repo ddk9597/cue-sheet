@@ -103,6 +103,14 @@
           </div>
           <div class="practice-panel-body">
             <div class="practice-calendar-area">
+              <div class="practice-mobile-summary" aria-live="polite">
+                <div class="practice-mobile-summary-copy">
+                  <p class="panel-label">선택 날짜</p>
+                  <strong id="practiceMobileDateLabel" class="practice-mobile-date">0000년 00월 00일</strong>
+                  <p id="practiceMobileTotal" class="save-status">연습 기록을 확인합니다.</p>
+                </div>
+                <button id="practiceJumpToFormButton" class="ghost-button" type="button">기록 입력</button>
+              </div>
               <div class="practice-weekdays" aria-hidden="true">
                 <span>일</span>
                 <span>월</span>
@@ -116,7 +124,7 @@
             </div>
 
             <div class="practice-sidebar">
-              <section class="practice-card" aria-label="연습시간 입력">
+              <section id="practice-entry-card" class="practice-card" aria-label="연습시간 입력">
                 <div class="practice-card-header">
                   <div>
                     <p class="panel-label">연습시간 입력</p>
@@ -157,7 +165,7 @@
                 </form>
               </section>
 
-              <section class="practice-card" aria-label="선택 날짜 기록">
+              <section id="practice-session-card" class="practice-card" aria-label="선택 날짜 기록">
                 <div class="practice-card-header">
                   <div>
                     <p class="panel-label">선택 날짜 기록</p>
