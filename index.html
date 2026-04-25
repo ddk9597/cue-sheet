@@ -12,9 +12,9 @@
       <a class="site-brand" href="#overview">Cue Sheet</a>
       <nav class="site-nav" aria-label="상단 메뉴">
         <a href="#overview">홈</a>
-        <a href="#practice-calendar">연습 캘린더</a>
-        <a href="#cue-editor">큐 입력</a>
-        <a href="#cue-list-panel">목록</a>
+        <button class="site-nav-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
+        <button class="site-nav-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
+        <button class="site-nav-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록</button>
       </nav>
     </div>
   </header>
@@ -27,6 +27,10 @@
       <p class="hero-copy">
         곡 순서와 우측 튜닝 칸을 함께 보면서 통기타, 일렉기타, 베이스의 연속 세팅 가능 여부를 확인합니다.
       </p>
+      <div class="hero-actions">
+        <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐시트 열기</button>
+        <button class="ghost-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
+      </div>
     </section>
 
     <section class="panel auth-panel" aria-label="저장 보호">
@@ -72,151 +76,177 @@
         </div>
       </div>
     </section>
-
-    <section id="practice-calendar" class="panel practice-panel" aria-label="연습 캘린더">
-      <div class="practice-panel-header">
-        <div>
-          <p class="panel-label">연습 캘린더</p>
-          <strong id="practiceMonthLabel" class="practice-month-label">0000년 00월</strong>
-          <p id="practiceMonthSummary" class="save-status">이번 달 누적 연습시간을 계산하는 중입니다.</p>
-        </div>
-        <div class="practice-month-actions">
-          <button id="practicePrevMonthButton" class="ghost-button" type="button">이전 달</button>
-          <button id="practiceTodayButton" class="ghost-button" type="button">이번 달</button>
-          <button id="practiceNextMonthButton" class="ghost-button" type="button">다음 달</button>
-        </div>
-      </div>
-      <div class="practice-panel-body">
-        <div class="practice-calendar-area">
-          <div class="practice-weekdays" aria-hidden="true">
-            <span>일</span>
-            <span>월</span>
-            <span>화</span>
-            <span>수</span>
-            <span>목</span>
-            <span>금</span>
-            <span>토</span>
-          </div>
-          <div id="practiceCalendar" class="practice-calendar" role="grid" aria-label="연습시간 달력"></div>
-        </div>
-
-        <div class="practice-sidebar">
-          <section class="practice-card" aria-label="연습시간 입력">
-            <div class="practice-card-header">
-              <div>
-                <p class="panel-label">연습시간 입력</p>
-                <strong id="practiceDayLabel" class="practice-day-label">0000년 00월 00일</strong>
-              </div>
-              <p id="practiceDaySummary" class="save-status">선택한 날짜의 연습시간을 확인합니다.</p>
-            </div>
-            <form id="practiceForm" class="practice-form">
-              <label class="field">
-                <span>날짜</span>
-                <input id="practiceDateInput" name="practiceDate" type="date" required>
-              </label>
-              <label class="field">
-                <span>연습시간</span>
-                <input
-                  id="practiceDurationInput"
-                  name="practiceDuration"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="HH:MM"
-                  required
-                >
-              </label>
-              <label class="field practice-note-field">
-                <span>메모</span>
-                <input
-                  id="practiceNoteInput"
-                  name="practiceNote"
-                  type="text"
-                  maxlength="80"
-                  placeholder="예: 합주, 개인 연습, 세트 점검"
-                >
-              </label>
-              <div class="practice-form-actions">
-                <button id="practiceUseCueDurationButton" class="ghost-button" type="button">현재 큐시트 길이</button>
-                <button class="primary-button" type="submit">연습시간 기록</button>
-              </div>
-            </form>
-          </section>
-
-          <section class="practice-card" aria-label="선택 날짜 기록">
-            <div class="practice-card-header">
-              <div>
-                <p class="panel-label">선택 날짜 기록</p>
-                <strong class="practice-day-label">연습 세션</strong>
-              </div>
-            </div>
-            <ul id="practiceSessionList" class="practice-session-list"></ul>
-            <p id="practiceEmptyState" class="empty-state">기록된 연습시간이 없습니다.</p>
-          </section>
-        </div>
-      </div>
-    </section>
-
-    <section id="cue-editor" class="panel form-panel" aria-label="큐시트 입력">
-      <form id="cueForm" class="cue-form">
-        <label class="field">
-          <span>제목</span>
-          <input
-            id="titleInput"
-            name="title"
-            type="text"
-            maxlength="60"
-            placeholder="예: 오프닝 멘트"
-            required
-          >
-        </label>
-
-        <label class="field bpm-field">
-          <span>BPM</span>
-          <input
-            id="bpmInput"
-            name="bpm"
-            type="text"
-            inputmode="numeric"
-            maxlength="3"
-            placeholder="예: 120"
-          >
-        </label>
-
-        <label class="field">
-          <span>시간</span>
-          <input
-            id="durationInput"
-            name="duration"
-            type="text"
-            inputmode="numeric"
-            placeholder="MM:SS"
-            required
-          >
-        </label>
-
-        <button class="primary-button" type="submit">항목 추가</button>
-      </form>
-      <p class="hint">시간은 `MM:SS` 형식으로 입력합니다. BPM은 등록 후 목록에서도 수정할 수 있고, 옆 버튼으로 메트로놈을 재생합니다.</p>
-    </section>
-
-    <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록">
-      <div class="list-scroll">
-        <div class="list-header">
-          <span>이동</span>
-          <span>제목</span>
-          <span>BPM</span>
-          <span>시간</span>
-          <span>통기타</span>
-          <span>일렉기타</span>
-          <span>베이스</span>
-          <span>관리</span>
-        </div>
-        <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
-        <ul id="cueList" class="cue-list"></ul>
-        <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
-      </div>
-    </section>
   </main>
+
+  <dialog id="practiceModal" class="modal" aria-labelledby="practiceModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Practice</p>
+          <strong id="practiceModalTitle" class="modal-title">연습 캘린더</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body">
+        <section id="practice-calendar" class="panel practice-panel" aria-label="연습 캘린더">
+          <div class="practice-panel-header">
+            <div>
+              <p class="panel-label">연습 캘린더</p>
+              <strong id="practiceMonthLabel" class="practice-month-label">0000년 00월</strong>
+              <p id="practiceMonthSummary" class="save-status">이번 달 누적 연습시간을 계산하는 중입니다.</p>
+            </div>
+            <div class="practice-month-actions">
+              <button id="practicePrevMonthButton" class="ghost-button" type="button">이전 달</button>
+              <button id="practiceTodayButton" class="ghost-button" type="button">이번 달</button>
+              <button id="practiceNextMonthButton" class="ghost-button" type="button">다음 달</button>
+            </div>
+          </div>
+          <div class="practice-panel-body">
+            <div class="practice-calendar-area">
+              <div class="practice-weekdays" aria-hidden="true">
+                <span>일</span>
+                <span>월</span>
+                <span>화</span>
+                <span>수</span>
+                <span>목</span>
+                <span>금</span>
+                <span>토</span>
+              </div>
+              <div id="practiceCalendar" class="practice-calendar" role="grid" aria-label="연습시간 달력"></div>
+            </div>
+
+            <div class="practice-sidebar">
+              <section class="practice-card" aria-label="연습시간 입력">
+                <div class="practice-card-header">
+                  <div>
+                    <p class="panel-label">연습시간 입력</p>
+                    <strong id="practiceDayLabel" class="practice-day-label">0000년 00월 00일</strong>
+                  </div>
+                  <p id="practiceDaySummary" class="save-status">선택한 날짜의 연습시간을 확인합니다.</p>
+                </div>
+                <form id="practiceForm" class="practice-form">
+                  <label class="field">
+                    <span>날짜</span>
+                    <input id="practiceDateInput" name="practiceDate" type="date" required>
+                  </label>
+                  <label class="field">
+                    <span>연습시간</span>
+                    <input
+                      id="practiceDurationInput"
+                      name="practiceDuration"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="HH:MM"
+                      required
+                    >
+                  </label>
+                  <label class="field practice-note-field">
+                    <span>메모</span>
+                    <input
+                      id="practiceNoteInput"
+                      name="practiceNote"
+                      type="text"
+                      maxlength="80"
+                      placeholder="예: 합주, 개인 연습, 세트 점검"
+                    >
+                  </label>
+                  <div class="practice-form-actions">
+                    <button id="practiceUseCueDurationButton" class="ghost-button" type="button">현재 큐시트 길이</button>
+                    <button class="primary-button" type="submit">연습시간 기록</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="practice-card" aria-label="선택 날짜 기록">
+                <div class="practice-card-header">
+                  <div>
+                    <p class="panel-label">선택 날짜 기록</p>
+                    <strong class="practice-day-label">연습 세션</strong>
+                  </div>
+                </div>
+                <ul id="practiceSessionList" class="practice-session-list"></ul>
+                <p id="practiceEmptyState" class="empty-state">기록된 연습시간이 없습니다.</p>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="cueModal" class="modal modal-wide" aria-labelledby="cueModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Cue Sheet</p>
+          <strong id="cueModalTitle" class="modal-title">큐시트 편집</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body modal-stack">
+        <section id="cue-editor" class="panel form-panel" aria-label="큐시트 입력" tabindex="-1">
+          <form id="cueForm" class="cue-form">
+            <label class="field">
+              <span>제목</span>
+              <input
+                id="titleInput"
+                name="title"
+                type="text"
+                maxlength="60"
+                placeholder="예: 오프닝 멘트"
+                required
+              >
+            </label>
+
+            <label class="field bpm-field">
+              <span>BPM</span>
+              <input
+                id="bpmInput"
+                name="bpm"
+                type="text"
+                inputmode="numeric"
+                maxlength="3"
+                placeholder="예: 120"
+              >
+            </label>
+
+            <label class="field">
+              <span>시간</span>
+              <input
+                id="durationInput"
+                name="duration"
+                type="text"
+                inputmode="numeric"
+                placeholder="MM:SS"
+                required
+              >
+            </label>
+
+            <button class="primary-button" type="submit">항목 추가</button>
+          </form>
+          <p class="hint">시간은 `MM:SS` 형식으로 입력합니다. BPM은 등록 후 목록에서도 수정할 수 있고, 옆 버튼으로 메트로놈을 재생합니다.</p>
+        </section>
+
+        <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록" tabindex="-1">
+          <div class="list-scroll">
+            <div class="list-header">
+              <span>이동</span>
+              <span>제목</span>
+              <span>BPM</span>
+              <span>시간</span>
+              <span>통기타</span>
+              <span>일렉기타</span>
+              <span>베이스</span>
+              <span>관리</span>
+            </div>
+            <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
+            <ul id="cueList" class="cue-list"></ul>
+            <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
 
   <template id="cueItemTemplate">
     <li class="cue-item" draggable="true">

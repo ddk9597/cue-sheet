@@ -29,6 +29,10 @@ body {
     linear-gradient(135deg, var(--bg-start), var(--bg-end));
 }
 
+body.has-modal-open {
+  overflow: hidden;
+}
+
 button,
 input,
 select {
@@ -74,17 +78,22 @@ select {
   flex-wrap: wrap;
 }
 
-.site-nav a {
+.site-nav a,
+.site-nav button {
   padding: 10px 14px;
+  border: 0;
   border-radius: 999px;
+  background: transparent;
   color: var(--text-subtle);
   font-size: 0.94rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
-.site-nav a:hover {
+.site-nav a:hover,
+.site-nav button:hover {
   color: var(--text-main);
   background: rgba(24, 32, 25, 0.06);
   transform: translateY(-1px);
@@ -146,6 +155,15 @@ select {
   margin: 14px auto 0;
   color: var(--text-subtle);
   font-size: 1rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 22px;
 }
 
 .auth-panel {
@@ -253,6 +271,74 @@ select {
 
 .save-status.is-error {
   color: var(--accent-deep);
+}
+
+.modal {
+  width: min(1200px, calc(100vw - 28px));
+  max-width: 100%;
+  max-height: calc(100vh - 28px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.modal.modal-wide {
+  width: min(1280px, calc(100vw - 28px));
+}
+
+.modal::backdrop {
+  background: rgba(24, 32, 25, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.modal-card {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(53, 68, 58, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 251, 245, 0.96);
+  box-shadow: 0 30px 80px rgba(24, 32, 25, 0.22);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid rgba(53, 68, 58, 0.08);
+}
+
+.modal-title {
+  font-size: clamp(1.2rem, 2.4vw, 1.75rem);
+  line-height: 1.2;
+}
+
+.modal-close {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(24, 32, 25, 0.08);
+  color: var(--text-main);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.modal-close:hover {
+  transform: translateY(-1px);
+  background: rgba(24, 32, 25, 0.12);
+}
+
+.modal-body {
+  max-height: calc(100vh - 140px);
+  padding: 22px 24px 24px;
+  overflow: auto;
+}
+
+.modal-stack > .panel:last-child {
+  margin-bottom: 0;
 }
 
 .practice-panel {
@@ -798,6 +884,41 @@ select {
   .panel {
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .hero-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .hero-actions .primary-button,
+  .hero-actions .ghost-button {
+    width: 100%;
+  }
+
+  .modal,
+  .modal.modal-wide {
+    width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+  }
+
+  .modal-card {
+    border-radius: 22px;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px 18px 14px;
+  }
+
+  .modal-body {
+    max-height: calc(100vh - 120px);
+    padding: 16px 18px 18px;
+  }
+
+  .modal-close {
+    width: 100%;
   }
 
   .logo-title {

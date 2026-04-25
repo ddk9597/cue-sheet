@@ -35,6 +35,10 @@ const tapTempoApplyButton = document.querySelector("#tapTempoApplyButton");
 const tapTempoResetButton = document.querySelector("#tapTempoResetButton");
 const tapTempoValue = document.querySelector("#tapTempoValue");
 const tapTempoStatus = document.querySelector("#tapTempoStatus");
+const practiceModal = document.querySelector("#practiceModal");
+const cueModal = document.querySelector("#cueModal");
+const modalTriggers = document.querySelectorAll("[data-modal-target]");
+const modalCloseButtons = document.querySelectorAll("[data-modal-close]");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
 const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
 const practiceMonthSummary = document.querySelector("#practiceMonthSummary");
@@ -51,6 +55,8 @@ const practiceDayLabel = document.querySelector("#practiceDayLabel");
 const practiceDaySummary = document.querySelector("#practiceDaySummary");
 const practiceSessionList = document.querySelector("#practiceSessionList");
 const practiceEmptyState = document.querySelector("#practiceEmptyState");
+const cueEditorPanel = document.querySelector("#cue-editor");
+const cueListPanel = document.querySelector("#cue-list-panel");
 
 let savedCues = [];
 let cues = [];
@@ -68,6 +74,35 @@ let storageWarningMessage = "";
 let practiceLogs = {};
 let selectedPracticeDate = getLocalDateKey(new Date());
 let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || new Date());
+
+for (const trigger of modalTriggers) {
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    openModalById(trigger.dataset.modalTarget, trigger.dataset.modalSection || "");
+  });
+}
+
+for (const closeButton of modalCloseButtons) {
+  closeButton.addEventListener("click", () => {
+    closeModal(closeButton.closest("dialog"));
+  });
+}
+
+for (const modal of [practiceModal, cueModal]) {
+  if (!modal) {
+    continue;
+  }
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeModal(modal);
+    }
+  });
+
+  modal.addEventListener("close", () => {
+    syncModalState();
+  });
+}
 
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -523,6 +558,62 @@ function initializePracticeTracker() {
   practiceLogs = loadPracticeLogs();
   syncPracticeInputsWithSelection();
   renderPracticeCalendar();
+}
+
+function openModalById(modalId, section = "") {
+  const modal = document.querySelector(`#${modalId}`);
+
+  if (!modal) {
+    return;
+  }
+
+  if (!modal.open) {
+    if (typeof modal.showModal === "function") {
+      modal.showModal();
+    } else {
+      modal.setAttribute("open", "");
+    }
+  }
+
+  syncModalState();
+
+  window.requestAnimationFrame(() => {
+    if (modal === cueModal) {
+      focusCueModalSection(section);
+      return;
+    }
+
+    if (modal === practiceModal) {
+      practiceDateInput.focus();
+    }
+  });
+}
+
+function closeModal(modal) {
+  if (!modal?.open) {
+    return;
+  }
+
+  if (typeof modal.close === "function") {
+    modal.close();
+  } else {
+    modal.removeAttribute("open");
+    syncModalState();
+  }
+}
+
+function syncModalState() {
+  document.body.classList.toggle("has-modal-open", Boolean(document.querySelector("dialog[open]")));
+}
+
+function focusCueModalSection(section) {
+  if (section === "list") {
+    cueListPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  cueEditorPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  titleInput.focus();
 }
 
 function loadPracticeLogs() {
