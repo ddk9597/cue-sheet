@@ -10,6 +10,11 @@
   --shadow: 0 20px 45px rgba(42, 54, 44, 0.12);
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -30,10 +35,65 @@ select {
   font: inherit;
 }
 
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 14px 16px 0;
+}
+
+.site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 14px 18px;
+  border: 1px solid rgba(53, 68, 58, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 251, 245, 0.82);
+  box-shadow: 0 12px 28px rgba(42, 54, 44, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.site-brand {
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--text-subtle);
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.site-nav a:hover {
+  color: var(--text-main);
+  background: rgba(24, 32, 25, 0.06);
+  transform: translateY(-1px);
+}
+
 .page {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 48px 0 72px;
+  padding: 28px 0 72px;
 }
 
 .hero {
@@ -193,6 +253,195 @@ select {
 
 .save-status.is-error {
   color: var(--accent-deep);
+}
+
+.practice-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.practice-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.practice-month-label,
+.practice-day-label {
+  display: block;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  line-height: 1.2;
+}
+
+.practice-month-actions,
+.practice-form-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.practice-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.practice-calendar-area,
+.practice-card {
+  border: 1px solid rgba(53, 68, 58, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.48);
+  padding: 18px;
+}
+
+.practice-weekdays,
+.practice-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.practice-weekdays {
+  margin-bottom: 10px;
+}
+
+.practice-weekdays span {
+  padding: 8px 0;
+  color: var(--text-subtle);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.practice-day,
+.practice-day-empty {
+  min-height: 96px;
+  border-radius: 18px;
+}
+
+.practice-day {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(53, 68, 58, 0.12);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.practice-day:hover {
+  transform: translateY(-1px);
+  border-color: rgba(182, 93, 53, 0.32);
+  box-shadow: 0 10px 24px rgba(42, 54, 44, 0.08);
+}
+
+.practice-day.is-selected {
+  border-color: rgba(182, 93, 53, 0.72);
+  background: linear-gradient(135deg, rgba(255, 230, 212, 0.95), rgba(255, 244, 235, 0.95));
+}
+
+.practice-day.is-today {
+  box-shadow: inset 0 0 0 2px rgba(24, 32, 25, 0.12);
+}
+
+.practice-day.has-record .practice-day-total {
+  color: var(--accent-deep);
+}
+
+.practice-day-empty {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.practice-day-number {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.practice-day-total {
+  color: var(--text-subtle);
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-sidebar {
+  display: grid;
+  gap: 18px;
+}
+
+.practice-card-header {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.practice-form {
+  display: grid;
+  gap: 14px;
+}
+
+.practice-note-field {
+  grid-column: 1 / -1;
+}
+
+.practice-session-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-session-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid rgba(53, 68, 58, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.practice-session-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.practice-session-duration {
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-session-note,
+.practice-session-meta {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+}
+
+.practice-session-delete {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(182, 93, 53, 0.12);
+  color: var(--accent-deep);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.practice-session-delete:hover {
+  transform: translateY(-1px);
 }
 
 .cue-form {
@@ -528,6 +777,19 @@ select {
 }
 
 @media (max-width: 760px) {
+  .site-header {
+    padding: 10px 10px 0;
+  }
+
+  .site-header-inner {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .site-nav {
+    justify-content: flex-start;
+  }
+
   .page {
     width: min(100% - 20px, 1180px);
     padding-top: 28px;
@@ -546,6 +808,27 @@ select {
   .summary-panel {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .practice-panel-body {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-month-actions,
+  .practice-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .practice-day,
+  .practice-day-empty {
+    min-height: 84px;
+  }
+
+  .practice-calendar-area,
+  .practice-card {
+    padding: 14px;
+    border-radius: 18px;
   }
 
   .tap-meter-inline {
@@ -572,8 +855,8 @@ select {
   .summary-actions .ghost-button,
   .tap-meter-actions .tap-button,
   .tap-meter-actions .ghost-button,
-  .auth-form .primary-button,
-  .auth-form .ghost-button {
+  .practice-form-actions .primary-button,
+  .practice-form-actions .ghost-button {
     width: 100%;
   }
 
@@ -703,5 +986,13 @@ select {
 
   .cue-form {
     grid-template-columns: 1fr;
+  }
+
+  .practice-session-item {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-session-delete {
+    width: 100%;
   }
 }

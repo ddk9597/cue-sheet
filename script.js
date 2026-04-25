@@ -1,5 +1,6 @@
 const CUES_API_ENDPOINT = "/api/cues";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
+const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
 const ELECTRIC_TUNING_FIELD = "electricTuning";
 const BASS_TUNING_FIELD = "bassTuning";
@@ -35,6 +36,21 @@ const tapTempoResetButton = document.querySelector("#tapTempoResetButton");
 const tapTempoValue = document.querySelector("#tapTempoValue");
 const tapTempoStatus = document.querySelector("#tapTempoStatus");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
+const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
+const practiceMonthSummary = document.querySelector("#practiceMonthSummary");
+const practiceCalendar = document.querySelector("#practiceCalendar");
+const practicePrevMonthButton = document.querySelector("#practicePrevMonthButton");
+const practiceTodayButton = document.querySelector("#practiceTodayButton");
+const practiceNextMonthButton = document.querySelector("#practiceNextMonthButton");
+const practiceForm = document.querySelector("#practiceForm");
+const practiceDateInput = document.querySelector("#practiceDateInput");
+const practiceDurationInput = document.querySelector("#practiceDurationInput");
+const practiceNoteInput = document.querySelector("#practiceNoteInput");
+const practiceUseCueDurationButton = document.querySelector("#practiceUseCueDurationButton");
+const practiceDayLabel = document.querySelector("#practiceDayLabel");
+const practiceDaySummary = document.querySelector("#practiceDaySummary");
+const practiceSessionList = document.querySelector("#practiceSessionList");
+const practiceEmptyState = document.querySelector("#practiceEmptyState");
 
 let savedCues = [];
 let cues = [];
@@ -49,6 +65,9 @@ let databaseConfigured = false;
 let saveInFlight = false;
 let databaseSeedRequired = false;
 let storageWarningMessage = "";
+let practiceLogs = {};
+let selectedPracticeDate = getLocalDateKey(new Date());
+let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || new Date());
 
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -154,6 +173,120 @@ tapTempoApplyButton.addEventListener("click", () => {
 
 tapTempoResetButton.addEventListener("click", () => {
   resetTapTempo();
+});
+
+practicePrevMonthButton.addEventListener("click", () => {
+  visiblePracticeMonth = new Date(
+    visiblePracticeMonth.getFullYear(),
+    visiblePracticeMonth.getMonth() - 1,
+    1,
+  );
+  renderPracticeCalendar();
+});
+
+practiceTodayButton.addEventListener("click", () => {
+  const today = new Date();
+
+  visiblePracticeMonth = startOfMonth(today);
+  selectedPracticeDate = getLocalDateKey(today);
+  syncPracticeInputsWithSelection();
+  renderPracticeCalendar();
+});
+
+practiceNextMonthButton.addEventListener("click", () => {
+  visiblePracticeMonth = new Date(
+    visiblePracticeMonth.getFullYear(),
+    visiblePracticeMonth.getMonth() + 1,
+    1,
+  );
+  renderPracticeCalendar();
+});
+
+practiceDateInput.addEventListener("change", () => {
+  const nextDate = normalizePracticeDateKey(practiceDateInput.value);
+
+  if (!nextDate) {
+    return;
+  }
+
+  selectedPracticeDate = nextDate;
+  visiblePracticeMonth = startOfMonth(parseDateKey(nextDate) || new Date());
+  renderPracticeCalendar();
+});
+
+practiceUseCueDurationButton.addEventListener("click", () => {
+  const totalMinutes = Math.ceil(
+    cues.reduce((sum, cue) => sum + cue.seconds, 0) / 60,
+  );
+
+  if (!totalMinutes) {
+    window.alert("먼저 큐시트 항목을 추가하세요.");
+    return;
+  }
+
+  practiceDurationInput.value = formatPracticeInputDuration(totalMinutes);
+  practiceDurationInput.focus();
+  practiceDurationInput.select();
+});
+
+practiceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const dateKey = normalizePracticeDateKey(practiceDateInput.value);
+  const minutes = parsePracticeDuration(practiceDurationInput.value);
+  const note = normalizePracticeNote(practiceNoteInput.value);
+
+  if (!dateKey) {
+    window.alert("연습 날짜를 선택하세요.");
+    practiceDateInput.focus();
+    return;
+  }
+
+  if (minutes === null || minutes <= 0) {
+    window.alert("연습시간은 HH:MM 형식으로 입력하세요.");
+    practiceDurationInput.focus();
+    practiceDurationInput.select();
+    return;
+  }
+
+  selectedPracticeDate = dateKey;
+  visiblePracticeMonth = startOfMonth(parseDateKey(dateKey) || new Date());
+  appendPracticeEntry(dateKey, minutes, note);
+  persistPracticeLogs();
+  practiceDurationInput.value = "";
+  practiceNoteInput.value = "";
+  syncPracticeInputsWithSelection();
+  renderPracticeCalendar();
+});
+
+practiceCalendar.addEventListener("click", (event) => {
+  const dayButton = event.target.closest(".practice-day");
+
+  if (!dayButton || !dayButton.dataset.date) {
+    return;
+  }
+
+  selectedPracticeDate = dayButton.dataset.date;
+  syncPracticeInputsWithSelection();
+  renderPracticeCalendar();
+});
+
+practiceSessionList.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest(".practice-session-delete");
+
+  if (!deleteButton) {
+    return;
+  }
+
+  const entryId = deleteButton.dataset.entryId;
+
+  if (!entryId) {
+    return;
+  }
+
+  deletePracticeEntry(selectedPracticeDate, entryId);
+  persistPracticeLogs();
+  renderPracticeCalendar();
 });
 
 cueList.addEventListener("input", (event) => {
@@ -334,6 +467,7 @@ window.addEventListener("pagehide", () => {
 bootstrap();
 
 async function bootstrap() {
+  initializePracticeTracker();
   render();
   updateTapTempoState();
   updateAuthUi();
@@ -383,6 +517,378 @@ async function initializeStorage() {
   persistLocalCues(remoteCues);
   render();
   updateActionState();
+}
+
+function initializePracticeTracker() {
+  practiceLogs = loadPracticeLogs();
+  syncPracticeInputsWithSelection();
+  renderPracticeCalendar();
+}
+
+function loadPracticeLogs() {
+  try {
+    const saved = window.localStorage.getItem(PRACTICE_LOG_STORAGE_KEY);
+
+    if (!saved) {
+      return {};
+    }
+
+    return normalizePracticeLogs(JSON.parse(saved));
+  } catch {
+    return {};
+  }
+}
+
+function persistPracticeLogs() {
+  try {
+    window.localStorage.setItem(PRACTICE_LOG_STORAGE_KEY, JSON.stringify(practiceLogs));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizePracticeLogs(value) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const normalized = {};
+
+  for (const [dateKey, entries] of Object.entries(value)) {
+    const nextDateKey = normalizePracticeDateKey(dateKey);
+    const nextEntries = normalizePracticeEntries(entries);
+
+    if (!nextDateKey || !nextEntries.length) {
+      continue;
+    }
+
+    normalized[nextDateKey] = nextEntries;
+  }
+
+  return normalized;
+}
+
+function normalizePracticeEntries(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry, index) => normalizePracticeEntry(entry, index))
+    .filter(Boolean)
+    .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
+function normalizePracticeEntry(value, index) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const minutes = Number(value.minutes);
+
+  if (!Number.isInteger(minutes) || minutes <= 0) {
+    return null;
+  }
+
+  return {
+    id: normalizePracticeEntryId(value.id, index),
+    minutes,
+    note: normalizePracticeNote(value.note),
+    createdAt: normalizePracticeTimestamp(value.createdAt),
+  };
+}
+
+function normalizePracticeEntryId(value, index) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim().slice(0, 120);
+  }
+
+  return `practice-${index + 1}`;
+}
+
+function normalizePracticeTimestamp(value) {
+  const createdAt = new Date(value);
+
+  if (Number.isNaN(createdAt.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return createdAt.toISOString();
+}
+
+function appendPracticeEntry(dateKey, minutes, note) {
+  const entries = getPracticeEntries(dateKey);
+
+  entries.unshift({
+    id: createPracticeEntryId(),
+    minutes,
+    note,
+    createdAt: new Date().toISOString(),
+  });
+
+  practiceLogs[dateKey] = entries;
+}
+
+function deletePracticeEntry(dateKey, entryId) {
+  const entries = getPracticeEntries(dateKey)
+    .filter((entry) => entry.id !== entryId);
+
+  if (entries.length) {
+    practiceLogs[dateKey] = entries;
+    return;
+  }
+
+  delete practiceLogs[dateKey];
+}
+
+function getPracticeEntries(dateKey) {
+  return Array.isArray(practiceLogs[dateKey]) ? [...practiceLogs[dateKey]] : [];
+}
+
+function getPracticeTotalMinutes(dateKey) {
+  return getPracticeEntries(dateKey)
+    .reduce((sum, entry) => sum + entry.minutes, 0);
+}
+
+function renderPracticeCalendar() {
+  syncPracticeInputsWithSelection();
+  renderPracticeMonthGrid();
+  renderPracticeSelectionSummary();
+}
+
+function renderPracticeMonthGrid() {
+  const year = visiblePracticeMonth.getFullYear();
+  const monthIndex = visiblePracticeMonth.getMonth();
+  const firstDay = new Date(year, monthIndex, 1);
+  const firstWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const todayKey = getLocalDateKey(new Date());
+  const monthEntries = Object.entries(practiceLogs)
+    .filter(([dateKey]) => dateKey.startsWith(getMonthPrefix(visiblePracticeMonth)));
+  const monthMinutes = monthEntries.reduce((sum, [dateKey]) => sum + getPracticeTotalMinutes(dateKey), 0);
+
+  practiceCalendar.innerHTML = "";
+  practiceMonthLabel.textContent = `${year}년 ${monthIndex + 1}월`;
+  practiceMonthSummary.textContent = `이번 달 누적 연습시간 ${formatMinutesLabel(monthMinutes)}`;
+
+  for (let index = 0; index < firstWeekday; index += 1) {
+    const placeholder = document.createElement("div");
+
+    placeholder.className = "practice-day-empty";
+    placeholder.setAttribute("aria-hidden", "true");
+    practiceCalendar.appendChild(placeholder);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const cellDate = new Date(year, monthIndex, day);
+    const dateKey = getLocalDateKey(cellDate);
+    const totalMinutes = getPracticeTotalMinutes(dateKey);
+    const dayButton = document.createElement("button");
+    const dayNumber = document.createElement("span");
+    const dayTotal = document.createElement("span");
+
+    dayButton.type = "button";
+    dayButton.className = "practice-day";
+    dayButton.dataset.date = dateKey;
+    dayButton.classList.toggle("has-record", totalMinutes > 0);
+    dayButton.classList.toggle("is-selected", dateKey === selectedPracticeDate);
+    dayButton.classList.toggle("is-today", dateKey === todayKey);
+    dayButton.setAttribute(
+      "aria-label",
+      totalMinutes
+        ? `${monthIndex + 1}월 ${day}일, 연습 ${formatMinutesLabel(totalMinutes)}`
+        : `${monthIndex + 1}월 ${day}일`,
+    );
+
+    dayNumber.className = "practice-day-number";
+    dayNumber.textContent = String(day);
+    dayTotal.className = "practice-day-total";
+    dayTotal.textContent = totalMinutes ? formatMinutesClock(totalMinutes) : "기록 없음";
+
+    dayButton.append(dayNumber, dayTotal);
+    practiceCalendar.appendChild(dayButton);
+  }
+
+  const remainingCells = practiceCalendar.children.length % 7;
+
+  if (!remainingCells) {
+    return;
+  }
+
+  for (let index = remainingCells; index < 7; index += 1) {
+    const placeholder = document.createElement("div");
+
+    placeholder.className = "practice-day-empty";
+    placeholder.setAttribute("aria-hidden", "true");
+    practiceCalendar.appendChild(placeholder);
+  }
+}
+
+function renderPracticeSelectionSummary() {
+  const entries = getPracticeEntries(selectedPracticeDate);
+  const totalMinutes = entries.reduce((sum, entry) => sum + entry.minutes, 0);
+
+  practiceDayLabel.textContent = formatPracticeDateLabel(selectedPracticeDate);
+  practiceDaySummary.textContent = totalMinutes
+    ? `${entries.length}회 기록, 총 ${formatMinutesLabel(totalMinutes)}`
+    : "선택한 날짜에 기록된 연습시간이 없습니다.";
+
+  practiceSessionList.innerHTML = "";
+  practiceEmptyState.hidden = entries.length > 0;
+
+  for (const entry of entries) {
+    const item = document.createElement("li");
+    const main = document.createElement("div");
+    const duration = document.createElement("strong");
+    const note = document.createElement("p");
+    const meta = document.createElement("p");
+    const removeButton = document.createElement("button");
+
+    item.className = "practice-session-item";
+    main.className = "practice-session-main";
+    duration.className = "practice-session-duration";
+    note.className = "practice-session-note";
+    meta.className = "practice-session-meta";
+    removeButton.className = "practice-session-delete";
+    removeButton.type = "button";
+    removeButton.dataset.entryId = entry.id;
+    removeButton.textContent = "삭제";
+
+    duration.textContent = formatMinutesLabel(entry.minutes);
+    note.textContent = entry.note || "메모 없음";
+    meta.textContent = `기록 시각 ${formatPracticeTime(entry.createdAt)}`;
+
+    main.append(duration, note, meta);
+    item.append(main, removeButton);
+    practiceSessionList.appendChild(item);
+  }
+}
+
+function syncPracticeInputsWithSelection() {
+  practiceDateInput.value = selectedPracticeDate;
+}
+
+function parsePracticeDuration(value) {
+  const normalized = String(value || "").trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parts = normalized.split(":").map((part) => part.trim());
+
+  if (parts.length !== 2 || parts.some((part) => part === "")) {
+    return null;
+  }
+
+  const [hours, minutes] = parts.map(Number);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    minutes < 0 ||
+    minutes >= 60
+  ) {
+    return null;
+  }
+
+  return (hours * 60) + minutes;
+}
+
+function formatPracticeInputDuration(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatMinutesClock(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatMinutesLabel(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours && minutes) {
+    return `${hours}시간 ${minutes}분`;
+  }
+
+  if (hours) {
+    return `${hours}시간`;
+  }
+
+  return `${minutes}분`;
+}
+
+function normalizePracticeNote(value) {
+  return String(value || "").trim().slice(0, 80);
+}
+
+function normalizePracticeDateKey(value) {
+  const parsedDate = parseDateKey(value);
+
+  return parsedDate ? getLocalDateKey(parsedDate) : "";
+}
+
+function parseDateKey(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
+    return null;
+  }
+
+  const [year, month, day] = String(value).split("-").map(Number);
+  const parsedDate = new Date(year, month - 1, day);
+
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsedDate;
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getLocalDateKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getMonthPrefix(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function createPracticeEntryId() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return `practice-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function formatPracticeDateLabel(dateKey) {
+  const date = parseDateKey(dateKey) || new Date();
+
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function formatPracticeTime(value) {
+  const date = new Date(value);
+
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function loadLocalCues() {
