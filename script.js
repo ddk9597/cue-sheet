@@ -1,4 +1,5 @@
 const CUES_API_ENDPOINT = "/api/cues";
+const PRACTICE_API_ENDPOINT = "/api/practice";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
 const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
@@ -75,6 +76,9 @@ let databaseConfigured = false;
 let saveInFlight = false;
 let databaseSeedRequired = false;
 let storageWarningMessage = "";
+let practiceStorageMode = STORAGE_MODE_LOADING;
+let practiceRemoteSeedRequired = false;
+let practiceWarningMessage = "";
 let practiceLogs = {};
 let selectedPracticeDate = getLocalDateKey(new Date());
 let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || new Date());
@@ -278,7 +282,7 @@ practiceJumpToFormButton.addEventListener("click", () => {
   });
 });
 
-practiceForm.addEventListener("submit", (event) => {
+practiceForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const dateKey = normalizePracticeDateKey(practiceDateInput.value);
@@ -300,8 +304,16 @@ practiceForm.addEventListener("submit", (event) => {
 
   selectedPracticeDate = dateKey;
   visiblePracticeMonth = startOfMonth(parseDateKey(dateKey) || new Date());
-  appendPracticeEntry(dateKey, minutes, note);
-  persistPracticeLogs();
+  const nextLogs = appendPracticeEntry(practiceLogs, dateKey, minutes, note);
+  const saveResult = await commitPracticeLogs(nextLogs);
+
+  if (!saveResult.ok) {
+    if (!saveResult.cancelled) {
+      window.alert(saveResult.message || "연습 캘린더 저장에 실패했습니다.");
+    }
+    return;
+  }
+
   practiceDurationInput.value = "";
   practiceNoteInput.value = "";
   syncPracticeInputsWithSelection();
@@ -320,7 +332,7 @@ practiceCalendar.addEventListener("click", (event) => {
   renderPracticeCalendar();
 });
 
-practiceSessionList.addEventListener("click", (event) => {
+practiceSessionList.addEventListener("click", async (event) => {
   const deleteButton = event.target.closest(".practice-session-delete");
 
   if (!deleteButton) {
@@ -333,8 +345,16 @@ practiceSessionList.addEventListener("click", (event) => {
     return;
   }
 
-  deletePracticeEntry(selectedPracticeDate, entryId);
-  persistPracticeLogs();
+  const nextLogs = deletePracticeEntry(practiceLogs, selectedPracticeDate, entryId);
+  const saveResult = await commitPracticeLogs(nextLogs);
+
+  if (!saveResult.ok) {
+    if (!saveResult.cancelled) {
+      window.alert(saveResult.message || "연습 기록 삭제에 실패했습니다.");
+    }
+    return;
+  }
+
   renderPracticeCalendar();
 });
 
@@ -516,11 +536,13 @@ window.addEventListener("pagehide", () => {
 bootstrap();
 
 async function bootstrap() {
-  initializePracticeTracker();
   render();
   updateTapTempoState();
   updateAuthUi();
-  await initializeStorage();
+  await Promise.all([
+    initializePracticeTracker(),
+    initializeStorage(),
+  ]);
 }
 
 async function initializeStorage() {
@@ -568,9 +590,38 @@ async function initializeStorage() {
   updateActionState();
 }
 
-function initializePracticeTracker() {
-  practiceLogs = loadPracticeLogs();
+async function initializePracticeTracker() {
+  const localLogs = loadPracticeLogs();
+
+  practiceLogs = clonePracticeLogs(localLogs);
+  practiceStorageMode = STORAGE_MODE_LOCAL;
+  practiceRemoteSeedRequired = false;
+  practiceWarningMessage = "";
   syncPracticeInputsWithSelection();
+  renderPracticeCalendar();
+
+  const remoteResult = await loadRemotePracticeLogs();
+
+  if (!remoteResult.ok) {
+    practiceStorageMode = STORAGE_MODE_LOCAL;
+    practiceWarningMessage = remoteResult.message;
+    renderPracticeCalendar();
+    return;
+  }
+
+  practiceStorageMode = STORAGE_MODE_DATABASE;
+  practiceWarningMessage = "";
+
+  if (!hasPracticeLogData(remoteResult.logs) && hasPracticeLogData(localLogs)) {
+    practiceLogs = clonePracticeLogs(localLogs);
+    practiceRemoteSeedRequired = true;
+    renderPracticeCalendar();
+    return;
+  }
+
+  practiceRemoteSeedRequired = false;
+  practiceLogs = clonePracticeLogs(remoteResult.logs);
+  persistPracticeLogs();
   renderPracticeCalendar();
 }
 
@@ -641,6 +692,69 @@ function loadPracticeLogs() {
     return normalizePracticeLogs(JSON.parse(saved));
   } catch {
     return {};
+  }
+}
+
+async function loadRemotePracticeLogs() {
+  try {
+    const response = await fetch(PRACTICE_API_ENDPOINT, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      if (response.status === 503) {
+        return {
+          ok: false,
+          message: "DB가 아직 연결되지 않아 연습 기록은 로컬 캐시만 사용합니다.",
+        };
+      }
+
+      return {
+        ok: false,
+        message: payload.message || "DB에서 연습 기록을 불러오지 못했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      logs: normalizePracticeLogs(payload.logs),
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "DB에 연결할 수 없어 연습 기록은 로컬 캐시만 사용합니다.",
+    };
+  }
+}
+
+async function persistRemotePracticeLogs(logs, password) {
+  try {
+    const response = await fetch(PRACTICE_API_ENDPOINT, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        logs,
+        password,
+      }),
+    });
+    const payload = await safeReadJson(response);
+
+    return {
+      ok: response.ok,
+      message: payload.message || "",
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "연습 기록 저장 요청을 완료하지 못했습니다.",
+    };
   }
 }
 
@@ -722,8 +836,18 @@ function normalizePracticeTimestamp(value) {
   return createdAt.toISOString();
 }
 
-function appendPracticeEntry(dateKey, minutes, note) {
-  const entries = getPracticeEntries(dateKey);
+function clonePracticeLogs(logs) {
+  return normalizePracticeLogs(logs);
+}
+
+function hasPracticeLogData(logs) {
+  return Object.values(normalizePracticeLogs(logs))
+    .some((entries) => entries.length > 0);
+}
+
+function appendPracticeEntry(logs, dateKey, minutes, note) {
+  const nextLogs = clonePracticeLogs(logs);
+  const entries = getPracticeEntries(dateKey, nextLogs);
 
   entries.unshift({
     id: createPracticeEntryId(),
@@ -732,28 +856,79 @@ function appendPracticeEntry(dateKey, minutes, note) {
     createdAt: new Date().toISOString(),
   });
 
-  practiceLogs[dateKey] = entries;
+  nextLogs[dateKey] = entries;
+  return nextLogs;
 }
 
-function deletePracticeEntry(dateKey, entryId) {
-  const entries = getPracticeEntries(dateKey)
+function deletePracticeEntry(logs, dateKey, entryId) {
+  const nextLogs = clonePracticeLogs(logs);
+  const entries = getPracticeEntries(dateKey, nextLogs)
     .filter((entry) => entry.id !== entryId);
 
   if (entries.length) {
-    practiceLogs[dateKey] = entries;
-    return;
+    nextLogs[dateKey] = entries;
+    return nextLogs;
   }
 
-  delete practiceLogs[dateKey];
+  delete nextLogs[dateKey];
+  return nextLogs;
 }
 
-function getPracticeEntries(dateKey) {
-  return Array.isArray(practiceLogs[dateKey]) ? [...practiceLogs[dateKey]] : [];
+function getPracticeEntries(dateKey, logs = practiceLogs) {
+  return Array.isArray(logs[dateKey]) ? logs[dateKey].map((entry) => ({ ...entry })) : [];
 }
 
-function getPracticeTotalMinutes(dateKey) {
-  return getPracticeEntries(dateKey)
+function getPracticeTotalMinutes(dateKey, logs = practiceLogs) {
+  return getPracticeEntries(dateKey, logs)
     .reduce((sum, entry) => sum + entry.minutes, 0);
+}
+
+async function commitPracticeLogs(nextLogs) {
+  const normalizedLogs = clonePracticeLogs(nextLogs);
+
+  if (practiceStorageMode !== STORAGE_MODE_DATABASE && !practiceRemoteSeedRequired) {
+    practiceLogs = normalizedLogs;
+    persistPracticeLogs();
+    return {
+      ok: true,
+      localOnly: true,
+    };
+  }
+
+  const password = window.prompt("연습 캘린더 저장 비밀번호를 입력하세요.");
+
+  if (password === null) {
+    return {
+      ok: false,
+      cancelled: true,
+    };
+  }
+
+  if (!password.trim()) {
+    return {
+      ok: false,
+      message: "비밀번호를 입력하세요.",
+    };
+  }
+
+  const remoteSaved = await persistRemotePracticeLogs(normalizedLogs, password);
+
+  if (!remoteSaved.ok) {
+    return {
+      ok: false,
+      message: remoteSaved.message || "연습 캘린더 저장에 실패했습니다.",
+    };
+  }
+
+  practiceStorageMode = STORAGE_MODE_DATABASE;
+  practiceRemoteSeedRequired = false;
+  practiceWarningMessage = "";
+  practiceLogs = normalizedLogs;
+  persistPracticeLogs();
+
+  return {
+    ok: true,
+  };
 }
 
 function renderPracticeCalendar() {
@@ -772,10 +947,18 @@ function renderPracticeMonthGrid() {
   const monthEntries = Object.entries(practiceLogs)
     .filter(([dateKey]) => dateKey.startsWith(getMonthPrefix(visiblePracticeMonth)));
   const monthMinutes = monthEntries.reduce((sum, [dateKey]) => sum + getPracticeTotalMinutes(dateKey), 0);
+  const summaryParts = [`이번 달 누적 연습시간 ${formatMinutesLabel(monthMinutes)}`];
 
   practiceCalendar.innerHTML = "";
   practiceMonthLabel.textContent = `${year}년 ${monthIndex + 1}월`;
-  practiceMonthSummary.textContent = `이번 달 누적 연습시간 ${formatMinutesLabel(monthMinutes)}`;
+
+  if (practiceRemoteSeedRequired) {
+    summaryParts.push("다음 저장 때 DB로 올립니다.");
+  } else if (practiceStorageMode === STORAGE_MODE_LOCAL && practiceWarningMessage) {
+    summaryParts.push("현재 로컬 캐시 사용 중");
+  }
+
+  practiceMonthSummary.textContent = summaryParts.join(" · ");
 
   for (let index = 0; index < firstWeekday; index += 1) {
     const placeholder = document.createElement("div");

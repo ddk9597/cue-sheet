@@ -2,6 +2,7 @@ const { neon } = require("@neondatabase/serverless");
 
 const SCHEMA_LOCK_ID = 58022746;
 const LEGACY_STORAGE_ROW_ID = 1;
+const PRACTICE_LOG_ROW_ID = 1;
 let schemaReadyPromise = null;
 
 function getConnectionString() {
@@ -97,6 +98,14 @@ async function ensureSchemaLocked(sql) {
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
     ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS practice_calendar_state (",
+      "id SMALLINT PRIMARY KEY,",
+      "logs JSONB NOT NULL DEFAULT '{}'::jsonb,",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
   } finally {
     await sql.query("SELECT pg_advisory_unlock($1)", [SCHEMA_LOCK_ID]);
   }
@@ -104,6 +113,7 @@ async function ensureSchemaLocked(sql) {
 
 module.exports = {
   LEGACY_STORAGE_ROW_ID,
+  PRACTICE_LOG_ROW_ID,
   ensureSchema,
   getConnectionString,
   getSql,
