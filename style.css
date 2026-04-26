@@ -671,6 +671,10 @@ select {
   font-weight: 700;
 }
 
+.list-header-mobile {
+  display: none;
+}
+
 .list-guide {
   margin: 0 12px 14px;
   color: var(--text-subtle);
@@ -686,6 +690,10 @@ select {
 .cue-item {
   padding: 16px 12px;
   border-top: 1px solid rgba(53, 68, 58, 0.08);
+}
+
+.cue-row {
+  display: contents;
 }
 
 .cue-item.is-dragging {
@@ -1084,32 +1092,81 @@ select {
     margin: 0 0 12px;
   }
 
+  .list-header-mobile {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 0 0 10px;
+    border-bottom: 1px solid rgba(53, 68, 58, 0.12);
+    color: var(--text-subtle);
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .list-header-mobile-main,
+  .list-header-mobile-sub {
+    display: grid;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .list-header-mobile-main {
+    grid-template-columns: 32px minmax(0, 1fr) 64px 48px;
+  }
+
+  .list-header-mobile-sub {
+    grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
+  }
+
+  .list-header-mobile-main span,
+  .list-header-mobile-sub span {
+    display: block;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .list-header-mobile-main span:nth-child(3),
+  .list-header-mobile-main span:nth-child(4),
+  .list-header-mobile-sub span:not(:first-child) {
+    justify-self: center;
+  }
+
   .cue-list {
     display: grid;
-    gap: 12px;
+    gap: 0;
   }
 
   .cue-item {
-    grid-template-columns: 34px minmax(0, 1fr) 70px 52px;
-    grid-template-areas:
-      "drag title duration delete"
-      "bpm acoustic electric bass";
+    display: grid;
+    gap: 6px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(53, 68, 58, 0.08);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .cue-row {
+    display: grid;
     gap: 8px;
-    padding: 12px;
-    border: 1px solid rgba(53, 68, 58, 0.08);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.5);
+    align-items: center;
+  }
+
+  .cue-row-main {
+    grid-template-columns: 32px minmax(0, 1fr) 64px 48px;
+  }
+
+  .cue-row-sub {
+    grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
   }
 
   .drag-handle {
-    grid-area: drag;
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     align-self: center;
   }
 
   .cue-main {
-    grid-area: title;
     align-self: center;
   }
 
@@ -1120,8 +1177,7 @@ select {
   }
 
   .delete-button {
-    grid-area: delete;
-    width: 52px;
+    width: 48px;
     min-height: 34px;
     padding: 7px 0;
     font-size: 0.8rem;
@@ -1129,67 +1185,39 @@ select {
   }
 
   .cue-duration {
-    grid-area: duration;
     align-self: center;
-    justify-self: end;
+    justify-self: center;
+    text-align: center;
     font-size: 0.78rem;
     letter-spacing: -0.02em;
   }
 
   .bpm-cell {
-    grid-area: bpm;
     min-width: 0;
+    gap: 6px;
   }
 
   .bpm-list-input {
     min-height: 36px;
-    padding: 7px 8px;
+    padding: 7px 6px;
     font-size: 0.84rem;
   }
 
   .metronome-button {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
   }
 
   .tuning-cell {
     min-width: 0;
     min-height: 36px;
-    padding: 0 6px;
-    gap: 4px;
+    padding: 0 4px;
+    gap: 0;
     border-radius: 12px;
   }
 
-  .tuning-cell[data-field="acousticTuning"] {
-    grid-area: acoustic;
-  }
-
-  .tuning-cell[data-field="electricTuning"] {
-    grid-area: electric;
-  }
-
-  .tuning-cell[data-field="bassTuning"] {
-    grid-area: bass;
-  }
-
   .tuning-cell::before {
-    flex: 0 0 16px;
-    color: currentColor;
-    font-size: 0.66rem;
-    font-weight: 800;
-    opacity: 0.78;
-  }
-
-  .tuning-cell[data-field="acousticTuning"]::before {
-    content: "통";
-  }
-
-  .tuning-cell[data-field="electricTuning"]::before {
-    content: "일";
-  }
-
-  .tuning-cell[data-field="bassTuning"]::before {
-    content: "베";
+    content: none;
   }
 
   .tuning-select {
@@ -1198,6 +1226,7 @@ select {
     min-height: 30px;
     font-size: 0.74rem;
     letter-spacing: -0.02em;
+    text-align: center;
   }
 
   .cue-form {
