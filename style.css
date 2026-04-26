@@ -928,6 +928,10 @@ select {
   font-weight: 700;
 }
 
+.cue-mobile-bpm-row {
+  display: none;
+}
+
 .cue-mobile-tuning-editor {
   display: grid;
   gap: 8px;
@@ -1191,8 +1195,8 @@ select {
 
   .list-header-mobile {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(104px, 1fr) minmax(104px, 0.95fr) 44px;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 32px 94px 40px;
+    gap: 6px;
     margin-bottom: 10px;
     padding: 0 0 10px;
     border-bottom: 1px solid rgba(53, 68, 58, 0.12);
@@ -1223,8 +1227,8 @@ select {
 
   .cue-item {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(104px, 1fr) minmax(104px, 0.95fr) 44px;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 32px 94px 40px;
+    gap: 6px;
     align-items: center;
     padding: 12px 0;
     border-bottom: 1px solid rgba(53, 68, 58, 0.08);
@@ -1251,7 +1255,12 @@ select {
 
   .bpm-cell {
     min-width: 0;
-    gap: 6px;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .bpm-cell .bpm-list-input {
+    display: none;
   }
 
   .bpm-list-input {
@@ -1334,6 +1343,21 @@ select {
     border-radius: 16px;
     background: rgba(255, 250, 245, 0.98);
     box-shadow: 0 18px 30px rgba(24, 32, 25, 0.16);
+  }
+
+  .cue-mobile-bpm-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    color: var(--text-subtle);
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+
+  .cue-mobile-bpm-input {
+    display: block;
+    min-width: 0;
   }
 
   .cue-mobile-delete {

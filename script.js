@@ -379,7 +379,7 @@ cueList.addEventListener("input", (event) => {
 
   const nextBpm = normalizeBpm(bpmListInput.value);
 
-  bpmListInput.value = nextBpm;
+  syncCueBpmControls(item, nextBpm);
   cue.bpm = nextBpm;
 
   if (activeMetronomeId === item.dataset.id) {
@@ -1389,14 +1389,16 @@ function render() {
     const fragment = cueItemTemplate.content.cloneNode(true);
     const item = fragment.querySelector(".cue-item");
     const title = fragment.querySelector(".cue-title");
-    const bpmListInput = fragment.querySelector(".bpm-list-input");
+    const bpmListInputs = fragment.querySelectorAll(".bpm-list-input");
     const duration = fragment.querySelector(".cue-duration");
     const mobileDuration = fragment.querySelector(".cue-mobile-duration-value");
     const tuningSelects = fragment.querySelectorAll(".tuning-select");
     const moveButtons = fragment.querySelectorAll(".cue-move-button");
 
     title.textContent = cue.title;
-    bpmListInput.value = normalizeBpm(cue.bpm);
+    for (const bpmListInput of bpmListInputs) {
+      bpmListInput.value = normalizeBpm(cue.bpm);
+    }
     duration.textContent = formatDuration(cue.seconds);
     if (mobileDuration) {
       mobileDuration.textContent = formatDuration(cue.seconds);
@@ -1617,7 +1619,12 @@ async function toggleMetronome(id) {
   if (!cue || bpm === null) {
     const item = [...cueList.querySelectorAll(".cue-item")]
       .find((listItem) => listItem.dataset.id === id);
-    const bpmListInput = item?.querySelector(".bpm-list-input");
+    const mobileMenu = item?.querySelector(".cue-mobile-actions");
+    const bpmListInput = item?.querySelector(".cue-mobile-bpm-input") || item?.querySelector(".bpm-list-input");
+
+    if (mobileMenu && window.matchMedia("(max-width: 760px)").matches) {
+      mobileMenu.setAttribute("open", "");
+    }
 
     alert("BPM을 먼저 입력하세요.");
     bpmListInput?.focus();
@@ -1751,6 +1758,12 @@ function syncCueMobileTuningChip(item, field, value) {
   }
 
   chip.dataset.tuning = normalizeTuning(field, value);
+}
+
+function syncCueBpmControls(item, value) {
+  for (const input of item.querySelectorAll(".bpm-list-input")) {
+    input.value = value;
+  }
 }
 
 function syncCueTuningControls(item, field, value) {
