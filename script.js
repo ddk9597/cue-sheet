@@ -390,6 +390,22 @@ cueList.addEventListener("input", (event) => {
 });
 
 cueList.addEventListener("click", (event) => {
+  const menuButton = event.target.closest(".cue-menu-button");
+
+  if (menuButton) {
+    const activeMenu = menuButton.closest(".cue-mobile-actions");
+
+    window.setTimeout(() => {
+      for (const menu of cueList.querySelectorAll(".cue-mobile-actions[open]")) {
+        if (menu !== activeMenu) {
+          menu.removeAttribute("open");
+        }
+      }
+    }, 0);
+
+    return;
+  }
+
   const metronomeButton = event.target.closest(".metronome-button");
 
   if (metronomeButton) {
@@ -399,6 +415,20 @@ cueList.addEventListener("click", (event) => {
       toggleMetronome(item.dataset.id);
     }
 
+    return;
+  }
+
+  const moveButton = event.target.closest(".cue-move-button");
+
+  if (moveButton) {
+    const item = moveButton.closest(".cue-item");
+
+    if (!item) {
+      return;
+    }
+
+    moveCue(item.dataset.id, moveButton.dataset.direction === "up" ? -1 : 1);
+    closeCueMobileMenu(item);
     return;
   }
 
@@ -445,7 +475,7 @@ cueList.addEventListener("change", (event) => {
   const nextValue = normalizeTuning(field, tuningSelect.value);
 
   cue[field] = nextValue;
-  syncTuningCell(tuningSelect.closest(".tuning-cell"), field, nextValue);
+  syncCueTuningControls(item, field, nextValue);
   updateActionState();
 });
 
@@ -1355,17 +1385,22 @@ function render() {
     emptyState.hidden = true;
   }
 
-  for (const cue of cues) {
+  for (const [index, cue] of cues.entries()) {
     const fragment = cueItemTemplate.content.cloneNode(true);
     const item = fragment.querySelector(".cue-item");
     const title = fragment.querySelector(".cue-title");
     const bpmListInput = fragment.querySelector(".bpm-list-input");
     const duration = fragment.querySelector(".cue-duration");
+    const mobileDuration = fragment.querySelector(".cue-mobile-duration-value");
     const tuningSelects = fragment.querySelectorAll(".tuning-select");
+    const moveButtons = fragment.querySelectorAll(".cue-move-button");
 
     title.textContent = cue.title;
     bpmListInput.value = normalizeBpm(cue.bpm);
     duration.textContent = formatDuration(cue.seconds);
+    if (mobileDuration) {
+      mobileDuration.textContent = formatDuration(cue.seconds);
+    }
     item.dataset.id = cue.id;
 
     for (const select of tuningSelects) {
@@ -1379,6 +1414,13 @@ function render() {
 
       select.value = tuningValue;
       syncTuningCell(select.closest(".tuning-cell"), field, tuningValue);
+      syncCueMobileTuningChip(item, field, tuningValue);
+    }
+
+    for (const button of moveButtons) {
+      const direction = button.dataset.direction;
+      const isUp = direction === "up";
+      button.disabled = isUp ? index === 0 : index === cues.length - 1;
     }
 
     cueList.appendChild(fragment);
@@ -1398,6 +1440,27 @@ function deleteCue(id) {
   }
 
   cues = cues.filter((cue) => cue.id !== id);
+  render();
+}
+
+function moveCue(id, offset) {
+  const currentIndex = cues.findIndex((cue) => cue.id === id);
+
+  if (currentIndex < 0) {
+    return;
+  }
+
+  const nextIndex = currentIndex + offset;
+
+  if (nextIndex < 0 || nextIndex >= cues.length) {
+    return;
+  }
+
+  const nextCues = [...cues];
+  const [movedCue] = nextCues.splice(currentIndex, 1);
+
+  nextCues.splice(nextIndex, 0, movedCue);
+  cues = nextCues;
   render();
 }
 
@@ -1678,6 +1741,36 @@ function syncTuningCell(cell, field, value) {
   }
 
   cell.dataset.tuning = normalizeTuning(field, value);
+}
+
+function syncCueMobileTuningChip(item, field, value) {
+  const chip = item.querySelector(`.cue-mobile-tuning-chip[data-field="${field}"]`);
+
+  if (!chip) {
+    return;
+  }
+
+  chip.dataset.tuning = normalizeTuning(field, value);
+}
+
+function syncCueTuningControls(item, field, value) {
+  for (const select of item.querySelectorAll(`.tuning-select[data-field="${field}"]`)) {
+    select.value = value;
+  }
+
+  for (const cell of item.querySelectorAll(`.tuning-cell[data-field="${field}"]`)) {
+    syncTuningCell(cell, field, value);
+  }
+
+  syncCueMobileTuningChip(item, field, value);
+}
+
+function closeCueMobileMenu(item) {
+  const menu = item.querySelector(".cue-mobile-actions[open]");
+
+  if (menu) {
+    menu.removeAttribute("open");
+  }
 }
 
 function formatDuration(totalSeconds) {

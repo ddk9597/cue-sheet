@@ -249,18 +249,10 @@
             </div>
             <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
             <div class="list-header-mobile" aria-hidden="true">
-              <div class="list-header-mobile-main">
-                <span></span>
-                <span>제목</span>
-                <span>시간</span>
-                <span>삭제</span>
-              </div>
-              <div class="list-header-mobile-sub">
-                <span>BPM</span>
-                <span>통</span>
-                <span>일</span>
-                <span>베</span>
-              </div>
+              <span>제목</span>
+              <span>BPM / 재생</span>
+              <span class="list-header-mobile-tunings">A E B</span>
+              <span>메뉴</span>
             </div>
             <ul id="cueList" class="cue-list"></ul>
             <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
@@ -272,40 +264,37 @@
 
   <template id="cueItemTemplate">
     <li class="cue-item" draggable="true">
-      <div class="cue-row cue-row-main">
-        <button class="drag-handle" type="button" aria-label="순서 이동" title="드래그하여 순서 이동">
-          <span class="drag-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </button>
-        <div class="cue-main">
-          <strong class="cue-title"></strong>
-        </div>
-        <span class="cue-duration"></span>
-        <button class="delete-button" type="button">삭제</button>
+      <button class="drag-handle" type="button" aria-label="순서 이동" title="드래그하여 순서 이동">
+        <span class="drag-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+      <div class="cue-main">
+        <strong class="cue-title"></strong>
       </div>
-      <div class="cue-row cue-row-sub">
-        <div class="bpm-cell">
-          <input
-            class="bpm-list-input"
-            type="text"
-            inputmode="numeric"
-            maxlength="3"
-            aria-label="BPM"
-            placeholder="BPM"
-          >
-          <button
-            class="metronome-button"
-            type="button"
-            aria-label="메트로놈 재생"
-            aria-pressed="false"
-            title="메트로놈 재생"
-          >
-            <span class="metronome-icon" aria-hidden="true"></span>
-          </button>
-        </div>
+      <div class="bpm-cell">
+        <input
+          class="bpm-list-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="3"
+          aria-label="BPM"
+          placeholder="BPM"
+        >
+        <button
+          class="metronome-button"
+          type="button"
+          aria-label="메트로놈 재생"
+          aria-pressed="false"
+          title="메트로놈 재생"
+        >
+          <span class="metronome-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+      <span class="cue-duration"></span>
+      <div class="cue-desktop-tunings">
         <label class="tuning-cell" data-field="acousticTuning">
           <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
             <option value="standard">정튜닝</option>
@@ -328,6 +317,55 @@
           </select>
         </label>
       </div>
+      <div class="cue-mobile-tuning-group" aria-hidden="true">
+        <span class="cue-mobile-tuning-chip" data-field="acousticTuning">A</span>
+        <span class="cue-mobile-tuning-chip" data-field="electricTuning">E</span>
+        <span class="cue-mobile-tuning-chip" data-field="bassTuning">B</span>
+      </div>
+      <button class="delete-button" type="button">삭제</button>
+      <details class="cue-mobile-actions">
+        <summary class="cue-menu-button" aria-label="항목 메뉴" title="항목 메뉴">
+          <span class="cue-menu-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </summary>
+        <div class="cue-mobile-actions-panel">
+          <p class="cue-mobile-meta">시간 <span class="cue-mobile-duration-value"></span></p>
+          <div class="cue-mobile-tuning-editor">
+            <label class="cue-mobile-tuning-row">
+              <span>A</span>
+              <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+                <option value="inactive">쉬는타임</option>
+              </select>
+            </label>
+            <label class="cue-mobile-tuning-row">
+              <span>E</span>
+              <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+              </select>
+            </label>
+            <label class="cue-mobile-tuning-row">
+              <span>B</span>
+              <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+                <option value="d-drop">D 드랍</option>
+                <option value="inactive">쉬는타임</option>
+              </select>
+            </label>
+          </div>
+          <div class="cue-mobile-action-grid">
+            <button class="ghost-button cue-move-button" type="button" data-direction="up">위로</button>
+            <button class="ghost-button cue-move-button" type="button" data-direction="down">아래로</button>
+          </div>
+          <button class="delete-button cue-mobile-delete" type="button">삭제</button>
+        </div>
+      </details>
     </li>
   </template>
 
