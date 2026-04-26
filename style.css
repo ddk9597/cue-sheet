@@ -283,6 +283,10 @@ select {
   color: inherit;
 }
 
+.modal#practiceModal {
+  width: min(1420px, calc(100vw - 20px));
+}
+
 .modal.modal-wide {
   width: min(1280px, calc(100vw - 28px));
 }
@@ -375,7 +379,7 @@ select {
 
 .practice-panel-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  grid-template-columns: minmax(0, 1.78fr) minmax(320px, 0.82fr);
   gap: 18px;
   align-items: start;
 }
@@ -413,7 +417,8 @@ select {
 
 .practice-day,
 .practice-day-empty {
-  min-height: 96px;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
   border-radius: 18px;
 }
 
@@ -421,8 +426,8 @@ select {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid rgba(53, 68, 58, 0.12);
   background: rgba(255, 255, 255, 0.8);
   color: var(--text-main);
@@ -457,6 +462,7 @@ select {
 .practice-day-number {
   font-size: 1rem;
   font-weight: 900;
+  line-height: 1;
 }
 
 .practice-day-total {
@@ -464,6 +470,12 @@ select {
   font-size: 0.88rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .practice-sidebar {
@@ -1014,7 +1026,8 @@ select {
   }
 
   .modal,
-  .modal.modal-wide {
+  .modal.modal-wide,
+  .modal#practiceModal {
     width: 100vw;
     max-height: 100dvh;
     min-height: 100dvh;
@@ -1035,6 +1048,24 @@ select {
   .modal-body {
     max-height: calc(100dvh - 116px);
     padding: 16px 18px 18px;
+  }
+
+  #practiceModal .modal-header {
+    padding: 14px 14px 12px;
+  }
+
+  #practiceModal .modal-body {
+    max-height: calc(100dvh - 98px);
+    padding: 10px 10px 12px;
+  }
+
+  #practiceModal .panel {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  #practiceModal .practice-panel {
+    gap: 14px;
   }
 
   .modal-close {
@@ -1086,40 +1117,42 @@ select {
 
   .practice-day,
   .practice-day-empty {
-    min-height: 68px;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
     border-radius: 14px;
   }
 
   .practice-calendar-area,
   .practice-card {
-    padding: 14px;
+    padding: 10px;
     border-radius: 18px;
   }
 
   .practice-weekdays,
   .practice-calendar {
-    gap: 6px;
+    gap: 4px;
   }
 
   .practice-weekdays span {
-    padding: 4px 0;
-    font-size: 0.74rem;
+    padding: 2px 0;
+    font-size: 0.7rem;
   }
 
   .practice-day {
-    gap: 4px;
-    padding: 8px;
+    gap: 3px;
+    padding: 6px;
     justify-content: flex-start;
   }
 
   .practice-day-number {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
   }
 
   .practice-day-total {
-    font-size: 0.72rem;
-    line-height: 1.2;
+    font-size: 0.66rem;
+    line-height: 1.1;
     letter-spacing: -0.02em;
+    -webkit-line-clamp: 2;
   }
 
   .practice-day:not(.has-record) .practice-day-total {
