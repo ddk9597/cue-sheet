@@ -1090,15 +1090,12 @@ select {
   }
 
   .cue-item {
-    grid-template-columns: 68px minmax(0, 1fr) 64px;
+    grid-template-columns: 34px minmax(0, 1fr) 70px 52px;
     grid-template-areas:
-      "drag title delete"
-      "duration bpm bpm"
-      "acoustic acoustic acoustic"
-      "electric electric electric"
-      "bass bass bass";
-    gap: 10px;
-    padding: 14px;
+      "drag title duration delete"
+      "bpm acoustic electric bass";
+    gap: 8px;
+    padding: 12px;
     border: 1px solid rgba(53, 68, 58, 0.08);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.5);
@@ -1106,50 +1103,61 @@ select {
 
   .drag-handle {
     grid-area: drag;
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    align-self: center;
   }
 
   .cue-main {
     grid-area: title;
+    align-self: center;
   }
 
   .cue-title {
-    white-space: normal;
-    line-height: 1.35;
+    white-space: nowrap;
+    line-height: 1.2;
+    font-size: 0.95rem;
   }
 
   .delete-button {
     grid-area: delete;
-    width: 64px;
-    padding: 9px 0;
-    font-size: 0.88rem;
+    width: 52px;
+    min-height: 34px;
+    padding: 7px 0;
+    font-size: 0.8rem;
+    align-self: center;
   }
 
   .cue-duration {
     grid-area: duration;
     align-self: center;
-    font-size: 0.92rem;
+    justify-self: end;
+    font-size: 0.78rem;
+    letter-spacing: -0.02em;
   }
 
   .bpm-cell {
     grid-area: bpm;
+    min-width: 0;
   }
 
   .bpm-list-input {
-    min-height: 40px;
-    padding: 8px 10px;
+    min-height: 36px;
+    padding: 7px 8px;
+    font-size: 0.84rem;
   }
 
   .metronome-button {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
   }
 
   .tuning-cell {
-    min-height: 44px;
-    padding: 0 10px;
-    gap: 8px;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 6px;
+    gap: 4px;
+    border-radius: 12px;
   }
 
   .tuning-cell[data-field="acousticTuning"] {
@@ -1165,30 +1173,31 @@ select {
   }
 
   .tuning-cell::before {
-    flex: 0 0 58px;
+    flex: 0 0 16px;
     color: currentColor;
-    font-size: 0.78rem;
+    font-size: 0.66rem;
     font-weight: 800;
-    opacity: 0.72;
+    opacity: 0.78;
   }
 
   .tuning-cell[data-field="acousticTuning"]::before {
-    content: "통기타";
+    content: "통";
   }
 
   .tuning-cell[data-field="electricTuning"]::before {
-    content: "일렉";
+    content: "일";
   }
 
   .tuning-cell[data-field="bassTuning"]::before {
-    content: "베이스";
+    content: "베";
   }
 
   .tuning-select {
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 36px;
-    font-size: 0.92rem;
+    min-height: 30px;
+    font-size: 0.74rem;
+    letter-spacing: -0.02em;
   }
 
   .cue-form {
