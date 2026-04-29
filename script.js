@@ -24,7 +24,8 @@ const authStatus = document.querySelector("#authStatus");
 const cueForm = document.querySelector("#cueForm");
 const titleInput = document.querySelector("#titleInput");
 const bpmInput = document.querySelector("#bpmInput");
-const durationInput = document.querySelector("#durationInput");
+const durationMinutesInput = document.querySelector("#durationMinutesInput");
+const durationSecondsInput = document.querySelector("#durationSecondsInput");
 const openCueEntryButton = document.querySelector("#openCueEntryButton");
 const cueEntryOverlay = document.querySelector("#cueEntryOverlay");
 const cueEntryCloseButtons = document.querySelectorAll("[data-cue-entry-close]");
@@ -762,8 +763,7 @@ function closeCueEntryOverlay(options = {}) {
 
 function appendCueFromForm() {
   const title = titleInput.value.trim();
-  const rawDuration = durationInput.value.trim();
-  const seconds = parseDuration(rawDuration);
+  const seconds = parseDurationInputs();
 
   if (!title) {
     titleInput.focus();
@@ -771,9 +771,9 @@ function appendCueFromForm() {
   }
 
   if (seconds === null) {
-    alert("시간 형식이 올바르지 않습니다. MM:SS 형식으로 입력하세요.");
-    durationInput.focus();
-    durationInput.select();
+    alert("시간을 올바르게 입력하세요. 초는 0부터 59까지 입력할 수 있습니다.");
+    durationMinutesInput.focus();
+    durationMinutesInput.select();
     return false;
   }
 
@@ -1546,25 +1546,24 @@ function moveCue(id, offset) {
   render();
 }
 
-function parseDuration(value) {
-  const parts = value.split(":").map((part) => part.trim());
+function parseDurationInputs() {
+  const minutesValue = durationMinutesInput.value.trim();
+  const secondsValue = durationSecondsInput.value.trim();
 
-  if (parts.length !== 2 || parts.some((part) => part === "")) {
+  if (minutesValue === "" || secondsValue === "") {
     return null;
   }
 
-  const numbers = parts.map(Number);
+  const minutes = Number(minutesValue);
+  const seconds = Number(secondsValue);
 
-  if (numbers.some((num) => !Number.isInteger(num) || num < 0)) {
-    return null;
-  }
-
-  let minutes = 0;
-  let seconds = 0;
-
-  [minutes, seconds] = numbers;
-
-  if (seconds >= 60) {
+  if (
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds) ||
+    minutes < 0 ||
+    seconds < 0 ||
+    seconds >= 60
+  ) {
     return null;
   }
 

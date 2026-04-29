@@ -402,7 +402,7 @@ select {
 .practice-panel-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -666,9 +666,21 @@ select {
   gap: 8px;
 }
 
-.field span {
+.duration-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field span,
+.field legend {
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.field legend {
+  padding: 0;
 }
 
 .field input {
@@ -686,6 +698,25 @@ select {
   border-color: rgba(182, 93, 53, 0.6);
   box-shadow: 0 0 0 4px rgba(182, 93, 53, 0.12);
   transform: translateY(-1px);
+}
+
+.duration-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.duration-inputs label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.duration-inputs span {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .primary-button,
@@ -1146,22 +1177,24 @@ select {
   }
 
   .modal-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 18px 18px 14px;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 5px 10px;
   }
 
   .modal-body {
-    max-height: calc(100dvh - 116px);
+    max-height: calc(100dvh - 38px);
     padding: 16px 18px 18px;
   }
 
   #practiceModal .modal-header {
-    padding: 14px 14px 12px;
+    height: 36px;
+    padding: 4px 10px;
   }
 
   #practiceModal .modal-body {
-    max-height: calc(100dvh - 98px);
+    max-height: calc(100dvh - 36px);
     padding: 10px 10px 12px;
   }
 
@@ -1175,7 +1208,22 @@ select {
   }
 
   .modal-close {
-    width: 100%;
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    border-radius: 9px;
+    font-size: 0.78rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .modal-header .panel-label {
+    display: none;
+  }
+
+  .modal-title {
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.1;
   }
 
   .logo-title {
@@ -1194,7 +1242,9 @@ select {
 
   .practice-month-actions,
   .practice-form-actions {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
     align-items: stretch;
   }
 

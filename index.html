@@ -261,17 +261,37 @@
               >
             </label>
 
-            <label class="field">
-              <span>시간</span>
-              <input
-                id="durationInput"
-                name="duration"
-                type="text"
-                inputmode="numeric"
-                placeholder="MM:SS"
-                required
-              >
-            </label>
+            <fieldset class="field duration-field">
+              <legend>시간</legend>
+              <div class="duration-inputs">
+                <label>
+                  <input
+                    id="durationMinutesInput"
+                    name="durationMinutes"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    placeholder="분"
+                    required
+                  >
+                  <span>분</span>
+                </label>
+                <label>
+                  <input
+                    id="durationSecondsInput"
+                    name="durationSeconds"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    max="59"
+                    placeholder="초"
+                    value="0"
+                    required
+                  >
+                  <span>초</span>
+                </label>
+              </div>
+            </fieldset>
 
             <div class="cue-entry-actions">
               <button class="ghost-button" type="button" data-cue-entry-close>취소</button>
