@@ -25,6 +25,9 @@ const cueForm = document.querySelector("#cueForm");
 const titleInput = document.querySelector("#titleInput");
 const bpmInput = document.querySelector("#bpmInput");
 const durationInput = document.querySelector("#durationInput");
+const openCueEntryButton = document.querySelector("#openCueEntryButton");
+const cueEntryOverlay = document.querySelector("#cueEntryOverlay");
+const cueEntryCloseButtons = document.querySelectorAll("[data-cue-entry-close]");
 const cueList = document.querySelector("#cueList");
 const emptyState = document.querySelector("#emptyState");
 const totalDuration = document.querySelector("#totalDuration");
@@ -112,38 +115,39 @@ for (const modal of [practiceModal, cueModal]) {
   });
 }
 
+openCueEntryButton?.addEventListener("click", () => {
+  openCueEntryOverlay();
+});
+
+for (const closeButton of cueEntryCloseButtons) {
+  closeButton.addEventListener("click", () => {
+    closeCueEntryOverlay();
+  });
+}
+
+cueEntryOverlay?.addEventListener("click", (event) => {
+  if (event.target === cueEntryOverlay) {
+    closeCueEntryOverlay();
+  }
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && cueEntryOverlay && !cueEntryOverlay.hidden) {
+    event.preventDefault();
+    closeCueEntryOverlay();
+  }
+});
+
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const title = titleInput.value.trim();
-  const rawDuration = durationInput.value.trim();
-  const seconds = parseDuration(rawDuration);
-
-  if (!title) {
-    titleInput.focus();
+  if (!appendCueFromForm()) {
     return;
   }
 
-  if (seconds === null) {
-    alert("시간 형식이 올바르지 않습니다. MM:SS 형식으로 입력하세요.");
-    durationInput.focus();
-    durationInput.select();
-    return;
-  }
-
-  cues.push({
-    id: createCueId(),
-    title,
-    bpm: normalizeBpm(bpmInput.value),
-    seconds,
-    acousticTuning: TUNING_STANDARD,
-    electricTuning: TUNING_STANDARD,
-    bassTuning: TUNING_STANDARD,
-  });
-
-  render();
+  closeCueEntryOverlay({ restoreFocus: false, resetForm: false });
   cueForm.reset();
-  titleInput.focus();
+  openCueEntryButton?.focus();
 });
 
 saveButton.addEventListener("click", async () => {
@@ -208,6 +212,8 @@ tapTempoApplyButton.addEventListener("click", () => {
   if (!measuredTapBpm) {
     return;
   }
+
+  openCueEntryOverlay({ resetForm: false });
 
   bpmInput.value = measuredTapBpm;
   bpmInput.focus();
@@ -689,6 +695,10 @@ function closeModal(modal) {
     return;
   }
 
+  if (modal === cueModal) {
+    closeCueEntryOverlay({ restoreFocus: false });
+  }
+
   if (typeof modal.close === "function") {
     modal.close();
   } else {
@@ -708,7 +718,77 @@ function focusCueModalSection(section) {
   }
 
   cueEditorPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-  titleInput.focus();
+  openCueEntryButton?.focus();
+}
+
+function openCueEntryOverlay(options = {}) {
+  const { resetForm = true } = options;
+
+  if (!cueEntryOverlay) {
+    return;
+  }
+
+  if (!cueModal?.open) {
+    openModalById("cueModal", "input");
+  }
+
+  if (resetForm) {
+    cueForm.reset();
+  }
+
+  cueEntryOverlay.hidden = false;
+  window.requestAnimationFrame(() => {
+    titleInput.focus();
+  });
+}
+
+function closeCueEntryOverlay(options = {}) {
+  const { restoreFocus = true, resetForm = true } = options;
+
+  if (!cueEntryOverlay || cueEntryOverlay.hidden) {
+    return;
+  }
+
+  cueEntryOverlay.hidden = true;
+
+  if (resetForm) {
+    cueForm.reset();
+  }
+
+  if (restoreFocus) {
+    openCueEntryButton?.focus();
+  }
+}
+
+function appendCueFromForm() {
+  const title = titleInput.value.trim();
+  const rawDuration = durationInput.value.trim();
+  const seconds = parseDuration(rawDuration);
+
+  if (!title) {
+    titleInput.focus();
+    return false;
+  }
+
+  if (seconds === null) {
+    alert("시간 형식이 올바르지 않습니다. MM:SS 형식으로 입력하세요.");
+    durationInput.focus();
+    durationInput.select();
+    return false;
+  }
+
+  cues.push({
+    id: createCueId(),
+    title,
+    bpm: normalizeBpm(bpmInput.value),
+    seconds,
+    acousticTuning: TUNING_STANDARD,
+    electricTuning: TUNING_STANDARD,
+    bassTuning: TUNING_STANDARD,
+  });
+
+  render();
+  return true;
 }
 
 function loadPracticeLogs() {
@@ -1864,7 +1944,7 @@ function updateActionState(saved = false) {
 
 function updateAuthUi() {
   authTitle.textContent = "비밀번호 확인 후 저장";
-  authStatus.textContent = "목록 저장 시 비밀번호를 묻습니다. 5회 연속 틀리면 '아 하지 마세요!!!'를 띄우고 카운트를 초기화합니다.";
+  authStatus.textContent = "목록 저장 시 비밀번호를 묻습니다. 5회 연속 틀리면 안돼요..";
 }
 
 function getDragAfterElement(container, pointerY) {

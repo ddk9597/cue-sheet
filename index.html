@@ -28,7 +28,8 @@
         곡 순서와 우측 튜닝 칸을 함께 보면서 통기타, 일렉기타, 베이스의 연속 세팅 가능 여부를 확인합니다.
       </p>
       <div class="hero-actions">
-        <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐시트 열기</button>
+        <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
+        <button class="ghost-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록 보기</button>
         <button class="ghost-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
       </div>
     </section>
@@ -193,9 +194,51 @@
       </div>
       <div class="modal-body modal-stack">
         <section id="cue-editor" class="panel form-panel" aria-label="큐시트 입력" tabindex="-1">
-          <form id="cueForm" class="cue-form">
-            <label class="field">
+          <div class="form-panel-header">
+            <div class="form-panel-copy">
+              <p class="panel-label">큐시트 입력</p>
+              <strong class="form-panel-title">항목 추가</strong>
+            </div>
+            <button id="openCueEntryButton" class="primary-button" type="button">항목 추가</button>
+          </div>
+        </section>
+
+        <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록" tabindex="-1">
+          <div class="list-scroll">
+            <div class="list-header">
+              <span>이동</span>
               <span>제목</span>
+              <span>BPM</span>
+              <span>시간</span>
+              <span>통기타</span>
+              <span>일렉기타</span>
+              <span>베이스</span>
+              <span>관리</span>
+            </div>
+            <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
+            <div class="list-header-mobile" aria-hidden="true">
+              <span>제목</span>
+              <span>재생</span>
+              <span class="list-header-mobile-tunings">A E B</span>
+              <span>메뉴</span>
+            </div>
+            <ul id="cueList" class="cue-list"></ul>
+            <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
+          </div>
+        </section>
+      </div>
+      <div id="cueEntryOverlay" class="submodal" hidden>
+        <div class="submodal-card" role="dialog" aria-modal="true" aria-labelledby="cueEntryTitle">
+          <div class="submodal-header">
+            <div>
+              <p class="panel-label">Cue Sheet</p>
+              <strong id="cueEntryTitle" class="submodal-title">항목 추가</strong>
+            </div>
+            <button class="modal-close" type="button" data-cue-entry-close aria-label="입력 모달 닫기">닫기</button>
+          </div>
+          <form id="cueForm" class="cue-entry-form">
+            <label class="field">
+              <span>멘트</span>
               <input
                 id="titleInput"
                 name="title"
@@ -230,34 +273,12 @@
               >
             </label>
 
-            <button class="primary-button" type="submit">항목 추가</button>
+            <div class="cue-entry-actions">
+              <button class="ghost-button" type="button" data-cue-entry-close>취소</button>
+              <button class="primary-button" type="submit">추가</button>
+            </div>
           </form>
-          <p class="hint">시간은 `MM:SS` 형식으로 입력합니다. BPM은 등록 후 목록에서도 수정할 수 있고, 옆 버튼으로 메트로놈을 재생합니다.</p>
-        </section>
-
-        <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록" tabindex="-1">
-          <div class="list-scroll">
-            <div class="list-header">
-              <span>이동</span>
-              <span>제목</span>
-              <span>BPM</span>
-              <span>시간</span>
-              <span>통기타</span>
-              <span>일렉기타</span>
-              <span>베이스</span>
-              <span>관리</span>
-            </div>
-            <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
-            <div class="list-header-mobile" aria-hidden="true">
-              <span>제목</span>
-              <span>재생</span>
-              <span class="list-header-mobile-tunings">A E B</span>
-              <span>메뉴</span>
-            </div>
-            <ul id="cueList" class="cue-list"></ul>
-            <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
-          </div>
-        </section>
+        </div>
       </div>
     </div>
   </dialog>
