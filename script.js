@@ -17,7 +17,7 @@ const TUNING_INACTIVE = "inactive";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
 const TOUCH_DRAG_LONG_PRESS_MS = 360;
-const TOUCH_DRAG_CANCEL_DISTANCE = 10;
+const TOUCH_DRAG_CANCEL_DISTANCE = 18;
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
@@ -505,6 +505,22 @@ cueList.addEventListener("pointerdown", (event) => {
 
 cueList.addEventListener("pointermove", (event) => {
   handleTouchCueDragMove(event);
+});
+
+cueList.addEventListener("touchstart", (event) => {
+  maybePrepareTouchCueDragFromTouchEvent(event);
+}, { passive: true });
+
+cueList.addEventListener("touchmove", (event) => {
+  handleTouchCueDragMoveFromTouchEvent(event);
+}, { passive: false });
+
+cueList.addEventListener("touchend", () => {
+  finishTouchCueDragById("touch");
+});
+
+cueList.addEventListener("touchcancel", () => {
+  cancelTouchCueDragById("touch");
 });
 
 window.addEventListener("pointerup", (event) => {
@@ -1988,7 +2004,27 @@ function maybePrepareTouchCueDrag(event) {
     return;
   }
 
-  const item = event.target.closest(".cue-item");
+  prepareTouchCueDrag(event.target, event.pointerId, event.clientX, event.clientY);
+}
+
+function maybePrepareTouchCueDragFromTouchEvent(event) {
+  if (!window.matchMedia("(max-width: 760px)").matches || event.touches.length !== 1) {
+    clearTouchCueDragState();
+    return;
+  }
+
+  const touch = event.touches[0];
+
+  if (isCueDragInteractiveTarget(event.target)) {
+    clearTouchCueDragState();
+    return;
+  }
+
+  prepareTouchCueDrag(event.target, "touch", touch.clientX, touch.clientY);
+}
+
+function prepareTouchCueDrag(target, pointerId, clientX, clientY) {
+  const item = target.closest(".cue-item");
 
   if (!item || !cueList.contains(item) || cues.length < 2) {
     clearTouchCueDragState();
@@ -2001,26 +2037,49 @@ function maybePrepareTouchCueDrag(event) {
 
   touchDragState = {
     item,
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    offsetY: event.clientY - box.top,
+    pointerId,
+    startX: clientX,
+    startY: clientY,
+    offsetX: clientX - box.left,
+    offsetY: clientY - box.top,
     ghost: null,
     isDragging: false,
     timer: window.setTimeout(() => {
-      startTouchCueDrag(event.pointerId);
+      startTouchCueDrag(pointerId);
     }, TOUCH_DRAG_LONG_PRESS_MS),
   };
+
+  item.classList.add("is-touch-pressing");
 }
 
 function handleTouchCueDragMove(event) {
+  handleTouchCueDragMoveById(event.pointerId, event.clientX, event.clientY, () => {
+    event.preventDefault();
+  });
+}
+
+function handleTouchCueDragMoveFromTouchEvent(event) {
   const state = touchDragState;
 
-  if (!state || event.pointerId !== state.pointerId) {
+  if (!state || state.pointerId !== "touch" || event.touches.length !== 1) {
     return;
   }
 
-  const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+  const touch = event.touches[0];
+
+  handleTouchCueDragMoveById("touch", touch.clientX, touch.clientY, () => {
+    event.preventDefault();
+  });
+}
+
+function handleTouchCueDragMoveById(pointerId, clientX, clientY, preventDefault) {
+  const state = touchDragState;
+
+  if (!state || pointerId !== state.pointerId) {
+    return;
+  }
+
+  const distance = Math.hypot(clientX - state.startX, clientY - state.startY);
 
   if (!state.isDragging) {
     if (distance > TOUCH_DRAG_CANCEL_DISTANCE) {
@@ -2030,8 +2089,8 @@ function handleTouchCueDragMove(event) {
     return;
   }
 
-  event.preventDefault();
-  moveTouchCueDrag(event.clientY);
+  preventDefault();
+  moveTouchCueDrag(clientY);
 }
 
 function startTouchCueDrag(pointerId) {
@@ -2046,8 +2105,8 @@ function startTouchCueDrag(pointerId) {
   const ghost = state.item.cloneNode(true);
 
   ghost.classList.add("cue-touch-drag-ghost");
-  ghost.style.left = `${box.left}px`;
-  ghost.style.top = `${box.top}px`;
+  ghost.style.left = `${state.startX - state.offsetX}px`;
+  ghost.style.top = `${state.startY - state.offsetY}px`;
   ghost.style.width = `${box.width}px`;
   ghost.style.height = `${box.height}px`;
 
@@ -2072,7 +2131,7 @@ function moveTouchCueDrag(pointerY) {
   }
 
   if (state.ghost) {
-    state.ghost.style.transform = `translate3d(0, ${pointerY - state.startY}px, 0)`;
+    state.ghost.style.top = `${pointerY - state.offsetY}px`;
   }
 
   const nextItem = getDragAfterElement(cueList, pointerY);
@@ -2086,9 +2145,13 @@ function moveTouchCueDrag(pointerY) {
 }
 
 function finishTouchCueDrag(event) {
+  finishTouchCueDragById(event.pointerId);
+}
+
+function finishTouchCueDragById(pointerId) {
   const state = touchDragState;
 
-  if (!state || event.pointerId !== state.pointerId) {
+  if (!state || pointerId !== state.pointerId) {
     return;
   }
 
@@ -2100,9 +2163,13 @@ function finishTouchCueDrag(event) {
 }
 
 function cancelTouchCueDrag(event) {
+  cancelTouchCueDragById(event.pointerId);
+}
+
+function cancelTouchCueDragById(pointerId) {
   const state = touchDragState;
 
-  if (!state || event.pointerId !== state.pointerId) {
+  if (!state || pointerId !== state.pointerId) {
     return;
   }
 
@@ -2119,7 +2186,7 @@ function clearTouchCueDragState() {
   }
 
   window.clearTimeout(touchDragState.timer);
-  touchDragState.item?.classList.remove("is-touch-dragging");
+  touchDragState.item?.classList.remove("is-touch-pressing", "is-touch-dragging");
   touchDragState.ghost?.remove();
   document.body.classList.remove("has-cue-touch-drag");
   touchDragState = null;
