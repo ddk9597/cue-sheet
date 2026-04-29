@@ -16,6 +16,8 @@ const TUNING_D_DROP = "d-drop";
 const TUNING_INACTIVE = "inactive";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
+const TOUCH_DRAG_LONG_PRESS_MS = 360;
+const TOUCH_DRAG_CANCEL_DISTANCE = 10;
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
@@ -70,6 +72,7 @@ const cueListPanel = document.querySelector("#cue-list-panel");
 let savedCues = [];
 let cues = [];
 let armedDragId = null;
+let touchDragState = null;
 let activeMetronomeId = null;
 let metronomeTimer = null;
 let metronomeAudioContext = null;
@@ -491,20 +494,27 @@ cueList.addEventListener("pointerdown", (event) => {
 
   if (!handle) {
     armedDragId = null;
-    return;
+  } else {
+    const item = handle.closest(".cue-item");
+
+    armedDragId = item?.dataset.id ?? null;
   }
 
-  const item = handle.closest(".cue-item");
-
-  armedDragId = item?.dataset.id ?? null;
+  maybePrepareTouchCueDrag(event);
 });
 
-window.addEventListener("pointerup", () => {
-  armedDragId = null;
+cueList.addEventListener("pointermove", (event) => {
+  handleTouchCueDragMove(event);
 });
 
-window.addEventListener("pointercancel", () => {
+window.addEventListener("pointerup", (event) => {
   armedDragId = null;
+  finishTouchCueDrag(event);
+});
+
+window.addEventListener("pointercancel", (event) => {
+  armedDragId = null;
+  cancelTouchCueDrag(event);
 });
 
 cueList.addEventListener("dragstart", (event) => {
@@ -544,6 +554,12 @@ cueList.addEventListener("dragover", (event) => {
 
 cueList.addEventListener("drop", (event) => {
   event.preventDefault();
+});
+
+cueList.addEventListener("contextmenu", (event) => {
+  if (touchDragState) {
+    event.preventDefault();
+  }
 });
 
 cueList.addEventListener("dragend", (event) => {
@@ -1947,7 +1963,9 @@ function updateAuthUi() {
 }
 
 function getDragAfterElement(container, pointerY) {
-  const items = [...container.querySelectorAll(".cue-item:not(.is-dragging)")];
+  const items = [...container.querySelectorAll(
+    ".cue-item:not(.is-dragging):not(.is-touch-dragging)",
+  )];
   let closestItem = null;
   let closestOffset = Number.NEGATIVE_INFINITY;
 
@@ -1964,8 +1982,165 @@ function getDragAfterElement(container, pointerY) {
   return closestItem;
 }
 
+function maybePrepareTouchCueDrag(event) {
+  if (!isTouchCueDragEvent(event) || isCueDragInteractiveTarget(event.target)) {
+    clearTouchCueDragState();
+    return;
+  }
+
+  const item = event.target.closest(".cue-item");
+
+  if (!item || !cueList.contains(item) || cues.length < 2) {
+    clearTouchCueDragState();
+    return;
+  }
+
+  clearTouchCueDragState();
+
+  const box = item.getBoundingClientRect();
+
+  touchDragState = {
+    item,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    offsetY: event.clientY - box.top,
+    ghost: null,
+    isDragging: false,
+    timer: window.setTimeout(() => {
+      startTouchCueDrag(event.pointerId);
+    }, TOUCH_DRAG_LONG_PRESS_MS),
+  };
+}
+
+function handleTouchCueDragMove(event) {
+  const state = touchDragState;
+
+  if (!state || event.pointerId !== state.pointerId) {
+    return;
+  }
+
+  const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+
+  if (!state.isDragging) {
+    if (distance > TOUCH_DRAG_CANCEL_DISTANCE) {
+      clearTouchCueDragState();
+    }
+
+    return;
+  }
+
+  event.preventDefault();
+  moveTouchCueDrag(event.clientY);
+}
+
+function startTouchCueDrag(pointerId) {
+  const state = touchDragState;
+
+  if (!state || state.pointerId !== pointerId || !state.item.isConnected) {
+    clearTouchCueDragState();
+    return;
+  }
+
+  const box = state.item.getBoundingClientRect();
+  const ghost = state.item.cloneNode(true);
+
+  ghost.classList.add("cue-touch-drag-ghost");
+  ghost.style.left = `${box.left}px`;
+  ghost.style.top = `${box.top}px`;
+  ghost.style.width = `${box.width}px`;
+  ghost.style.height = `${box.height}px`;
+
+  document.body.appendChild(ghost);
+  state.ghost = ghost;
+  state.isDragging = true;
+  state.item.classList.add("is-touch-dragging");
+  document.body.classList.add("has-cue-touch-drag");
+
+  try {
+    state.item.setPointerCapture(pointerId);
+  } catch {
+    // Some mobile browsers do not allow capture after a long-press delay.
+  }
+}
+
+function moveTouchCueDrag(pointerY) {
+  const state = touchDragState;
+
+  if (!state?.isDragging) {
+    return;
+  }
+
+  if (state.ghost) {
+    state.ghost.style.transform = `translate3d(0, ${pointerY - state.startY}px, 0)`;
+  }
+
+  const nextItem = getDragAfterElement(cueList, pointerY);
+
+  if (!nextItem) {
+    cueList.appendChild(state.item);
+    return;
+  }
+
+  cueList.insertBefore(state.item, nextItem);
+}
+
+function finishTouchCueDrag(event) {
+  const state = touchDragState;
+
+  if (!state || event.pointerId !== state.pointerId) {
+    return;
+  }
+
+  if (state.isDragging) {
+    syncCueOrderWithDom();
+  }
+
+  clearTouchCueDragState();
+}
+
+function cancelTouchCueDrag(event) {
+  const state = touchDragState;
+
+  if (!state || event.pointerId !== state.pointerId) {
+    return;
+  }
+
+  if (state.isDragging) {
+    render();
+  }
+
+  clearTouchCueDragState();
+}
+
+function clearTouchCueDragState() {
+  if (!touchDragState) {
+    return;
+  }
+
+  window.clearTimeout(touchDragState.timer);
+  touchDragState.item?.classList.remove("is-touch-dragging");
+  touchDragState.ghost?.remove();
+  document.body.classList.remove("has-cue-touch-drag");
+  touchDragState = null;
+}
+
+function isTouchCueDragEvent(event) {
+  return (
+    event.pointerType !== "mouse" &&
+    window.matchMedia("(max-width: 760px)").matches
+  );
+}
+
+function isCueDragInteractiveTarget(target) {
+  return Boolean(target.closest(
+    "button, input, select, textarea, a, summary, details, .cue-mobile-actions-panel",
+  ));
+}
+
 function syncCueOrderWithDom() {
   const orderedIds = [...cueList.querySelectorAll(".cue-item")]
+    .filter((item) => !item.classList.contains("cue-touch-drag-ghost"))
     .map((item) => item.dataset.id);
 
   if (!orderedIds.length) {
