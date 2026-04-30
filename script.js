@@ -1954,7 +1954,9 @@ function startCueInteractDrag(event) {
   ghost.style.width = `${box.width}px`;
   ghost.style.height = `${box.height}px`;
 
-  document.body.appendChild(ghost);
+  const dragLayer = item.closest("dialog[open]") || document.body;
+
+  dragLayer.appendChild(ghost);
   item.classList.add("is-touch-dragging");
   document.body.classList.add("has-cue-touch-drag");
 

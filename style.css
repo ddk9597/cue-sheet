@@ -861,7 +861,7 @@ select {
 
 .cue-touch-drag-ghost {
   position: fixed;
-  z-index: 80;
+  z-index: 9999;
   margin: 0;
   pointer-events: none;
   opacity: 0.72;
