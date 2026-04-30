@@ -16,8 +16,6 @@ const TUNING_D_DROP = "d-drop";
 const TUNING_INACTIVE = "inactive";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
-const TOUCH_DRAG_LONG_PRESS_MS = 360;
-const TOUCH_DRAG_CANCEL_DISTANCE = 18;
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
@@ -71,8 +69,8 @@ const cueListPanel = document.querySelector("#cue-list-panel");
 
 let savedCues = [];
 let cues = [];
-let armedDragId = null;
-let touchDragState = null;
+let cueInteractDragState = null;
+let cueInteractInitialized = false;
 let activeMetronomeId = null;
 let metronomeTimer = null;
 let metronomeAudioContext = null;
@@ -489,105 +487,13 @@ cueList.addEventListener("change", (event) => {
   updateActionState();
 });
 
-cueList.addEventListener("pointerdown", (event) => {
-  const handle = event.target.closest(".drag-handle");
-
-  if (!handle) {
-    armedDragId = null;
-  } else {
-    const item = handle.closest(".cue-item");
-
-    armedDragId = item?.dataset.id ?? null;
-  }
-
-  maybePrepareTouchCueDrag(event);
-});
-
-cueList.addEventListener("pointermove", (event) => {
-  handleTouchCueDragMove(event);
-});
-
-cueList.addEventListener("touchstart", (event) => {
-  maybePrepareTouchCueDragFromTouchEvent(event);
-}, { passive: false });
-
-cueList.addEventListener("touchmove", (event) => {
-  handleTouchCueDragMoveFromTouchEvent(event);
-}, { passive: false });
-
-cueList.addEventListener("touchend", () => {
-  finishTouchCueDragById("touch");
-});
-
-cueList.addEventListener("touchcancel", () => {
-  cancelTouchCueDragById("touch");
-});
-
-window.addEventListener("pointerup", (event) => {
-  armedDragId = null;
-  finishTouchCueDrag(event);
-});
-
-window.addEventListener("pointercancel", (event) => {
-  armedDragId = null;
-  cancelTouchCueDrag(event);
-});
-
-cueList.addEventListener("dragstart", (event) => {
-  const item = event.target.closest(".cue-item");
-
-  if (!item || item.dataset.id !== armedDragId) {
-    event.preventDefault();
-    return;
-  }
-
-  item.classList.add("is-dragging");
-
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", item.dataset.id);
-  }
-});
-
-cueList.addEventListener("dragover", (event) => {
-  event.preventDefault();
-
-  const draggingItem = cueList.querySelector(".cue-item.is-dragging");
-
-  if (!draggingItem) {
-    return;
-  }
-
-  const nextItem = getDragAfterElement(cueList, event.clientY);
-
-  if (!nextItem) {
-    cueList.appendChild(draggingItem);
-    return;
-  }
-
-  cueList.insertBefore(draggingItem, nextItem);
-});
-
-cueList.addEventListener("drop", (event) => {
-  event.preventDefault();
-});
-
 cueList.addEventListener("contextmenu", (event) => {
-  if (touchDragState) {
+  if (cueInteractDragState) {
     event.preventDefault();
   }
 });
 
-cueList.addEventListener("dragend", (event) => {
-  const item = event.target.closest(".cue-item");
-
-  if (item) {
-    item.classList.remove("is-dragging");
-  }
-
-  armedDragId = null;
-  syncCueOrderWithDom();
-});
+setupCueInteractDrag();
 
 window.addEventListener("beforeunload", (event) => {
   if (!hasPendingChanges()) {
@@ -1998,148 +1904,80 @@ function getDragAfterElement(container, pointerY) {
   return closestItem;
 }
 
-function maybePrepareTouchCueDrag(event) {
-  if (!isTouchCueDragEvent(event) || isCueDragInteractiveTarget(event.target)) {
-    clearTouchCueDragState();
+function setupCueInteractDrag() {
+  if (cueInteractInitialized) {
     return;
   }
 
-  prepareTouchCueDrag(event.target, event.pointerId, event.clientX, event.clientY);
+  if (typeof window.interact !== "function") {
+    console.warn("Interact.js가 로드되지 않아 큐시트 드래그 정렬을 사용할 수 없습니다.");
+    return;
+  }
+
+  cueInteractInitialized = true;
+
+  window.interact(".cue-item").draggable({
+    autoScroll: true,
+    allowFrom: ".drag-handle",
+    ignoreFrom: "button:not(.drag-handle), input, select, textarea, a, summary, details, .cue-mobile-actions-panel",
+    listeners: {
+      start: startCueInteractDrag,
+      move: moveCueInteractDrag,
+      end: finishCueInteractDrag,
+    },
+  });
 }
 
-function maybePrepareTouchCueDragFromTouchEvent(event) {
-  if (!window.matchMedia("(max-width: 760px)").matches || event.touches.length !== 1) {
-    clearTouchCueDragState();
-    return;
-  }
-
-  const touch = event.touches[0];
-
-  if (isCueDragInteractiveTarget(event.target)) {
-    clearTouchCueDragState();
-    return;
-  }
-
-  prepareTouchCueDrag(event.target, "touch", touch.clientX, touch.clientY);
-
-  if (touchDragState) {
-    event.preventDefault();
-  }
-}
-
-function prepareTouchCueDrag(target, pointerId, clientX, clientY) {
-  const item = target.closest(".cue-item");
+function startCueInteractDrag(event) {
+  const item = event.target.closest(".cue-item");
 
   if (!item || !cueList.contains(item) || cues.length < 2) {
-    clearTouchCueDragState();
+    clearCueInteractDragState();
     return;
   }
 
-  clearTouchCueDragState();
+  clearCueInteractDragState();
 
+  const pointer = getInteractPointer(event);
   const box = item.getBoundingClientRect();
-
-  touchDragState = {
-    item,
-    pointerId,
-    startX: clientX,
-    startY: clientY,
-    offsetX: clientX - box.left,
-    offsetY: clientY - box.top,
-    ghost: null,
-    isDragging: false,
-    timer: window.setTimeout(() => {
-      startTouchCueDrag(pointerId);
-    }, TOUCH_DRAG_LONG_PRESS_MS),
-  };
-
-  item.classList.add("is-touch-pressing");
-}
-
-function handleTouchCueDragMove(event) {
-  handleTouchCueDragMoveById(event.pointerId, event.clientX, event.clientY, () => {
-    event.preventDefault();
-  });
-}
-
-function handleTouchCueDragMoveFromTouchEvent(event) {
-  const state = touchDragState;
-
-  if (!state || state.pointerId !== "touch" || event.touches.length !== 1) {
-    return;
-  }
-
-  const touch = event.touches[0];
-
-  handleTouchCueDragMoveById("touch", touch.clientX, touch.clientY, () => {
-    event.preventDefault();
-  });
-}
-
-function handleTouchCueDragMoveById(pointerId, clientX, clientY, preventDefault) {
-  const state = touchDragState;
-
-  if (!state || pointerId !== state.pointerId) {
-    return;
-  }
-
-  const distance = Math.hypot(clientX - state.startX, clientY - state.startY);
-
-  if (!state.isDragging) {
-    if (distance > TOUCH_DRAG_CANCEL_DISTANCE) {
-      clearTouchCueDragState();
-    }
-
-    return;
-  }
-
-  preventDefault();
-  moveTouchCueDrag(clientX, clientY);
-}
-
-function startTouchCueDrag(pointerId) {
-  const state = touchDragState;
-
-  if (!state || state.pointerId !== pointerId || !state.item.isConnected) {
-    clearTouchCueDragState();
-    return;
-  }
-
-  const box = state.item.getBoundingClientRect();
-  const ghost = state.item.cloneNode(true);
+  const ghost = item.cloneNode(true);
 
   ghost.classList.add("cue-touch-drag-ghost");
-  ghost.style.left = `${state.startX - state.offsetX}px`;
-  ghost.style.top = `${state.startY - state.offsetY}px`;
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.querySelectorAll("[id]").forEach((element) => {
+    element.removeAttribute("id");
+  });
+  ghost.style.left = `${box.left}px`;
+  ghost.style.top = `${box.top}px`;
   ghost.style.width = `${box.width}px`;
   ghost.style.height = `${box.height}px`;
 
   document.body.appendChild(ghost);
-  state.ghost = ghost;
-  state.isDragging = true;
-  state.item.classList.add("is-touch-dragging");
+  item.classList.add("is-touch-dragging");
   document.body.classList.add("has-cue-touch-drag");
 
-  try {
-    state.item.setPointerCapture(pointerId);
-  } catch {
-    // Some mobile browsers do not allow capture after a long-press delay.
-  }
+  cueInteractDragState = {
+    item,
+    ghost,
+    offsetX: pointer.x - box.left,
+    offsetY: pointer.y - box.top,
+  };
 }
 
-function moveTouchCueDrag(pointerX, pointerY) {
-  const state = touchDragState;
+function moveCueInteractDrag(event) {
+  const state = cueInteractDragState;
 
-  if (!state?.isDragging) {
+  if (!state?.item.isConnected) {
+    clearCueInteractDragState();
     return;
   }
 
-  if (state.ghost) {
-    state.ghost.style.left = `${pointerX - state.offsetX}px`;
-    state.ghost.style.top = `${pointerY - state.offsetY}px`;
-  }
+  const pointer = getInteractPointer(event);
 
-  const nextItem = getDragAfterElement(cueList, pointerY);
+  state.ghost.style.left = `${pointer.x - state.offsetX}px`;
+  state.ghost.style.top = `${pointer.y - state.offsetY}px`;
+
+  const nextItem = getDragAfterElement(cueList, pointer.y);
 
   if (!nextItem) {
     cueList.appendChild(state.item);
@@ -2149,65 +1987,37 @@ function moveTouchCueDrag(pointerX, pointerY) {
   cueList.insertBefore(state.item, nextItem);
 }
 
-function finishTouchCueDrag(event) {
-  finishTouchCueDragById(event.pointerId);
-}
-
-function finishTouchCueDragById(pointerId) {
-  const state = touchDragState;
-
-  if (!state || pointerId !== state.pointerId) {
-    return;
-  }
-
-  if (state.isDragging) {
+function finishCueInteractDrag() {
+  if (cueInteractDragState) {
     syncCueOrderWithDom();
   }
 
-  clearTouchCueDragState();
+  clearCueInteractDragState();
 }
 
-function cancelTouchCueDrag(event) {
-  cancelTouchCueDragById(event.pointerId);
-}
-
-function cancelTouchCueDragById(pointerId) {
-  const state = touchDragState;
-
-  if (!state || pointerId !== state.pointerId) {
+function clearCueInteractDragState() {
+  if (!cueInteractDragState) {
     return;
   }
 
-  if (state.isDragging) {
-    render();
-  }
-
-  clearTouchCueDragState();
-}
-
-function clearTouchCueDragState() {
-  if (!touchDragState) {
-    return;
-  }
-
-  window.clearTimeout(touchDragState.timer);
-  touchDragState.item?.classList.remove("is-touch-pressing", "is-touch-dragging");
-  touchDragState.ghost?.remove();
+  cueInteractDragState.item?.classList.remove("is-touch-dragging");
+  cueInteractDragState.ghost?.remove();
   document.body.classList.remove("has-cue-touch-drag");
-  touchDragState = null;
+  cueInteractDragState = null;
 }
 
-function isTouchCueDragEvent(event) {
-  return (
-    event.pointerType !== "mouse" &&
-    window.matchMedia("(max-width: 760px)").matches
-  );
-}
+function getInteractPointer(event) {
+  if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+    return {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
 
-function isCueDragInteractiveTarget(target) {
-  return Boolean(target.closest(
-    "button, input, select, textarea, a, summary, details, .cue-mobile-actions-panel",
-  ));
+  return {
+    x: event.pageX - window.scrollX,
+    y: event.pageY - window.scrollY,
+  };
 }
 
 function syncCueOrderWithDom() {
