@@ -1450,11 +1450,12 @@ body.has-cue-touch-drag {
     border-bottom: 1px solid rgba(53, 68, 58, 0.08);
     border-radius: 0;
     background: transparent;
-    touch-action: pan-y;
+    touch-action: none;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
-  body.has-cue-touch-drag .cue-item,
   .cue-touch-drag-ghost {
     touch-action: none;
   }

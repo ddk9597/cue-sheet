@@ -509,7 +509,7 @@ cueList.addEventListener("pointermove", (event) => {
 
 cueList.addEventListener("touchstart", (event) => {
   maybePrepareTouchCueDragFromTouchEvent(event);
-}, { passive: true });
+}, { passive: false });
 
 cueList.addEventListener("touchmove", (event) => {
   handleTouchCueDragMoveFromTouchEvent(event);
@@ -2021,6 +2021,10 @@ function maybePrepareTouchCueDragFromTouchEvent(event) {
   }
 
   prepareTouchCueDrag(event.target, "touch", touch.clientX, touch.clientY);
+
+  if (touchDragState) {
+    event.preventDefault();
+  }
 }
 
 function prepareTouchCueDrag(target, pointerId, clientX, clientY) {
@@ -2090,7 +2094,7 @@ function handleTouchCueDragMoveById(pointerId, clientX, clientY, preventDefault)
   }
 
   preventDefault();
-  moveTouchCueDrag(clientY);
+  moveTouchCueDrag(clientX, clientY);
 }
 
 function startTouchCueDrag(pointerId) {
@@ -2123,7 +2127,7 @@ function startTouchCueDrag(pointerId) {
   }
 }
 
-function moveTouchCueDrag(pointerY) {
+function moveTouchCueDrag(pointerX, pointerY) {
   const state = touchDragState;
 
   if (!state?.isDragging) {
@@ -2131,6 +2135,7 @@ function moveTouchCueDrag(pointerY) {
   }
 
   if (state.ghost) {
+    state.ghost.style.left = `${pointerX - state.offsetX}px`;
     state.ghost.style.top = `${pointerY - state.offsetY}px`;
   }
 
