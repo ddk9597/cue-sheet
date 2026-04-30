@@ -1938,8 +1938,10 @@ function startCueInteractDrag(event) {
 
   clearCueInteractDragState();
 
-  const pointer = getInteractPointer(event);
   const box = item.getBoundingClientRect();
+  const pointer = getInteractPointer(event);
+  const pointerX = Number.isFinite(pointer.x) ? pointer.x : box.left + (box.width / 2);
+  const pointerY = Number.isFinite(pointer.y) ? pointer.y : box.top + (box.height / 2);
   const ghost = item.cloneNode(true);
 
   ghost.classList.add("cue-touch-drag-ghost");
@@ -1959,8 +1961,12 @@ function startCueInteractDrag(event) {
   cueInteractDragState = {
     item,
     ghost,
-    offsetX: pointer.x - box.left,
-    offsetY: pointer.y - box.top,
+    offsetX: pointerX - box.left,
+    offsetY: pointerY - box.top,
+    pointerX,
+    pointerY,
+    translateX: 0,
+    translateY: 0,
   };
 }
 
@@ -1973,11 +1979,18 @@ function moveCueInteractDrag(event) {
   }
 
   const pointer = getInteractPointer(event);
+  const fallbackDeltaX = Number.isFinite(pointer.x) ? pointer.x - state.pointerX : 0;
+  const fallbackDeltaY = Number.isFinite(pointer.y) ? pointer.y - state.pointerY : 0;
+  const deltaX = getInteractDelta(event, "x", fallbackDeltaX);
+  const deltaY = getInteractDelta(event, "y", fallbackDeltaY);
 
-  state.ghost.style.left = `${pointer.x - state.offsetX}px`;
-  state.ghost.style.top = `${pointer.y - state.offsetY}px`;
+  state.translateX += deltaX;
+  state.translateY += deltaY;
+  state.pointerX = Number.isFinite(pointer.x) ? pointer.x : state.pointerX + deltaX;
+  state.pointerY = Number.isFinite(pointer.y) ? pointer.y : state.pointerY + deltaY;
+  state.ghost.style.transform = `translate3d(${state.translateX}px, ${state.translateY}px, 0)`;
 
-  const nextItem = getDragAfterElement(cueList, pointer.y);
+  const nextItem = getDragAfterElement(cueList, state.pointerY);
 
   if (!nextItem) {
     cueList.appendChild(state.item);
@@ -2014,10 +2027,50 @@ function getInteractPointer(event) {
     };
   }
 
+  const interactionClient = event.interaction?.coords?.cur?.client;
+
+  if (Number.isFinite(interactionClient?.x) && Number.isFinite(interactionClient?.y)) {
+    return {
+      x: interactionClient.x,
+      y: interactionClient.y,
+    };
+  }
+
+  if (Number.isFinite(event.client?.x) && Number.isFinite(event.client?.y)) {
+    return {
+      x: event.client.x,
+      y: event.client.y,
+    };
+  }
+
+  if (Number.isFinite(event.page?.x) && Number.isFinite(event.page?.y)) {
+    return {
+      x: event.page.x - window.scrollX,
+      y: event.page.y - window.scrollY,
+    };
+  }
+
+  if (!Number.isFinite(event.pageX) || !Number.isFinite(event.pageY)) {
+    return {
+      x: Number.NaN,
+      y: Number.NaN,
+    };
+  }
+
   return {
     x: event.pageX - window.scrollX,
     y: event.pageY - window.scrollY,
   };
+}
+
+function getInteractDelta(event, axis, fallback) {
+  const value = axis === "x" ? event.dx : event.dy;
+
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  return Number.isFinite(fallback) ? fallback : 0;
 }
 
 function syncCueOrderWithDom() {
