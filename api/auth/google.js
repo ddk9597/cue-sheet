@@ -1,6 +1,10 @@
-const { issueLoginCode } = require("../_lib/auth");
+const { createSession, findOrCreateUser } = require("../_lib/auth");
 const { getSql, ensureSchema } = require("../_lib/db");
-const { EmailConfigError, isEmailAuthConfigured, sendLoginCodeEmail } = require("../_lib/email");
+const {
+  GoogleAuthConfigError,
+  isGoogleAuthConfigured,
+  verifyGoogleCredential,
+} = require("../_lib/google-auth");
 const { methodNotAllowed, readJsonBody, sendJson } = require("../_lib/http");
 
 module.exports = async (request, response) => {
@@ -19,10 +23,10 @@ module.exports = async (request, response) => {
     return;
   }
 
-  if (!isEmailAuthConfigured()) {
+  if (!isGoogleAuthConfigured()) {
     sendJson(response, 503, {
-      error: "email_auth_not_configured",
-      message: "RESEND_API_KEY와 AUTH_EMAIL_FROM 설정이 필요합니다.",
+      error: "google_auth_not_configured",
+      message: "GOOGLE_CLIENT_ID 설정이 필요합니다.",
     });
     return;
   }
@@ -30,14 +34,14 @@ module.exports = async (request, response) => {
   try {
     await ensureSchema(sql);
     const payload = await readJsonBody(request);
-    const loginCode = await issueLoginCode(sql, payload.email);
+    const googleUser = await verifyGoogleCredential(payload.credential);
+    const user = await findOrCreateUser(sql, googleUser.email);
 
-    await sendLoginCodeEmail(loginCode);
+    await createSession(sql, request, response, user.id);
 
     sendJson(response, 200, {
-      ok: true,
-      email: loginCode.email,
-      expiresMinutes: loginCode.expiresMinutes,
+      authenticated: true,
+      email: user.email,
     });
   } catch (error) {
     if (error instanceof SyntaxError) {
@@ -48,9 +52,9 @@ module.exports = async (request, response) => {
       return;
     }
 
-    if (error instanceof EmailConfigError) {
+    if (error instanceof GoogleAuthConfigError) {
       sendJson(response, 503, {
-        error: "email_auth_not_configured",
+        error: "google_auth_not_configured",
         message: error.message,
       });
       return;
@@ -58,16 +62,16 @@ module.exports = async (request, response) => {
 
     if (error.statusCode) {
       sendJson(response, error.statusCode, {
-        error: "request_code_failed",
+        error: "google_login_failed",
         message: error.message,
       });
       return;
     }
 
-    console.error("request code error", error);
-    sendJson(response, 500, {
-      error: "request_code_failed",
-      message: "인증코드 발송에 실패했습니다.",
+    console.error("google login error", error);
+    sendJson(response, 401, {
+      error: "google_login_failed",
+      message: "Google 로그인 처리에 실패했습니다.",
     });
   }
 };

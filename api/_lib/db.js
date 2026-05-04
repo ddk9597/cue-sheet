@@ -52,22 +52,6 @@ async function ensureSchemaLocked(sql) {
     ].join(" "));
 
     await sql.query([
-      "CREATE TABLE IF NOT EXISTS email_login_codes (",
-      "id BIGSERIAL PRIMARY KEY,",
-      "email TEXT NOT NULL,",
-      "code_hash TEXT NOT NULL,",
-      "expires_at TIMESTAMPTZ NOT NULL,",
-      "consumed_at TIMESTAMPTZ,",
-      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
-      ")",
-    ].join(" "));
-
-    await sql.query([
-      "CREATE INDEX IF NOT EXISTS email_login_codes_email_created_idx",
-      "ON email_login_codes (email, created_at DESC)",
-    ].join(" "));
-
-    await sql.query([
       "CREATE TABLE IF NOT EXISTS user_sessions (",
       "id BIGSERIAL PRIMARY KEY,",
       "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",

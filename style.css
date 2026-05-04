@@ -222,6 +222,10 @@ select {
   grid-template-columns: minmax(0, 240px) auto;
 }
 
+.google-sign-in {
+  min-height: 44px;
+}
+
 .auth-account {
   display: flex;
   align-items: center;
