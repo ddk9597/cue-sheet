@@ -2161,10 +2161,8 @@ function setupCueInteractDrag() {
 
   cueInteractInitialized = true;
 
-  window.interact(".cue-item").draggable({
+  window.interact(".drag-handle").draggable({
     autoScroll: true,
-    allowFrom: ".drag-handle",
-    ignoreFrom: "button:not(.drag-handle), input, select, textarea, a, summary, details, .cue-mobile-actions-panel",
     listeners: {
       start: startCueInteractDrag,
       move: moveCueInteractDrag,
