@@ -203,6 +203,28 @@ button {
   list-style: none;
 }
 
+.audience-part-heading {
+  margin: 6px 2px -4px;
+  color: #2b3a31;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.audience-intermission {
+  display: grid;
+  place-items: center;
+  min-height: 62px;
+  border: 1px solid rgba(21, 29, 25, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(21, 29, 25, 0.92), rgba(43, 58, 49, 0.86));
+  color: var(--white);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 .cue-card {
   position: relative;
   overflow: hidden;
@@ -259,7 +281,7 @@ button {
   padding: 0 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.54);
+  background: rgba(0, 0, 0, 0.36);
 }
 
 .cue-title {
@@ -275,6 +297,21 @@ button {
 
 body.is-loading .audience-cue-list {
   min-height: 240px;
+}
+
+.audience-list-logo {
+  display: grid;
+  place-items: center;
+  padding: 24px 18px 28px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), #efe5d4);
+}
+
+.audience-list-logo img {
+  display: block;
+  width: min(180px, 58vw);
+  height: auto;
+  opacity: 0.82;
 }
 
 @media (min-width: 700px) {

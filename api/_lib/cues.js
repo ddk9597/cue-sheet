@@ -5,6 +5,8 @@ const TUNING_STANDARD = "standard";
 const TUNING_HALF_DOWN = "half-down";
 const TUNING_D_DROP = "d-drop";
 const TUNING_INACTIVE = "inactive";
+const CUE_TYPE_SONG = "song";
+const CUE_TYPE_INTERMISSION = "intermission";
 
 function normalizeCueList(items) {
   if (!Array.isArray(items)) {
@@ -21,9 +23,24 @@ function normalizeCue(item, index) {
     return null;
   }
 
+  const type = item.type === CUE_TYPE_INTERMISSION ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG;
   const title = typeof item.title === "string"
     ? item.title.trim().slice(0, 60)
     : "";
+
+  if (type === CUE_TYPE_INTERMISSION) {
+    return {
+      id: normalizeCueId(item.id, index),
+      type,
+      title: title || "인터미션",
+      bpm: "",
+      seconds: 0,
+      acousticTuning: TUNING_STANDARD,
+      electricTuning: TUNING_STANDARD,
+      bassTuning: TUNING_STANDARD,
+    };
+  }
+
   const seconds = Number(item.seconds);
 
   if (!title || !Number.isInteger(seconds) || seconds < 0) {
@@ -32,6 +49,7 @@ function normalizeCue(item, index) {
 
   return {
     id: normalizeCueId(item.id, index),
+    type,
     title,
     bpm: normalizeBpm(item.bpm),
     seconds,

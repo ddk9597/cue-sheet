@@ -17,6 +17,8 @@ const TUNING_STANDARD = "standard";
 const TUNING_HALF_DOWN = "half-down";
 const TUNING_D_DROP = "d-drop";
 const TUNING_INACTIVE = "inactive";
+const CUE_TYPE_SONG = "song";
+const CUE_TYPE_INTERMISSION = "intermission";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
 const STORAGE_MODE_LOADING = "loading";
@@ -34,6 +36,7 @@ const bpmInput = document.querySelector("#bpmInput");
 const durationMinutesInput = document.querySelector("#durationMinutesInput");
 const durationSecondsInput = document.querySelector("#durationSecondsInput");
 const openCueEntryButton = document.querySelector("#openCueEntryButton");
+const addIntermissionButton = document.querySelector("#addIntermissionButton");
 const cueEntryOverlay = document.querySelector("#cueEntryOverlay");
 const cueEntryCloseButtons = document.querySelectorAll("[data-cue-entry-close]");
 const cueList = document.querySelector("#cueList");
@@ -137,6 +140,10 @@ for (const modal of [practiceModal, cueModal]) {
 
 openCueEntryButton?.addEventListener("click", () => {
   openCueEntryOverlay();
+});
+
+addIntermissionButton?.addEventListener("click", () => {
+  appendIntermissionCue();
 });
 
 for (const closeButton of cueEntryCloseButtons) {
@@ -757,6 +764,7 @@ function appendCueFromForm() {
 
   cues.push({
     id: createCueId(),
+    type: CUE_TYPE_SONG,
     title,
     bpm: normalizeBpm(bpmInput.value),
     seconds,
@@ -767,6 +775,21 @@ function appendCueFromForm() {
 
   render();
   return true;
+}
+
+function appendIntermissionCue() {
+  cues.push({
+    id: createCueId(),
+    type: CUE_TYPE_INTERMISSION,
+    title: "인터미션",
+    bpm: "",
+    seconds: 0,
+    acousticTuning: TUNING_STANDARD,
+    electricTuning: TUNING_STANDARD,
+    bassTuning: TUNING_STANDARD,
+  });
+
+  render();
 }
 
 function loadPracticeLogs() {
@@ -1520,7 +1543,22 @@ function normalizeCueRecord(item, index) {
     return null;
   }
 
+  const type = item.type === CUE_TYPE_INTERMISSION ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG;
   const title = typeof item.title === "string" ? item.title.trim() : "";
+
+  if (type === CUE_TYPE_INTERMISSION) {
+    return {
+      id: normalizeCueId(item.id, index),
+      type,
+      title: title.slice(0, 60) || "인터미션",
+      bpm: "",
+      seconds: 0,
+      acousticTuning: TUNING_STANDARD,
+      electricTuning: TUNING_STANDARD,
+      bassTuning: TUNING_STANDARD,
+    };
+  }
+
   const seconds = Number(item.seconds);
 
   if (!title || !Number.isInteger(seconds) || seconds < 0) {
@@ -1529,6 +1567,7 @@ function normalizeCueRecord(item, index) {
 
   return {
     id: normalizeCueId(item.id, index),
+    type,
     title: title.slice(0, 60),
     bpm: normalizeBpm(item.bpm),
     seconds,
@@ -1578,8 +1617,12 @@ function render() {
     const mobileDuration = fragment.querySelector(".cue-mobile-duration-value");
     const tuningSelects = fragment.querySelectorAll(".tuning-select");
     const moveButtons = fragment.querySelectorAll(".cue-move-button");
+    const isIntermission = cue.type === CUE_TYPE_INTERMISSION;
 
     title.textContent = cue.title;
+    item.classList.toggle("cue-item-intermission", isIntermission);
+    item.dataset.type = cue.type;
+
     for (const bpmListInput of bpmListInputs) {
       bpmListInput.value = normalizeBpm(cue.bpm);
     }
@@ -1613,7 +1656,7 @@ function render() {
   }
 
   totalDuration.textContent = formatDuration(
-    cues.reduce((sum, cue) => sum + cue.seconds, 0),
+    cues.reduce((sum, cue) => sum + (cue.type === CUE_TYPE_INTERMISSION ? 0 : cue.seconds), 0),
   );
 
   updateActionState();

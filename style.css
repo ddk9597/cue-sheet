@@ -627,6 +627,14 @@ select {
   gap: 6px;
 }
 
+.form-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .form-panel-title,
 .submodal-title {
   display: block;
@@ -856,6 +864,35 @@ select {
 .cue-item {
   padding: 16px 12px;
   border-top: 1px solid rgba(53, 68, 58, 0.08);
+}
+
+.cue-item-intermission {
+  border-top: 1px solid rgba(182, 93, 53, 0.22);
+  border-bottom: 1px solid rgba(182, 93, 53, 0.18);
+  background: linear-gradient(90deg, rgba(182, 93, 53, 0.1), rgba(109, 138, 119, 0.08));
+}
+
+.cue-item-intermission .cue-main {
+  grid-column: 2 / 8;
+}
+
+.cue-item-intermission .cue-title {
+  color: var(--accent-deep);
+  font-size: 1.04rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.cue-item-intermission .bpm-cell,
+.cue-item-intermission .cue-duration,
+.cue-item-intermission .cue-desktop-tunings,
+.cue-item-intermission .cue-mobile-tuning-group,
+.cue-item-intermission .cue-mobile-actions {
+  display: none;
+}
+
+.cue-item-intermission > .delete-button {
+  grid-column: 8;
 }
 
 .cue-desktop-tunings {
@@ -1410,7 +1447,9 @@ body.has-cue-touch-drag {
   .tap-meter-actions .tap-button,
   .tap-meter-actions .ghost-button,
   .practice-form-actions .primary-button,
-  .practice-form-actions .ghost-button {
+  .practice-form-actions .ghost-button,
+  .form-panel-actions .primary-button,
+  .form-panel-actions .ghost-button {
     width: 100%;
   }
 
@@ -1517,6 +1556,31 @@ body.has-cue-touch-drag {
     white-space: nowrap;
     line-height: 1.2;
     font-size: 0.92rem;
+  }
+
+  .cue-item-intermission {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    gap: 8px;
+    padding: 10px 0;
+    border-radius: 14px;
+    background: rgba(182, 93, 53, 0.1);
+  }
+
+  .cue-item-intermission .cue-main {
+    grid-column: 2;
+  }
+
+  .cue-item-intermission .cue-title {
+    font-size: 0.9rem;
+    white-space: normal;
+  }
+
+  .cue-item-intermission > .delete-button {
+    display: inline-flex;
+    grid-column: 3;
+    justify-content: center;
+    min-height: 34px;
+    padding: 8px 10px;
   }
 
   .bpm-cell {

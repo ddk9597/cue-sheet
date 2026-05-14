@@ -3,6 +3,8 @@ const ALBUM_ART_ENDPOINT = "/api/album-art";
 const ALBUM_CACHE_KEY = "cue-sheet-audience-albums";
 const ALBUM_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 30000;
+const CUE_TYPE_SONG = "song";
+const CUE_TYPE_INTERMISSION = "intermission";
 
 const refreshButton = document.querySelector("#refreshButton");
 const liveStatus = document.querySelector("#liveStatus");
@@ -77,16 +79,35 @@ async function loadAudienceCues({ manual = false } = {}) {
 }
 
 function renderAudienceCues(cues) {
-  cueList.replaceChildren();
-  cueCount.textContent = cues.length ? `${cues.length}곡` : "0곡";
-  emptyState.hidden = cues.length > 0;
+  const songs = cues.filter((cue) => cue.type !== CUE_TYPE_INTERMISSION);
 
-  for (const [index, cue] of cues.entries()) {
+  cueList.replaceChildren();
+  cueCount.textContent = songs.length ? `${songs.length}곡` : "0곡";
+  emptyState.hidden = songs.length > 0;
+
+  let partNumber = 1;
+  let songNumber = 0;
+  let shouldRenderPartHeading = true;
+
+  for (const cue of cues) {
+    if (cue.type === CUE_TYPE_INTERMISSION) {
+      appendAudienceIntermission(cue);
+      partNumber += 1;
+      shouldRenderPartHeading = true;
+      continue;
+    }
+
+    if (shouldRenderPartHeading) {
+      appendAudiencePartHeading(partNumber);
+      shouldRenderPartHeading = false;
+    }
+
+    songNumber += 1;
     const item = cueCardTemplate.content.firstElementChild.cloneNode(true);
     const number = item.querySelector(".cue-number");
     const title = item.querySelector(".cue-title");
 
-    number.textContent = String(index + 1).padStart(2, "0");
+    number.textContent = String(songNumber).padStart(2, "0");
     title.textContent = cue.title;
 
     cueList.appendChild(item);
@@ -94,9 +115,25 @@ function renderAudienceCues(cues) {
   }
 
   liveStatus.classList.remove("is-error");
-  liveStatus.textContent = cues.length
+  liveStatus.textContent = songs.length
     ? "공개된 최신 공연 순서입니다."
     : "공개된 큐시트가 없습니다.";
+}
+
+function appendAudiencePartHeading(partNumber) {
+  const item = document.createElement("li");
+
+  item.className = "audience-part-heading";
+  item.textContent = `${partNumber}부`;
+  cueList.appendChild(item);
+}
+
+function appendAudienceIntermission(cue) {
+  const item = document.createElement("li");
+
+  item.className = "audience-intermission";
+  item.textContent = cue.title || "인터미션";
+  cueList.appendChild(item);
 }
 
 function renderError(message) {
@@ -222,7 +259,19 @@ function normalizeCueRecord(item, index) {
     return null;
   }
 
+  const type = item.type === CUE_TYPE_INTERMISSION ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG;
   const title = typeof item.title === "string" ? item.title.trim() : "";
+
+  if (type === CUE_TYPE_INTERMISSION) {
+    return {
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `cue-${index + 1}`,
+      type,
+      title: title.slice(0, 60) || "인터미션",
+      bpm: "",
+      seconds: 0,
+    };
+  }
+
   const seconds = Number(item.seconds);
 
   if (!title || !Number.isInteger(seconds) || seconds < 0) {
@@ -231,6 +280,7 @@ function normalizeCueRecord(item, index) {
 
   return {
     id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `cue-${index + 1}`,
+    type,
     title: title.slice(0, 60),
     bpm: normalizeBpm(item.bpm),
     seconds,
