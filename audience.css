@@ -236,8 +236,11 @@ button {
 
 .audience-intermission {
   display: grid;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
   min-height: 62px;
+  padding: 12px 16px;
   border: 1px solid rgba(21, 29, 25, 0.12);
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(21, 29, 25, 0.92), rgba(43, 58, 49, 0.86));
@@ -246,6 +249,18 @@ button {
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.audience-intermission-title,
+.audience-intermission-duration {
+  display: block;
+  min-width: 0;
+}
+
+.audience-intermission-duration {
+  color: rgba(255, 250, 240, 0.78);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
 }
 
 .cue-card {

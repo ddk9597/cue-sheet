@@ -155,9 +155,22 @@ function appendAudiencePartHeading(partNumber) {
 
 function appendAudienceIntermission(cue) {
   const item = document.createElement("li");
+  const title = document.createElement("span");
+  const durationLabel = formatAudienceDuration(cue.seconds);
 
   item.className = "audience-intermission";
-  item.textContent = cue.title || "인터미션";
+  title.className = "audience-intermission-title";
+  title.textContent = cue.title || "인터미션";
+  item.appendChild(title);
+
+  if (durationLabel) {
+    const duration = document.createElement("span");
+
+    duration.className = "audience-intermission-duration";
+    duration.textContent = durationLabel;
+    item.appendChild(duration);
+  }
+
   cueList.appendChild(item);
 }
 
@@ -271,6 +284,7 @@ async function buildAudienceImageEntries(cues) {
       entries.push({
         type: CUE_TYPE_INTERMISSION,
         title: cue.title || "인터미션",
+        durationLabel: formatAudienceDuration(cue.seconds),
       });
       partNumber += 1;
       shouldRenderPartHeading = true;
@@ -317,7 +331,7 @@ function getAudienceImageEntryHeight(entry) {
   }
 
   if (entry.type === CUE_TYPE_INTERMISSION) {
-    return 96;
+    return entry.durationLabel ? 112 : 96;
   }
 
   return 244;
@@ -376,7 +390,16 @@ function drawAudienceIntermissionCard(context, entry, x, y, width, height) {
   context.font = `900 28px ${EXPORT_FONT_FAMILY}`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(entry.title, x + width / 2, y + height / 2 + 2, width - 48);
+
+  if (!entry.durationLabel) {
+    context.fillText(entry.title, x + width / 2, y + height / 2 + 2, width - 48);
+    return;
+  }
+
+  context.fillText(entry.title, x + width / 2, y + height / 2 - 13, width - 48);
+  context.fillStyle = "rgba(255, 250, 240, 0.78)";
+  context.font = `800 22px ${EXPORT_FONT_FAMILY}`;
+  context.fillText(entry.durationLabel, x + width / 2, y + height / 2 + 25, width - 48);
 }
 
 function drawAudienceSongCard(context, entry, x, y, width, height) {
@@ -845,6 +868,33 @@ function normalizeBpm(value) {
   }
 
   return String(value).replace(/\D/g, "").slice(0, 3);
+}
+
+function formatAudienceDuration(value) {
+  const totalSeconds = Number(value);
+
+  if (!Number.isInteger(totalSeconds) || totalSeconds <= 0) {
+    return "";
+  }
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+
+  if (hours) {
+    parts.push(`${hours}시간`);
+  }
+
+  if (minutes) {
+    parts.push(`${minutes}분`);
+  }
+
+  if (seconds) {
+    parts.push(`${seconds}초`);
+  }
+
+  return parts.join(" ");
 }
 
 async function safeReadJson(response) {
