@@ -813,12 +813,14 @@ function normalizeCueRecord(item, index) {
   const title = typeof item.title === "string" ? item.title.trim() : "";
 
   if (type === CUE_TYPE_INTERMISSION) {
+    const seconds = Number(item.seconds);
+
     return {
       id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `cue-${index + 1}`,
       type,
       title: title.slice(0, 60) || "인터미션",
       bpm: "",
-      seconds: 0,
+      seconds: Number.isInteger(seconds) && seconds >= 0 ? seconds : 0,
     };
   }
 

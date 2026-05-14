@@ -38,6 +38,10 @@ const durationSecondsInput = document.querySelector("#durationSecondsInput");
 const openCueEntryButton = document.querySelector("#openCueEntryButton");
 const addIntermissionButton = document.querySelector("#addIntermissionButton");
 const cueEntryOverlay = document.querySelector("#cueEntryOverlay");
+const cueEntryTitle = document.querySelector("#cueEntryTitle");
+const titleFieldLabel = document.querySelector("#titleFieldLabel");
+const bpmField = document.querySelector("#bpmField");
+const cueEntrySubmitButton = document.querySelector("#cueEntrySubmitButton");
 const cueEntryCloseButtons = document.querySelectorAll("[data-cue-entry-close]");
 const cueList = document.querySelector("#cueList");
 const emptyState = document.querySelector("#emptyState");
@@ -108,6 +112,8 @@ let practiceWarningMessage = "";
 let practiceLogs = {};
 let selectedPracticeDate = getLocalDateKey(new Date());
 let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || new Date());
+let cueEntryMode = CUE_TYPE_SONG;
+let cueEntryRestoreTarget = openCueEntryButton;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -139,11 +145,17 @@ for (const modal of [practiceModal, cueModal]) {
 }
 
 openCueEntryButton?.addEventListener("click", () => {
-  openCueEntryOverlay();
+  openCueEntryOverlay({
+    type: CUE_TYPE_SONG,
+    restoreTarget: openCueEntryButton,
+  });
 });
 
 addIntermissionButton?.addEventListener("click", () => {
-  appendIntermissionCue();
+  openCueEntryOverlay({
+    type: CUE_TYPE_INTERMISSION,
+    restoreTarget: addIntermissionButton,
+  });
 });
 
 for (const closeButton of cueEntryCloseButtons) {
@@ -178,6 +190,7 @@ logoutButton?.addEventListener("click", async () => {
 
 cueForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  const completedEntryMode = cueEntryMode;
 
   if (!appendCueFromForm()) {
     return;
@@ -185,7 +198,7 @@ cueForm.addEventListener("submit", (event) => {
 
   closeCueEntryOverlay({ restoreFocus: false, resetForm: false });
   cueForm.reset();
-  openCueEntryButton?.focus();
+  (completedEntryMode === CUE_TYPE_INTERMISSION ? addIntermissionButton : openCueEntryButton)?.focus();
 });
 
 saveButton.addEventListener("click", async () => {
@@ -255,7 +268,11 @@ tapTempoApplyButton.addEventListener("click", () => {
     return;
   }
 
-  openCueEntryOverlay({ resetForm: false });
+  openCueEntryOverlay({
+    resetForm: false,
+    type: CUE_TYPE_SONG,
+    restoreTarget: openCueEntryButton,
+  });
 
   bpmInput.value = measuredTapBpm;
   bpmInput.focus();
@@ -708,7 +725,11 @@ function focusCueModalSection(section) {
 }
 
 function openCueEntryOverlay(options = {}) {
-  const { resetForm = true } = options;
+  const {
+    resetForm = true,
+    type = CUE_TYPE_SONG,
+    restoreTarget = openCueEntryButton,
+  } = options;
 
   if (!cueEntryOverlay) {
     return;
@@ -722,8 +743,17 @@ function openCueEntryOverlay(options = {}) {
     cueForm.reset();
   }
 
+  cueEntryMode = type === CUE_TYPE_INTERMISSION ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG;
+  cueEntryRestoreTarget = restoreTarget;
+  syncCueEntryMode({ resetForm });
+
   cueEntryOverlay.hidden = false;
   window.requestAnimationFrame(() => {
+    if (cueEntryMode === CUE_TYPE_INTERMISSION) {
+      durationMinutesInput.focus();
+      return;
+    }
+
     titleInput.focus();
   });
 }
@@ -742,13 +772,43 @@ function closeCueEntryOverlay(options = {}) {
   }
 
   if (restoreFocus) {
-    openCueEntryButton?.focus();
+    cueEntryRestoreTarget?.focus();
+  }
+}
+
+function syncCueEntryMode({ resetForm = false } = {}) {
+  const isIntermission = cueEntryMode === CUE_TYPE_INTERMISSION;
+
+  if (cueEntryTitle) {
+    cueEntryTitle.textContent = isIntermission ? "구분선 추가" : "항목 추가";
+  }
+
+  if (titleFieldLabel) {
+    titleFieldLabel.textContent = isIntermission ? "구분선 제목" : "멘트";
+  }
+
+  titleInput.placeholder = isIntermission ? "예: 인터미션" : "예: 오프닝 멘트";
+  bpmField.hidden = isIntermission;
+  bpmInput.disabled = isIntermission;
+
+  if (cueEntrySubmitButton) {
+    cueEntrySubmitButton.textContent = isIntermission ? "구분선 추가" : "추가";
+  }
+
+  if (isIntermission) {
+    bpmInput.value = "";
+
+    if (resetForm) {
+      titleInput.value = "인터미션";
+      durationSecondsInput.value = "0";
+    }
   }
 }
 
 function appendCueFromForm() {
   const title = titleInput.value.trim();
   const seconds = parseDurationInputs();
+  const isIntermission = cueEntryMode === CUE_TYPE_INTERMISSION;
 
   if (!title) {
     titleInput.focus();
@@ -764,9 +824,9 @@ function appendCueFromForm() {
 
   cues.push({
     id: createCueId(),
-    type: CUE_TYPE_SONG,
+    type: isIntermission ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG,
     title,
-    bpm: normalizeBpm(bpmInput.value),
+    bpm: isIntermission ? "" : normalizeBpm(bpmInput.value),
     seconds,
     acousticTuning: TUNING_STANDARD,
     electricTuning: TUNING_STANDARD,
@@ -775,21 +835,6 @@ function appendCueFromForm() {
 
   render();
   return true;
-}
-
-function appendIntermissionCue() {
-  cues.push({
-    id: createCueId(),
-    type: CUE_TYPE_INTERMISSION,
-    title: "인터미션",
-    bpm: "",
-    seconds: 0,
-    acousticTuning: TUNING_STANDARD,
-    electricTuning: TUNING_STANDARD,
-    bassTuning: TUNING_STANDARD,
-  });
-
-  render();
 }
 
 function loadPracticeLogs() {
@@ -1547,12 +1592,14 @@ function normalizeCueRecord(item, index) {
   const title = typeof item.title === "string" ? item.title.trim() : "";
 
   if (type === CUE_TYPE_INTERMISSION) {
+    const seconds = Number(item.seconds);
+
     return {
       id: normalizeCueId(item.id, index),
       type,
       title: title.slice(0, 60) || "인터미션",
       bpm: "",
-      seconds: 0,
+      seconds: Number.isInteger(seconds) && seconds >= 0 ? seconds : 0,
       acousticTuning: TUNING_STANDARD,
       electricTuning: TUNING_STANDARD,
       bassTuning: TUNING_STANDARD,
@@ -1656,7 +1703,7 @@ function render() {
   }
 
   totalDuration.textContent = formatDuration(
-    cues.reduce((sum, cue) => sum + (cue.type === CUE_TYPE_INTERMISSION ? 0 : cue.seconds), 0),
+    cues.reduce((sum, cue) => sum + cue.seconds, 0),
   );
 
   updateActionState();

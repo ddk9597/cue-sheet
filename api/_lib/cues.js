@@ -29,12 +29,14 @@ function normalizeCue(item, index) {
     : "";
 
   if (type === CUE_TYPE_INTERMISSION) {
+    const seconds = Number(item.seconds);
+
     return {
       id: normalizeCueId(item.id, index),
       type,
       title: title || "인터미션",
       bpm: "",
-      seconds: 0,
+      seconds: Number.isInteger(seconds) && seconds >= 0 ? seconds : 0,
       acousticTuning: TUNING_STANDARD,
       electricTuning: TUNING_STANDARD,
       bassTuning: TUNING_STANDARD,

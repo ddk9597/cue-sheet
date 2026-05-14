@@ -873,7 +873,7 @@ select {
 }
 
 .cue-item-intermission .cue-main {
-  grid-column: 2 / 8;
+  grid-column: 2 / 4;
 }
 
 .cue-item-intermission .cue-title {
@@ -884,11 +884,16 @@ select {
 }
 
 .cue-item-intermission .bpm-cell,
-.cue-item-intermission .cue-duration,
 .cue-item-intermission .cue-desktop-tunings,
 .cue-item-intermission .cue-mobile-tuning-group,
 .cue-item-intermission .cue-mobile-actions {
   display: none;
+}
+
+.cue-item-intermission .cue-duration {
+  grid-column: 4;
+  color: var(--accent-deep);
+  font-weight: 900;
 }
 
 .cue-item-intermission > .delete-button {
@@ -1559,7 +1564,7 @@ body.has-cue-touch-drag {
   }
 
   .cue-item-intermission {
-    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    grid-template-columns: 40px minmax(0, 1fr) auto 40px;
     gap: 8px;
     padding: 10px 0;
     border-radius: 14px;
@@ -1575,9 +1580,19 @@ body.has-cue-touch-drag {
     white-space: normal;
   }
 
-  .cue-item-intermission > .delete-button {
+  .cue-item-intermission .cue-duration {
     display: inline-flex;
     grid-column: 3;
+    justify-self: end;
+    color: var(--accent-deep);
+    font-size: 0.82rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cue-item-intermission > .delete-button {
+    display: inline-flex;
+    grid-column: 4;
     justify-content: center;
     min-height: 34px;
     padding: 8px 10px;

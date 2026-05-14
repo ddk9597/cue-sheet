@@ -247,7 +247,7 @@
           </div>
           <form id="cueForm" class="cue-entry-form">
             <label class="field">
-              <span>멘트</span>
+              <span id="titleFieldLabel">멘트</span>
               <input
                 id="titleInput"
                 name="title"
@@ -258,7 +258,7 @@
               >
             </label>
 
-            <label class="field bpm-field">
+            <label id="bpmField" class="field bpm-field">
               <span>BPM</span>
               <input
                 id="bpmInput"
@@ -304,7 +304,7 @@
 
             <div class="cue-entry-actions">
               <button class="ghost-button" type="button" data-cue-entry-close>취소</button>
-              <button class="primary-button" type="submit">추가</button>
+              <button id="cueEntrySubmitButton" class="primary-button" type="submit">추가</button>
             </div>
           </form>
         </div>
