@@ -299,19 +299,49 @@ body.is-loading .audience-cue-list {
   min-height: 240px;
 }
 
-.audience-list-logo {
-  display: grid;
-  place-items: center;
-  padding: 24px 18px 28px;
+.audience-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 18px 24px;
   border-top: 1px solid var(--line);
   background: linear-gradient(180deg, var(--surface), #efe5d4);
 }
 
+.audience-list-logo {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
 .audience-list-logo img {
   display: block;
-  width: min(180px, 58vw);
+  width: min(138px, 38vw);
   height: auto;
   opacity: 0.82;
+}
+
+.save-image-button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(21, 29, 25, 0.16);
+  border-radius: 999px;
+  background: #151d19;
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(21, 29, 25, 0.16);
+}
+
+.save-image-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.save-image-button.is-saving {
+  cursor: wait;
 }
 
 @media (min-width: 700px) {
