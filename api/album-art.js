@@ -1,6 +1,16 @@
 const { methodNotAllowed, sendJson } = require("./_lib/http");
 
 const ITUNES_SEARCH_URL = "https://itunes.apple.com/search";
+const CUSTOM_ARTWORK_BY_TITLE = new Map([
+  [
+    "피너츠송",
+    "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/e9/47/d7/e947d731-a19f-cef4-95d0-ecd4f4b0f418/cover_KAL000108_1.jpg/600x600bb.jpg",
+  ],
+  [
+    "피너츠 송",
+    "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/e9/47/d7/e947d731-a19f-cef4-95d0-ecd4f4b0f418/cover_KAL000108_1.jpg/600x600bb.jpg",
+  ],
+]);
 
 module.exports = async (request, response) => {
   if (request.method !== "GET") {
@@ -19,7 +29,7 @@ module.exports = async (request, response) => {
   }
 
   try {
-    const artworkUrl = await findAlbumArtwork(title);
+    const artworkUrl = findCustomAlbumArtwork(title) || await findAlbumArtwork(title);
 
     sendJson(response, 200, {
       artworkUrl,
@@ -80,4 +90,16 @@ function normalizeSearchText(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function findCustomAlbumArtwork(title) {
+  const normalizedTitle = normalizeSearchText(title).replaceAll(" ", "");
+
+  for (const [customTitle, artworkUrl] of CUSTOM_ARTWORK_BY_TITLE) {
+    if (normalizeSearchText(customTitle).replaceAll(" ", "") === normalizedTitle) {
+      return artworkUrl;
+    }
+  }
+
+  return "";
 }

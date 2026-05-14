@@ -5,6 +5,16 @@ const ALBUM_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 30000;
 const CUE_TYPE_SONG = "song";
 const CUE_TYPE_INTERMISSION = "intermission";
+const CUSTOM_ALBUM_ARTWORK_BY_TITLE = new Map([
+  [
+    "피너츠송",
+    "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/e9/47/d7/e947d731-a19f-cef4-95d0-ecd4f4b0f418/cover_KAL000108_1.jpg/600x600bb.jpg",
+  ],
+  [
+    "피너츠 송",
+    "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/e9/47/d7/e947d731-a19f-cef4-95d0-ecd4f4b0f418/cover_KAL000108_1.jpg/600x600bb.jpg",
+  ],
+]);
 
 const refreshButton = document.querySelector("#refreshButton");
 const liveStatus = document.querySelector("#liveStatus");
@@ -142,6 +152,13 @@ function renderError(message) {
 }
 
 function hydrateAlbumArtwork(item, cue) {
+  const customArtworkUrl = findCustomAlbumArtwork(cue.title);
+
+  if (customArtworkUrl) {
+    applyAlbumArtwork(item, customArtworkUrl);
+    return;
+  }
+
   const cacheKey = getAlbumCacheKey(cue.title);
 
   if (!cacheKey) {
@@ -220,6 +237,18 @@ function normalizeSearchText(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function findCustomAlbumArtwork(title) {
+  const normalizedTitle = normalizeSearchText(title).replaceAll(" ", "");
+
+  for (const [customTitle, artworkUrl] of CUSTOM_ALBUM_ARTWORK_BY_TITLE) {
+    if (normalizeSearchText(customTitle).replaceAll(" ", "") === normalizedTitle) {
+      return artworkUrl;
+    }
+  }
+
+  return "";
 }
 
 function readAlbumArtworkCache() {
