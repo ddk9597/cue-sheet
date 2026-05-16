@@ -156,6 +156,33 @@ button {
   color: #ffcfbd;
 }
 
+.browser-guide {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.browser-guide-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 250, 240, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.1);
+  color: var(--white);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.browser-guide-status {
+  min-height: 1.35em;
+  margin: 0;
+  color: rgba(255, 250, 240, 0.72);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .summary-stats {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

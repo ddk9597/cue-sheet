@@ -26,6 +26,8 @@ const emptyState = document.querySelector("#emptyState");
 const cueList = document.querySelector("#cueList");
 const cueCardTemplate = document.querySelector("#cueCardTemplate");
 const saveImageButton = document.querySelector("#saveImageButton");
+const copyBrowserLinkButton = document.querySelector("#copyBrowserLinkButton");
+const browserGuideStatus = document.querySelector("#browserGuideStatus");
 
 let refreshTimer = null;
 let albumArtworkCache = readAlbumArtworkCache();
@@ -38,6 +40,10 @@ refreshButton?.addEventListener("click", () => {
 
 saveImageButton?.addEventListener("click", () => {
   saveAudienceImage();
+});
+
+copyBrowserLinkButton?.addEventListener("click", () => {
+  copyAudiencePageLink();
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -177,6 +183,18 @@ function appendAudienceIntermission(cue) {
 function renderError(message) {
   liveStatus.classList.add("is-error");
   liveStatus.textContent = message || "큐시트를 불러오지 못했습니다.";
+}
+
+async function copyAudiencePageLink() {
+  const url = getAudiencePageUrl();
+
+  try {
+    await copyTextToClipboard(url);
+    browserGuideStatus.textContent = "링크를 복사했습니다. Safari/Chrome 주소창에 붙여넣어 열어주세요.";
+  } catch {
+    window.prompt("이 링크를 Safari/Chrome 주소창에 붙여넣어 열어주세요.", url);
+    browserGuideStatus.textContent = "링크 복사가 막힌 경우 주소를 직접 복사해 주세요.";
+  }
 }
 
 async function saveAudienceImage() {
@@ -687,6 +705,42 @@ async function waitForExportFonts() {
 
 function isAudienceSong(cue) {
   return Boolean(cue) && cue.type !== CUE_TYPE_INTERMISSION;
+}
+
+function getAudiencePageUrl() {
+  const url = new URL(window.location.href);
+
+  url.hash = "";
+
+  return url.toString();
+}
+
+async function copyTextToClipboard(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const input = document.createElement("textarea");
+
+  input.value = value;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.top = "-9999px";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  input.setSelectionRange(0, input.value.length);
+
+  try {
+    const copied = document.execCommand("copy");
+
+    if (!copied) {
+      throw new Error("Copy command failed.");
+    }
+  } finally {
+    input.remove();
+  }
 }
 
 function hydrateAlbumArtwork(item, cue) {
