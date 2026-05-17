@@ -522,6 +522,8 @@ select {
   color: var(--text-subtle);
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .todo-check-drag-handle:active {
@@ -544,14 +546,19 @@ select {
 
 .todo-touch-drag-ghost {
   position: fixed;
-  z-index: 40;
+  z-index: 9999;
+  margin: 0;
   pointer-events: none;
   opacity: 0.92;
   box-shadow: 0 18px 38px rgba(24, 32, 25, 0.18);
+  will-change: left, top;
+  touch-action: none;
 }
 
 body.has-todo-touch-drag {
   cursor: grabbing;
+  overflow: hidden;
+  user-select: none;
 }
 
 .todo-check-row input {

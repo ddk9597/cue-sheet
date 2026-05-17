@@ -851,7 +851,7 @@ function handleTodoCommand(command) {
 
 function getTodoDragHandleHtml() {
   return [
-    '<button class="todo-check-drag-handle" type="button" contenteditable="false" aria-label="할 일 순서 이동" title="드래그하여 순서 이동">',
+    '<button class="todo-check-drag-handle" type="button" draggable="false" contenteditable="false" aria-label="할 일 순서 이동" title="드래그하여 순서 이동">',
     '<span class="todo-drag-dots" aria-hidden="true"><span></span><span></span><span></span></span>',
     "</button>",
   ].join("");
@@ -2852,6 +2852,8 @@ function setupTodoInteractDrag() {
 }
 
 function startTodoInteractDrag(event) {
+  event.preventDefault?.();
+
   const item = event.target.closest(".todo-check-row");
   const checkRows = todoEditor ? [...todoEditor.querySelectorAll(".todo-check-row")] : [];
 
@@ -2885,16 +2887,19 @@ function startTodoInteractDrag(event) {
   todoInteractDragState = {
     item,
     ghost,
+    container: item.parentElement || todoEditor,
     offsetX: pointerX - box.left,
     offsetY: pointerY - box.top,
     pointerX,
     pointerY,
-    translateX: 0,
-    translateY: 0,
+    ghostLeft: box.left,
+    ghostTop: box.top,
   };
 }
 
 function moveTodoInteractDrag(event) {
+  event.preventDefault?.();
+
   const state = todoInteractDragState;
 
   if (!state?.item.isConnected) {
@@ -2908,28 +2913,40 @@ function moveTodoInteractDrag(event) {
   const deltaX = getInteractDelta(event, "x", fallbackDeltaX);
   const deltaY = getInteractDelta(event, "y", fallbackDeltaY);
 
-  state.translateX += deltaX;
-  state.translateY += deltaY;
-  state.pointerX = Number.isFinite(pointer.x) ? pointer.x : state.pointerX + deltaX;
-  state.pointerY = Number.isFinite(pointer.y) ? pointer.y : state.pointerY + deltaY;
-  state.ghost.style.transform = `translate3d(${state.translateX}px, ${state.translateY}px, 0)`;
+  if (Number.isFinite(pointer.x) && Number.isFinite(pointer.y)) {
+    state.pointerX = pointer.x;
+    state.pointerY = pointer.y;
+    state.ghostLeft = pointer.x - state.offsetX;
+    state.ghostTop = pointer.y - state.offsetY;
+  } else {
+    state.pointerX += deltaX;
+    state.pointerY += deltaY;
+    state.ghostLeft += deltaX;
+    state.ghostTop += deltaY;
+  }
 
-  const nextItem = getTodoDragAfterElement(todoEditor, state.pointerY);
+  state.ghost.style.left = `${state.ghostLeft}px`;
+  state.ghost.style.top = `${state.ghostTop}px`;
+
+  const container = state.container?.isConnected ? state.container : todoEditor;
+  const nextItem = getTodoDragAfterElement(container, state.pointerY);
 
   if (!nextItem) {
-    todoEditor.appendChild(state.item);
+    container.appendChild(state.item);
     return;
   }
 
-  todoEditor.insertBefore(state.item, nextItem);
+  container.insertBefore(state.item, nextItem);
 }
 
 function finishTodoInteractDrag() {
-  if (todoInteractDragState) {
-    saveTodoDocument();
-  }
+  const shouldSave = Boolean(todoInteractDragState);
 
   clearTodoInteractDragState();
+
+  if (shouldSave) {
+    saveTodoDocument();
+  }
 }
 
 function clearTodoInteractDragState() {
@@ -2944,7 +2961,8 @@ function clearTodoInteractDragState() {
 }
 
 function getTodoDragAfterElement(container, pointerY) {
-  const items = [...container.querySelectorAll(".todo-check-row:not(.is-touch-dragging)")];
+  const items = [...container.children]
+    .filter((item) => item.matches?.(".todo-check-row:not(.is-touch-dragging)"));
   let closestItem = null;
   let closestOffset = Number.NEGATIVE_INFINITY;
 
