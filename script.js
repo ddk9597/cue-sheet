@@ -799,7 +799,7 @@ function handleTodoCommand(command) {
   if (command === "heading") {
     insertTodoHtml("<h2>제목</h2><p><br></p>");
   } else if (command === "check") {
-    insertTodoHtml('<div class="todo-check-row"><input type="checkbox"><span>새 할 일</span></div><p><br></p>');
+    insertTodoCheckRow();
   } else if (command === "bullet") {
     insertTodoHtml("<ul><li>항목</li></ul><p><br></p>");
   } else if (command === "divider") {
@@ -814,6 +814,58 @@ function handleTodoCommand(command) {
   }
 
   saveTodoDocument();
+}
+
+function insertTodoCheckRow() {
+  const html = '<div class="todo-check-row"><input type="checkbox"><span>새 할 일</span></div><p><br></p>';
+  const activeCheckRow = getActiveTodoCheckRow();
+
+  if (!activeCheckRow) {
+    insertTodoHtml(html);
+    return;
+  }
+
+  const nodes = htmlToNodes(html);
+  const firstNode = nodes[0];
+
+  activeCheckRow.after(...nodes);
+  selectTodoNodeText(firstNode);
+}
+
+function getActiveTodoCheckRow() {
+  const selection = window.getSelection();
+
+  if (!selection?.rangeCount || !todoEditor.contains(selection.anchorNode)) {
+    return null;
+  }
+
+  const anchor = selection.anchorNode.nodeType === Node.ELEMENT_NODE
+    ? selection.anchorNode
+    : selection.anchorNode.parentElement;
+  const checkRow = anchor?.closest?.(".todo-check-row");
+
+  return checkRow && todoEditor.contains(checkRow) ? checkRow : null;
+}
+
+function selectTodoNodeText(node) {
+  const target = node?.querySelector?.("span") || node;
+
+  if (!target) {
+    return;
+  }
+
+  const selection = window.getSelection();
+
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+
+  todoEditor.focus();
+  range.selectNodeContents(target);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function focusTodoEditor() {
