@@ -13,6 +13,7 @@
       <nav class="site-nav" aria-label="상단 메뉴">
         <a href="#overview">홈</a>
         <button class="site-nav-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
+        <button class="site-nav-button" type="button" data-modal-target="todoModal">할 일</button>
         <button class="site-nav-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
         <button class="site-nav-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록</button>
       </nav>
@@ -30,6 +31,7 @@
       <div class="hero-actions">
         <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
         <button class="ghost-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록 보기</button>
+        <button class="ghost-button" type="button" data-modal-target="todoModal">할 일</button>
         <button class="ghost-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
       </div>
     </section>
@@ -183,6 +185,46 @@
               </section>
             </div>
           </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="todoModal" class="modal modal-wide" aria-labelledby="todoModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Tasks</p>
+          <strong id="todoModalTitle" class="modal-title">할 일 목록</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body">
+        <section class="panel todo-panel" aria-label="할 일 목록 편집">
+          <div class="todo-panel-header">
+            <div>
+              <p class="panel-label">자유 편집</p>
+              <strong class="todo-panel-title">해야 할 일을 편하게 정리하세요</strong>
+              <p id="todoStatus" class="save-status" aria-live="polite">자동 저장됩니다.</p>
+            </div>
+          </div>
+          <div class="todo-toolbar" role="toolbar" aria-label="할 일 편집 도구">
+            <button class="ghost-button" type="button" data-todo-command="heading">제목</button>
+            <button class="ghost-button" type="button" data-todo-command="check">체크</button>
+            <button class="ghost-button" type="button" data-todo-command="bullet">글머리</button>
+            <button class="ghost-button" type="button" data-todo-command="divider">구분선</button>
+            <button class="ghost-button" type="button" data-todo-command="clear">초기화</button>
+          </div>
+          <div
+            id="todoEditor"
+            class="todo-editor"
+            contenteditable="true"
+            spellcheck="false"
+            role="textbox"
+            aria-multiline="true"
+            aria-label="할 일 목록"
+            data-placeholder="할 일을 자유롭게 입력하세요."
+          ></div>
         </section>
       </div>
     </div>

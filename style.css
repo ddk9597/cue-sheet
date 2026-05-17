@@ -175,7 +175,7 @@ select {
 
 .hero-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   gap: 10px;
   align-items: center;
   justify-content: center;
@@ -407,6 +407,120 @@ select {
   max-height: calc(100vh - 140px);
   padding: 22px 24px 24px;
   overflow: auto;
+}
+
+.todo-panel {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.todo-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.todo-panel-title {
+  display: block;
+  font-size: clamp(1.12rem, 2vw, 1.5rem);
+  line-height: 1.2;
+}
+
+.todo-toolbar {
+  position: sticky;
+  top: -22px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  background: linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(255, 251, 245, 0.88));
+  backdrop-filter: blur(10px);
+}
+
+.todo-toolbar .ghost-button {
+  min-height: 36px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+}
+
+.todo-editor {
+  min-height: min(56dvh, 620px);
+  padding: 20px;
+  border: 1px solid rgba(53, 68, 58, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-main);
+  font-size: 1rem;
+  line-height: 1.65;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+
+.todo-editor:focus {
+  border-color: rgba(182, 93, 53, 0.42);
+  box-shadow: 0 0 0 4px rgba(182, 93, 53, 0.1);
+}
+
+.todo-editor:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(85, 97, 87, 0.62);
+}
+
+.todo-editor h2 {
+  margin: 22px 0 8px;
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.todo-editor p,
+.todo-editor ul,
+.todo-editor ol {
+  margin: 10px 0;
+}
+
+.todo-editor ul,
+.todo-editor ol {
+  padding-left: 1.35rem;
+}
+
+.todo-editor hr {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid rgba(53, 68, 58, 0.14);
+}
+
+.todo-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 34px;
+  margin: 8px 0;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(24, 32, 25, 0.04);
+}
+
+.todo-check-row input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 4px 0 0;
+  accent-color: var(--accent);
+}
+
+.todo-check-row span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.todo-check-row input:checked + span {
+  color: var(--text-subtle);
+  text-decoration: line-through;
 }
 
 .modal-stack > .panel:last-child {
@@ -1281,6 +1395,35 @@ body.has-cue-touch-drag {
   .modal-body {
     max-height: calc(100dvh - 38px);
     padding: 16px 18px 18px;
+  }
+
+  .todo-panel {
+    min-height: calc(100dvh - 72px);
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .todo-toolbar {
+    top: -16px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+
+  .todo-toolbar .ghost-button {
+    min-width: 0;
+    padding: 8px 5px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .todo-editor {
+    min-height: calc(100dvh - 250px);
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 0.96rem;
   }
 
   #practiceModal .modal-header {

@@ -3,7 +3,6 @@ const ALBUM_ART_ENDPOINT = "/api/album-art";
 const ALBUM_IMAGE_PROXY_ENDPOINT = "/api/album-image";
 const ALBUM_CACHE_KEY = "cue-sheet-audience-albums";
 const ALBUM_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const REFRESH_INTERVAL_MS = 30000;
 const SAVE_IMAGE_FILENAME = "cue-sheet-live.png";
 const EXPORT_FONT_FAMILY = "\"Pretendard\", \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif";
 const CUE_TYPE_SONG = "song";
@@ -19,7 +18,6 @@ const CUSTOM_ALBUM_ARTWORK_BY_TITLE = new Map([
   ],
 ]);
 
-const refreshButton = document.querySelector("#refreshButton");
 const liveStatus = document.querySelector("#liveStatus");
 const cueCount = document.querySelector("#cueCount");
 const emptyState = document.querySelector("#emptyState");
@@ -29,14 +27,9 @@ const saveImageButton = document.querySelector("#saveImageButton");
 const copyBrowserLinkButton = document.querySelector("#copyBrowserLinkButton");
 const browserGuideStatus = document.querySelector("#browserGuideStatus");
 
-let refreshTimer = null;
 let albumArtworkCache = readAlbumArtworkCache();
 let renderedCues = [];
 let saveImageInFlight = false;
-
-refreshButton?.addEventListener("click", () => {
-  loadAudienceCues({ manual: true });
-});
 
 saveImageButton?.addEventListener("click", () => {
   saveAudienceImage();
@@ -46,42 +39,14 @@ copyBrowserLinkButton?.addEventListener("click", () => {
   copyAudiencePageLink();
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    window.clearInterval(refreshTimer);
-    refreshTimer = null;
-    return;
-  }
-
-  loadAudienceCues();
-  startAutoRefresh();
-});
-
 bootstrap();
 
 function bootstrap() {
   document.body.classList.add("is-loading");
   loadAudienceCues();
-  startAutoRefresh();
 }
 
-function startAutoRefresh() {
-  if (refreshTimer) {
-    return;
-  }
-
-  refreshTimer = window.setInterval(() => {
-    loadAudienceCues();
-  }, REFRESH_INTERVAL_MS);
-}
-
-async function loadAudienceCues({ manual = false } = {}) {
-  if (manual) {
-    liveStatus.textContent = "최신 큐시트를 확인하는 중입니다.";
-  }
-
-  refreshButton.disabled = true;
-
+async function loadAudienceCues() {
   try {
     const response = await fetch(AUDIENCE_CUES_ENDPOINT, {
       cache: "no-store",
@@ -100,7 +65,6 @@ async function loadAudienceCues({ manual = false } = {}) {
     renderError(error.message);
   } finally {
     document.body.classList.remove("is-loading");
-    refreshButton.disabled = false;
   }
 }
 

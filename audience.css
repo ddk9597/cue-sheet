@@ -89,7 +89,6 @@ button {
   gap: 8px;
 }
 
-.refresh-button,
 .save-image-button {
   flex: 0 0 auto;
   min-height: 38px;
@@ -107,10 +106,6 @@ button {
   border-color: rgba(255, 250, 240, 0.28);
   color: #151d19;
   box-shadow: none;
-}
-
-.refresh-button:disabled {
-  opacity: 0.62;
 }
 
 .audience-shell {

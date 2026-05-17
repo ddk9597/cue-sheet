@@ -5,6 +5,7 @@ const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
 const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
+const TODO_STORAGE_KEY = "cue-sheet-todo-document";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
 const ELECTRIC_TUNING_FIELD = "electricTuning";
 const BASS_TUNING_FIELD = "bassTuning";
@@ -21,6 +22,12 @@ const CUE_TYPE_SONG = "song";
 const CUE_TYPE_INTERMISSION = "intermission";
 const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
+const TODO_DEFAULT_HTML = `
+  <h2>공연 준비</h2>
+  <div class="todo-check-row"><input type="checkbox"><span>필요한 할 일을 입력하세요.</span></div>
+  <div class="todo-check-row"><input type="checkbox"><span>체크 버튼으로 항목을 추가할 수 있습니다.</span></div>
+  <p>메모, 순서, 체크리스트를 자유롭게 섞어서 정리하세요.</p>
+`;
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
@@ -56,8 +63,12 @@ const tapTempoValue = document.querySelector("#tapTempoValue");
 const tapTempoStatus = document.querySelector("#tapTempoStatus");
 const practiceModal = document.querySelector("#practiceModal");
 const cueModal = document.querySelector("#cueModal");
+const todoModal = document.querySelector("#todoModal");
 const modalTriggers = document.querySelectorAll("[data-modal-target]");
 const modalCloseButtons = document.querySelectorAll("[data-modal-close]");
+const todoEditor = document.querySelector("#todoEditor");
+const todoStatus = document.querySelector("#todoStatus");
+const todoToolbarButtons = document.querySelectorAll("[data-todo-command]");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
 const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
 const practiceMonthSummary = document.querySelector("#practiceMonthSummary");
@@ -114,6 +125,7 @@ let selectedPracticeDate = getLocalDateKey(new Date());
 let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || new Date());
 let cueEntryMode = CUE_TYPE_SONG;
 let cueEntryRestoreTarget = openCueEntryButton;
+let todoSaveTimer = null;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -128,7 +140,7 @@ for (const closeButton of modalCloseButtons) {
   });
 }
 
-for (const modal of [practiceModal, cueModal]) {
+for (const modal of [practiceModal, cueModal, todoModal]) {
   if (!modal) {
     continue;
   }
@@ -143,6 +155,35 @@ for (const modal of [practiceModal, cueModal]) {
     syncModalState();
   });
 }
+
+for (const button of todoToolbarButtons) {
+  button.addEventListener("click", () => {
+    handleTodoCommand(button.dataset.todoCommand);
+  });
+}
+
+todoEditor?.addEventListener("input", () => {
+  scheduleTodoSave();
+});
+
+todoEditor?.addEventListener("change", (event) => {
+  if (event.target.matches(".todo-check-row input")) {
+    syncTodoCheckboxAttribute(event.target);
+    saveTodoDocument();
+  }
+});
+
+todoEditor?.addEventListener("paste", (event) => {
+  event.preventDefault();
+  insertTodoText(event.clipboardData?.getData("text/plain") || "");
+});
+
+todoEditor?.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+    event.preventDefault();
+    saveTodoDocument();
+  }
+});
 
 openCueEntryButton?.addEventListener("click", () => {
   openCueEntryOverlay({
@@ -568,6 +609,7 @@ window.addEventListener("pagehide", () => {
 bootstrap();
 
 async function bootstrap() {
+  loadTodoDocument();
   render();
   updateTapTempoState();
   updateAuthUi();
@@ -689,6 +731,11 @@ function openModalById(modalId, section = "") {
 
     if (modal === practiceModal) {
       practiceDateInput.focus();
+      return;
+    }
+
+    if (modal === todoModal) {
+      focusTodoEditor();
     }
   });
 }
@@ -722,6 +769,187 @@ function focusCueModalSection(section) {
 
   cueEditorPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   openCueEntryButton?.focus();
+}
+
+function loadTodoDocument() {
+  if (!todoEditor) {
+    return;
+  }
+
+  let saved = "";
+
+  try {
+    saved = window.localStorage.getItem(TODO_STORAGE_KEY) || "";
+  } catch {
+    saved = "";
+  }
+
+  todoEditor.innerHTML = saved || TODO_DEFAULT_HTML.trim();
+  normalizeTodoCheckboxes();
+  updateTodoStatus("자동 저장됩니다.");
+}
+
+function handleTodoCommand(command) {
+  if (!todoEditor) {
+    return;
+  }
+
+  focusTodoEditor();
+
+  if (command === "heading") {
+    insertTodoHtml("<h2>제목</h2><p><br></p>");
+  } else if (command === "check") {
+    insertTodoHtml('<div class="todo-check-row"><input type="checkbox"><span>새 할 일</span></div><p><br></p>');
+  } else if (command === "bullet") {
+    insertTodoHtml("<ul><li>항목</li></ul><p><br></p>");
+  } else if (command === "divider") {
+    insertTodoHtml("<hr><p><br></p>");
+  } else if (command === "clear") {
+    if (!window.confirm("할 일 목록을 초기화할까요?")) {
+      return;
+    }
+
+    todoEditor.innerHTML = TODO_DEFAULT_HTML.trim();
+    normalizeTodoCheckboxes();
+  }
+
+  saveTodoDocument();
+}
+
+function focusTodoEditor() {
+  if (!todoEditor) {
+    return;
+  }
+
+  todoEditor.focus();
+
+  if (!todoEditor.textContent.trim()) {
+    return;
+  }
+
+  const selection = window.getSelection();
+
+  if (selection?.rangeCount && todoEditor.contains(selection.anchorNode)) {
+    return;
+  }
+
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+
+  range.selectNodeContents(todoEditor);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function insertTodoText(text) {
+  if (!todoEditor) {
+    return;
+  }
+
+  const safeText = String(text || "");
+  const html = safeText
+    .split(/\r?\n/)
+    .map((line) => line ? `<p>${escapeHtml(line)}</p>` : "<p><br></p>")
+    .join("");
+
+  insertTodoHtml(html || "<p><br></p>");
+  saveTodoDocument();
+}
+
+function insertTodoHtml(html) {
+  const selection = window.getSelection();
+
+  if (!selection || !selection.rangeCount || !todoEditor.contains(selection.anchorNode)) {
+    todoEditor.append(...htmlToNodes(html));
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const nodes = htmlToNodes(html);
+  const lastNode = nodes[nodes.length - 1];
+
+  range.deleteContents();
+
+  for (const node of nodes) {
+    range.insertNode(node);
+    range.setStartAfter(node);
+  }
+
+  if (lastNode) {
+    range.setStartAfter(lastNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}
+
+function htmlToNodes(html) {
+  const template = document.createElement("template");
+
+  template.innerHTML = html;
+
+  return Array.from(template.content.childNodes);
+}
+
+function scheduleTodoSave() {
+  updateTodoStatus("저장 중...");
+  window.clearTimeout(todoSaveTimer);
+  todoSaveTimer = window.setTimeout(() => {
+    saveTodoDocument();
+  }, 350);
+}
+
+function saveTodoDocument() {
+  if (!todoEditor) {
+    return;
+  }
+
+  normalizeTodoCheckboxes();
+
+  try {
+    window.localStorage.setItem(TODO_STORAGE_KEY, todoEditor.innerHTML);
+    updateTodoStatus("저장됨");
+  } catch {
+    updateTodoStatus("저장하지 못했습니다.");
+  }
+}
+
+function normalizeTodoCheckboxes() {
+  if (!todoEditor) {
+    return;
+  }
+
+  for (const checkbox of todoEditor.querySelectorAll('.todo-check-row input[type="checkbox"]')) {
+    syncTodoCheckboxAttribute(checkbox);
+  }
+}
+
+function syncTodoCheckboxAttribute(checkbox) {
+  if (checkbox.checked) {
+    checkbox.setAttribute("checked", "");
+    return;
+  }
+
+  checkbox.removeAttribute("checked");
+}
+
+function updateTodoStatus(message) {
+  if (todoStatus) {
+    todoStatus.textContent = message;
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function openCueEntryOverlay(options = {}) {
