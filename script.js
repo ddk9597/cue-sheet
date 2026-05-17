@@ -24,8 +24,8 @@ const TAP_TEMPO_RESET_MS = 2500;
 const TAP_TEMPO_MAX_TAPS = 8;
 const TODO_DEFAULT_HTML = `
   <h2>공연 준비</h2>
-  <div class="todo-check-row"><input type="checkbox"><span>필요한 할 일을 입력하세요.</span></div>
-  <div class="todo-check-row"><input type="checkbox"><span>체크 버튼으로 항목을 추가할 수 있습니다.</span></div>
+  <div class="todo-check-row">${getTodoDragHandleHtml()}<input type="checkbox"><span>필요한 할 일을 입력하세요.</span></div>
+  <div class="todo-check-row">${getTodoDragHandleHtml()}<input type="checkbox"><span>체크 버튼으로 항목을 추가할 수 있습니다.</span></div>
   <p>메모, 순서, 체크리스트를 자유롭게 섞어서 정리하세요.</p>
 `;
 const STORAGE_MODE_LOADING = "loading";
@@ -126,6 +126,9 @@ let visiblePracticeMonth = startOfMonth(parseDateKey(selectedPracticeDate) || ne
 let cueEntryMode = CUE_TYPE_SONG;
 let cueEntryRestoreTarget = openCueEntryButton;
 let todoSaveTimer = null;
+let todoSelectionRange = null;
+let todoInteractDragState = null;
+let todoInteractInitialized = false;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -157,12 +160,21 @@ for (const modal of [practiceModal, cueModal, todoModal]) {
 }
 
 for (const button of todoToolbarButtons) {
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+  });
+
   button.addEventListener("click", () => {
     handleTodoCommand(button.dataset.todoCommand);
   });
 }
 
+document.addEventListener("selectionchange", () => {
+  saveTodoSelection();
+});
+
 todoEditor?.addEventListener("input", () => {
+  saveTodoSelection();
   scheduleTodoSave();
 });
 
@@ -179,9 +191,27 @@ todoEditor?.addEventListener("paste", (event) => {
 });
 
 todoEditor?.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+  if (!(event.metaKey || event.ctrlKey)) {
+    return;
+  }
+
+  const key = event.key.toLowerCase();
+
+  if (key === "a") {
+    event.preventDefault();
+    selectTodoEditorContents();
+    return;
+  }
+
+  if (key === "s") {
     event.preventDefault();
     saveTodoDocument();
+  }
+});
+
+todoEditor?.addEventListener("contextmenu", (event) => {
+  if (todoInteractDragState) {
+    event.preventDefault();
   }
 });
 
@@ -592,6 +622,7 @@ cueList.addEventListener("contextmenu", (event) => {
 });
 
 setupCueInteractDrag();
+setupTodoInteractDrag();
 
 window.addEventListener("beforeunload", (event) => {
   if (!hasPendingChanges()) {
@@ -794,6 +825,7 @@ function handleTodoCommand(command) {
     return;
   }
 
+  restoreTodoSelection();
   focusTodoEditor();
 
   if (command === "heading") {
@@ -814,22 +846,57 @@ function handleTodoCommand(command) {
   }
 
   saveTodoDocument();
+  saveTodoSelection();
+}
+
+function getTodoDragHandleHtml() {
+  return [
+    '<button class="todo-check-drag-handle" type="button" contenteditable="false" aria-label="할 일 순서 이동" title="드래그하여 순서 이동">',
+    '<span class="todo-drag-dots" aria-hidden="true"><span></span><span></span><span></span></span>',
+    "</button>",
+  ].join("");
 }
 
 function insertTodoCheckRow() {
-  const html = '<div class="todo-check-row"><input type="checkbox"><span>새 할 일</span></div><p><br></p>';
+  const html = `<div class="todo-check-row">${getTodoDragHandleHtml()}<input type="checkbox"><span>새 할 일</span></div><p><br></p>`;
   const activeCheckRow = getActiveTodoCheckRow();
-
-  if (!activeCheckRow) {
-    insertTodoHtml(html);
-    return;
-  }
-
   const nodes = htmlToNodes(html);
   const firstNode = nodes[0];
 
+  if (!activeCheckRow) {
+    insertTodoHtmlAtSelection(nodes);
+    selectTodoNodeText(firstNode);
+    return;
+  }
+
   activeCheckRow.after(...nodes);
   selectTodoNodeText(firstNode);
+}
+
+function insertTodoHtmlAtSelection(nodes) {
+  const selection = window.getSelection();
+
+  if (!selection || !selection.rangeCount || !todoEditor.contains(selection.anchorNode)) {
+    todoEditor.append(...nodes);
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const lastNode = nodes[nodes.length - 1];
+
+  range.deleteContents();
+
+  for (const node of nodes) {
+    range.insertNode(node);
+    range.setStartAfter(node);
+  }
+
+  if (lastNode) {
+    range.setStartAfter(lastNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
 }
 
 function getActiveTodoCheckRow() {
@@ -866,6 +933,57 @@ function selectTodoNodeText(node) {
   range.selectNodeContents(target);
   selection.removeAllRanges();
   selection.addRange(range);
+  saveTodoSelection();
+}
+
+function selectTodoEditorContents() {
+  if (!todoEditor) {
+    return;
+  }
+
+  const selection = window.getSelection();
+
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+
+  todoEditor.focus();
+  range.selectNodeContents(todoEditor);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  saveTodoSelection();
+}
+
+function saveTodoSelection() {
+  if (!todoEditor) {
+    return;
+  }
+
+  const selection = window.getSelection();
+
+  if (!selection?.rangeCount || !todoEditor.contains(selection.anchorNode)) {
+    return;
+  }
+
+  todoSelectionRange = selection.getRangeAt(0).cloneRange();
+}
+
+function restoreTodoSelection() {
+  if (!todoSelectionRange || !todoEditor) {
+    return;
+  }
+
+  const selection = window.getSelection();
+
+  if (!selection) {
+    return;
+  }
+
+  todoEditor.focus();
+  selection.removeAllRanges();
+  selection.addRange(todoSelectionRange.cloneRange());
 }
 
 function focusTodoEditor() {
@@ -913,30 +1031,9 @@ function insertTodoText(text) {
 }
 
 function insertTodoHtml(html) {
-  const selection = window.getSelection();
-
-  if (!selection || !selection.rangeCount || !todoEditor.contains(selection.anchorNode)) {
-    todoEditor.append(...htmlToNodes(html));
-    return;
-  }
-
-  const range = selection.getRangeAt(0);
   const nodes = htmlToNodes(html);
-  const lastNode = nodes[nodes.length - 1];
 
-  range.deleteContents();
-
-  for (const node of nodes) {
-    range.insertNode(node);
-    range.setStartAfter(node);
-  }
-
-  if (lastNode) {
-    range.setStartAfter(lastNode);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
+  insertTodoHtmlAtSelection(nodes);
 }
 
 function htmlToNodes(html) {
@@ -975,8 +1072,30 @@ function normalizeTodoCheckboxes() {
     return;
   }
 
-  for (const checkbox of todoEditor.querySelectorAll('.todo-check-row input[type="checkbox"]')) {
+  for (const row of todoEditor.querySelectorAll(".todo-check-row")) {
+    normalizeTodoCheckRow(row);
+  }
+}
+
+function normalizeTodoCheckRow(row) {
+  if (!row.querySelector(".todo-check-drag-handle")) {
+    row.insertAdjacentHTML("afterbegin", getTodoDragHandleHtml());
+  }
+
+  const handle = row.querySelector(".todo-check-drag-handle");
+  const checkbox = row.querySelector('input[type="checkbox"]');
+  const text = [...row.querySelectorAll("span")]
+    .find((span) => !span.closest(".todo-check-drag-handle"));
+
+  handle?.setAttribute("contenteditable", "false");
+  checkbox?.setAttribute("contenteditable", "false");
+
+  if (checkbox) {
     syncTodoCheckboxAttribute(checkbox);
+  }
+
+  if (text && !text.textContent.trim()) {
+    text.textContent = "새 할 일";
   }
 }
 
@@ -2708,6 +2827,138 @@ function syncCueOrderWithDom() {
 
   cues = nextCues;
   updateActionState();
+}
+
+function setupTodoInteractDrag() {
+  if (todoInteractInitialized) {
+    return;
+  }
+
+  if (typeof window.interact !== "function") {
+    console.warn("Interact.js가 로드되지 않아 할 일 드래그 정렬을 사용할 수 없습니다.");
+    return;
+  }
+
+  todoInteractInitialized = true;
+
+  window.interact(".todo-check-drag-handle").draggable({
+    autoScroll: true,
+    listeners: {
+      start: startTodoInteractDrag,
+      move: moveTodoInteractDrag,
+      end: finishTodoInteractDrag,
+    },
+  });
+}
+
+function startTodoInteractDrag(event) {
+  const item = event.target.closest(".todo-check-row");
+  const checkRows = todoEditor ? [...todoEditor.querySelectorAll(".todo-check-row")] : [];
+
+  if (!item || !todoEditor?.contains(item) || checkRows.length < 2) {
+    clearTodoInteractDragState();
+    return;
+  }
+
+  clearTodoInteractDragState();
+  saveTodoSelection();
+
+  const box = item.getBoundingClientRect();
+  const pointer = getInteractPointer(event);
+  const pointerX = Number.isFinite(pointer.x) ? pointer.x : box.left + (box.width / 2);
+  const pointerY = Number.isFinite(pointer.y) ? pointer.y : box.top + (box.height / 2);
+  const ghost = item.cloneNode(true);
+
+  ghost.classList.add("todo-touch-drag-ghost");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.style.left = `${box.left}px`;
+  ghost.style.top = `${box.top}px`;
+  ghost.style.width = `${box.width}px`;
+  ghost.style.height = `${box.height}px`;
+
+  const dragLayer = item.closest("dialog[open]") || document.body;
+
+  dragLayer.appendChild(ghost);
+  item.classList.add("is-touch-dragging");
+  document.body.classList.add("has-todo-touch-drag");
+
+  todoInteractDragState = {
+    item,
+    ghost,
+    offsetX: pointerX - box.left,
+    offsetY: pointerY - box.top,
+    pointerX,
+    pointerY,
+    translateX: 0,
+    translateY: 0,
+  };
+}
+
+function moveTodoInteractDrag(event) {
+  const state = todoInteractDragState;
+
+  if (!state?.item.isConnected) {
+    clearTodoInteractDragState();
+    return;
+  }
+
+  const pointer = getInteractPointer(event);
+  const fallbackDeltaX = Number.isFinite(pointer.x) ? pointer.x - state.pointerX : 0;
+  const fallbackDeltaY = Number.isFinite(pointer.y) ? pointer.y - state.pointerY : 0;
+  const deltaX = getInteractDelta(event, "x", fallbackDeltaX);
+  const deltaY = getInteractDelta(event, "y", fallbackDeltaY);
+
+  state.translateX += deltaX;
+  state.translateY += deltaY;
+  state.pointerX = Number.isFinite(pointer.x) ? pointer.x : state.pointerX + deltaX;
+  state.pointerY = Number.isFinite(pointer.y) ? pointer.y : state.pointerY + deltaY;
+  state.ghost.style.transform = `translate3d(${state.translateX}px, ${state.translateY}px, 0)`;
+
+  const nextItem = getTodoDragAfterElement(todoEditor, state.pointerY);
+
+  if (!nextItem) {
+    todoEditor.appendChild(state.item);
+    return;
+  }
+
+  todoEditor.insertBefore(state.item, nextItem);
+}
+
+function finishTodoInteractDrag() {
+  if (todoInteractDragState) {
+    saveTodoDocument();
+  }
+
+  clearTodoInteractDragState();
+}
+
+function clearTodoInteractDragState() {
+  if (!todoInteractDragState) {
+    return;
+  }
+
+  todoInteractDragState.item?.classList.remove("is-touch-dragging");
+  todoInteractDragState.ghost?.remove();
+  document.body.classList.remove("has-todo-touch-drag");
+  todoInteractDragState = null;
+}
+
+function getTodoDragAfterElement(container, pointerY) {
+  const items = [...container.querySelectorAll(".todo-check-row:not(.is-touch-dragging)")];
+  let closestItem = null;
+  let closestOffset = Number.NEGATIVE_INFINITY;
+
+  for (const item of items) {
+    const box = item.getBoundingClientRect();
+    const offset = pointerY - box.top - (box.height / 2);
+
+    if (offset < 0 && offset > closestOffset) {
+      closestOffset = offset;
+      closestItem = item;
+    }
+  }
+
+  return closestItem;
 }
 
 async function safeReadJson(response) {
