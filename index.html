@@ -208,6 +208,20 @@
               <p id="todoStatus" class="save-status" aria-live="polite">자동 저장됩니다.</p>
             </div>
           </div>
+          <form id="todoLockForm" class="todo-lock-form" autocomplete="off">
+            <label class="field todo-lock-field" for="todoPasswordInput">
+              <span>편집 비밀번호</span>
+              <input
+                id="todoPasswordInput"
+                name="todoPassword"
+                type="password"
+                inputmode="numeric"
+                autocomplete="current-password"
+                placeholder="비밀번호"
+              >
+            </label>
+            <button id="todoUnlockButton" class="primary-button" type="submit">편집 시작</button>
+          </form>
           <div class="todo-toolbar" role="toolbar" aria-label="할 일 편집 도구">
             <button class="ghost-button" type="button" data-todo-command="heading">제목</button>
             <button class="ghost-button" type="button" data-todo-command="check">체크</button>

@@ -5,6 +5,10 @@ function getSavePassword() {
   return String(process.env.SAVE_PASSWORD || DEFAULT_SAVE_PASSWORD);
 }
 
+function isSavePasswordValid(password) {
+  return String(password || "") === getSavePassword();
+}
+
 function getClientIp(request) {
   const forwardedFor = request.headers["x-forwarded-for"];
   const realIp = request.headers["x-real-ip"];
@@ -21,7 +25,7 @@ async function validateSavePassword(sql, request, password) {
   const clientIp = getClientIp(request);
   const submittedPassword = String(password || "");
 
-  if (submittedPassword === getSavePassword()) {
+  if (isSavePasswordValid(submittedPassword)) {
     await clearFailedAttempts(sql, clientIp);
     return {
       ok: true,
@@ -76,5 +80,6 @@ async function clearFailedAttempts(sql, clientIp) {
 
 module.exports = {
   getClientIp,
+  isSavePasswordValid,
   validateSavePassword,
 };

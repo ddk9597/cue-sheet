@@ -448,6 +448,26 @@ select {
   font-size: 0.86rem;
 }
 
+.todo-lock-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(53, 68, 58, 0.12);
+  border-radius: 18px;
+  background: rgba(24, 32, 25, 0.04);
+}
+
+.todo-lock-form[hidden] {
+  display: none;
+}
+
+.todo-lock-form .primary-button {
+  min-height: 50px;
+  white-space: nowrap;
+}
+
 .todo-editor {
   min-height: min(56dvh, 620px);
   padding: 20px;
@@ -459,6 +479,15 @@ select {
   line-height: 1.65;
   outline: none;
   overflow-wrap: anywhere;
+}
+
+.todo-editor.is-locked {
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.todo-editor.is-locked .todo-check-drag-handle,
+.todo-editor.is-locked .todo-check-row input {
+  cursor: default;
 }
 
 .todo-editor:focus {
@@ -1473,6 +1502,15 @@ body.has-cue-touch-drag {
     padding: 8px 5px;
     font-size: 0.76rem;
     white-space: nowrap;
+  }
+
+  .todo-lock-form {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .todo-lock-form .primary-button {
+    width: 100%;
   }
 
   .todo-editor {

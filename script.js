@@ -3,6 +3,8 @@ const PRACTICE_API_ENDPOINT = "/api/practice";
 const AUTH_SESSION_ENDPOINT = "/api/auth/session";
 const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
+const TODO_AUTH_ENDPOINT = "/api/todo-auth";
+const TODOS_API_ENDPOINT = "/api/todos";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
 const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
 const TODO_STORAGE_KEY = "cue-sheet-todo-document";
@@ -68,6 +70,9 @@ const modalTriggers = document.querySelectorAll("[data-modal-target]");
 const modalCloseButtons = document.querySelectorAll("[data-modal-close]");
 const todoEditor = document.querySelector("#todoEditor");
 const todoStatus = document.querySelector("#todoStatus");
+const todoLockForm = document.querySelector("#todoLockForm");
+const todoPasswordInput = document.querySelector("#todoPasswordInput");
+const todoUnlockButton = document.querySelector("#todoUnlockButton");
 const todoToolbarButtons = document.querySelectorAll("[data-todo-command]");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
 const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
@@ -129,6 +134,13 @@ let todoSaveTimer = null;
 let todoSelectionRange = null;
 let todoInteractDragState = null;
 let todoInteractInitialized = false;
+let todoEditUnlocked = false;
+let todoUnlockInFlight = false;
+let todoEditPassword = "";
+let todoSaveInFlight = false;
+let todoPendingSave = false;
+let todoLastSavedHtml = "";
+let todoNeedsInitialDbSave = false;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -169,17 +181,32 @@ for (const button of todoToolbarButtons) {
   });
 }
 
+todoLockForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  unlockTodoEditor();
+});
+
 document.addEventListener("selectionchange", () => {
   saveTodoSelection();
 });
 
 todoEditor?.addEventListener("input", () => {
+  if (!requireTodoEditAccess()) {
+    return;
+  }
+
   saveTodoSelection();
   scheduleTodoSave();
 });
 
 todoEditor?.addEventListener("change", (event) => {
   if (event.target.matches(".todo-check-row input")) {
+    if (!requireTodoEditAccess()) {
+      event.preventDefault();
+      event.target.checked = event.target.hasAttribute("checked");
+      return;
+    }
+
     syncTodoCheckboxAttribute(event.target);
     saveTodoDocument();
   }
@@ -187,10 +214,24 @@ todoEditor?.addEventListener("change", (event) => {
 
 todoEditor?.addEventListener("paste", (event) => {
   event.preventDefault();
+
+  if (!requireTodoEditAccess()) {
+    return;
+  }
+
   insertTodoText(event.clipboardData?.getData("text/plain") || "");
 });
 
 todoEditor?.addEventListener("keydown", (event) => {
+  if (!todoEditUnlocked) {
+    if (event.key.length === 1 || event.key === "Backspace" || event.key === "Delete") {
+      event.preventDefault();
+      requireTodoEditAccess();
+    }
+
+    return;
+  }
+
   if (!(event.metaKey || event.ctrlKey)) {
     return;
   }
@@ -640,7 +681,7 @@ window.addEventListener("pagehide", () => {
 bootstrap();
 
 async function bootstrap() {
-  loadTodoDocument();
+  await loadTodoDocument();
   render();
   updateTapTempoState();
   updateAuthUi();
@@ -766,6 +807,11 @@ function openModalById(modalId, section = "") {
     }
 
     if (modal === todoModal) {
+      if (!todoEditUnlocked) {
+        todoPasswordInput?.focus();
+        return;
+      }
+
       focusTodoEditor();
     }
   });
@@ -802,26 +848,175 @@ function focusCueModalSection(section) {
   openCueEntryButton?.focus();
 }
 
-function loadTodoDocument() {
+async function loadTodoDocument() {
   if (!todoEditor) {
     return;
   }
 
-  let saved = "";
+  updateTodoStatus("DB에서 할 일 목록을 불러오는 중...");
+
+  const localHtml = readLegacyTodoDocument();
 
   try {
-    saved = window.localStorage.getItem(TODO_STORAGE_KEY) || "";
+    const response = await fetch(TODOS_API_ENDPOINT, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      throw new Error(payload.message || "DB에서 할 일 목록을 불러오지 못했습니다.");
+    }
+
+    const remoteHtml = typeof payload.html === "string" ? payload.html : "";
+    const nextHtml = remoteHtml || localHtml || TODO_DEFAULT_HTML.trim();
+
+    todoEditor.innerHTML = nextHtml;
+    todoLastSavedHtml = remoteHtml;
+    todoNeedsInitialDbSave = !remoteHtml && Boolean(localHtml);
+    normalizeTodoCheckboxes();
+    syncTodoEditAccess({ updateStatus: false });
+    updateTodoStatus(todoNeedsInitialDbSave
+      ? "기존 로컬 할 일을 불러왔습니다. 비밀번호 입력 후 DB에 저장됩니다."
+      : "비밀번호 입력 후 편집할 수 있습니다.");
   } catch {
-    saved = "";
+    todoEditor.innerHTML = localHtml || TODO_DEFAULT_HTML.trim();
+    todoLastSavedHtml = "";
+    todoNeedsInitialDbSave = false;
+    normalizeTodoCheckboxes();
+    syncTodoEditAccess({ updateStatus: false });
+    updateTodoStatus(localHtml
+      ? "DB 연결에 실패해 이 브라우저의 로컬 할 일을 표시합니다."
+      : "DB 연결에 실패했습니다. 비밀번호 입력 후에도 저장되지 않을 수 있습니다.");
+  }
+}
+
+function readLegacyTodoDocument() {
+  try {
+    return window.localStorage.getItem(TODO_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function clearLegacyTodoDocument() {
+  try {
+    window.localStorage.removeItem(TODO_STORAGE_KEY);
+  } catch {
+    // DB is now the source of truth; local cleanup is best effort.
+  }
+}
+
+async function unlockTodoEditor() {
+  if (!todoPasswordInput || todoUnlockInFlight) {
+    return;
   }
 
-  todoEditor.innerHTML = saved || TODO_DEFAULT_HTML.trim();
-  normalizeTodoCheckboxes();
-  updateTodoStatus("자동 저장됩니다.");
+  const password = todoPasswordInput.value.trim();
+
+  if (!password) {
+    updateTodoStatus("비밀번호를 입력하세요.");
+    todoPasswordInput.focus();
+    return;
+  }
+
+  todoUnlockInFlight = true;
+  syncTodoEditAccess({ updateStatus: false });
+  updateTodoStatus("비밀번호 확인 중...");
+
+  try {
+    const response = await fetch(TODO_AUTH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      updateTodoStatus(payload.message || "비밀번호가 맞지 않습니다.");
+      todoPasswordInput.select();
+      return;
+    }
+
+    todoEditUnlocked = true;
+    todoEditPassword = password;
+    todoPasswordInput.value = "";
+    updateTodoStatus("편집 가능합니다.");
+  } catch {
+    updateTodoStatus("비밀번호 확인을 완료하지 못했습니다.");
+  } finally {
+    todoUnlockInFlight = false;
+    syncTodoEditAccess({ updateStatus: false });
+
+    if (todoEditUnlocked) {
+      focusTodoEditor();
+      if (todoNeedsInitialDbSave) {
+        saveTodoDocument();
+      }
+    } else {
+      todoPasswordInput.focus();
+    }
+  }
+}
+
+function requireTodoEditAccess() {
+  if (todoEditUnlocked) {
+    return true;
+  }
+
+  updateTodoStatus("비밀번호 입력 후 편집할 수 있습니다.");
+  todoPasswordInput?.focus();
+  return false;
+}
+
+function syncTodoEditAccess({ updateStatus = true } = {}) {
+  const locked = !todoEditUnlocked;
+
+  if (todoEditor) {
+    todoEditor.classList.toggle("is-locked", locked);
+    todoEditor.setAttribute("contenteditable", locked ? "false" : "true");
+    todoEditor.setAttribute("aria-readonly", locked ? "true" : "false");
+
+    for (const checkbox of todoEditor.querySelectorAll('.todo-check-row input[type="checkbox"]')) {
+      checkbox.disabled = locked;
+    }
+
+    for (const handle of todoEditor.querySelectorAll(".todo-check-drag-handle")) {
+      handle.disabled = locked;
+    }
+  }
+
+  if (todoLockForm) {
+    todoLockForm.hidden = !locked;
+  }
+
+  if (todoPasswordInput) {
+    todoPasswordInput.disabled = todoUnlockInFlight;
+  }
+
+  if (todoUnlockButton) {
+    todoUnlockButton.disabled = todoUnlockInFlight;
+  }
+
+  for (const button of todoToolbarButtons) {
+    button.disabled = locked;
+  }
+
+  if (updateStatus) {
+    updateTodoStatus(locked ? "비밀번호 입력 후 편집할 수 있습니다." : "DB에 자동 저장됩니다.");
+  }
 }
 
 function handleTodoCommand(command) {
   if (!todoEditor) {
+    return;
+  }
+
+  if (!requireTodoEditAccess()) {
     return;
   }
 
@@ -1020,6 +1215,10 @@ function insertTodoText(text) {
     return;
   }
 
+  if (!requireTodoEditAccess()) {
+    return;
+  }
+
   const safeText = String(text || "");
   const html = safeText
     .split(/\r?\n/)
@@ -1045,25 +1244,84 @@ function htmlToNodes(html) {
 }
 
 function scheduleTodoSave() {
-  updateTodoStatus("저장 중...");
+  updateTodoStatus("DB 저장 대기 중...");
   window.clearTimeout(todoSaveTimer);
   todoSaveTimer = window.setTimeout(() => {
     saveTodoDocument();
   }, 350);
 }
 
-function saveTodoDocument() {
+async function saveTodoDocument() {
   if (!todoEditor) {
     return;
   }
 
+  if (!todoEditUnlocked) {
+    return;
+  }
+
   normalizeTodoCheckboxes();
+  syncTodoEditAccess({ updateStatus: false });
+  const html = todoEditor.innerHTML;
+
+  if (html === todoLastSavedHtml && !todoNeedsInitialDbSave) {
+    updateTodoStatus("DB 저장됨");
+    return;
+  }
+
+  if (!todoEditPassword) {
+    todoEditUnlocked = false;
+    syncTodoEditAccess({ updateStatus: false });
+    updateTodoStatus("비밀번호 입력 후 저장할 수 있습니다.");
+    todoPasswordInput?.focus();
+    return;
+  }
+
+  if (todoSaveInFlight) {
+    todoPendingSave = true;
+    return;
+  }
+
+  todoSaveInFlight = true;
+  updateTodoStatus("DB에 저장 중...");
 
   try {
-    window.localStorage.setItem(TODO_STORAGE_KEY, todoEditor.innerHTML);
-    updateTodoStatus("저장됨");
+    const response = await fetch(TODOS_API_ENDPOINT, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        html,
+        password: todoEditPassword,
+      }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 429) {
+        todoEditUnlocked = false;
+        todoEditPassword = "";
+        syncTodoEditAccess({ updateStatus: false });
+      }
+
+      updateTodoStatus(payload.message || "DB에 저장하지 못했습니다.");
+      return;
+    }
+
+    todoLastSavedHtml = typeof payload.html === "string" ? payload.html : html;
+    todoNeedsInitialDbSave = false;
+    clearLegacyTodoDocument();
+    updateTodoStatus("DB 저장됨");
   } catch {
-    updateTodoStatus("저장하지 못했습니다.");
+    updateTodoStatus("DB에 저장하지 못했습니다.");
+  } finally {
+    todoSaveInFlight = false;
+
+    if (todoPendingSave) {
+      todoPendingSave = false;
+      saveTodoDocument();
+    }
   }
 }
 
@@ -1088,6 +1346,7 @@ function normalizeTodoCheckRow(row) {
     .find((span) => !span.closest(".todo-check-drag-handle"));
 
   handle?.setAttribute("contenteditable", "false");
+  handle?.setAttribute("draggable", "false");
   checkbox?.setAttribute("contenteditable", "false");
 
   if (checkbox) {
@@ -2853,6 +3112,11 @@ function setupTodoInteractDrag() {
 
 function startTodoInteractDrag(event) {
   event.preventDefault?.();
+
+  if (!requireTodoEditAccess()) {
+    clearTodoInteractDragState();
+    return;
+  }
 
   const item = event.target.closest(".todo-check-row");
   const checkRows = todoEditor ? [...todoEditor.querySelectorAll(".todo-check-row")] : [];
