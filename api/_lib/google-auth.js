@@ -29,16 +29,20 @@ async function verifyGoogleCredential(credential) {
     audience: clientId,
   });
   const payload = ticket.getPayload();
+  const googleSub = String(payload?.sub || "").trim();
   const email = String(payload?.email || "").trim().toLowerCase();
 
-  if (!email || payload?.email_verified !== true) {
+  if (!googleSub || !email || payload?.email_verified !== true) {
     const error = new Error("Google 계정 이메일을 확인할 수 없습니다.");
     error.statusCode = 401;
     throw error;
   }
 
   return {
+    googleSub,
     email,
+    name: String(payload?.name || "").trim(),
+    pictureUrl: String(payload?.picture || "").trim(),
   };
 }
 

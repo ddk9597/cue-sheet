@@ -2,6 +2,8 @@ const CUES_API_ENDPOINT = "/api/cues";
 const PRACTICE_API_ENDPOINT = "/api/practice";
 const AUTH_SESSION_ENDPOINT = "/api/auth/session";
 const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
+const AUTH_EMAIL_START_ENDPOINT = "/api/auth/email/start";
+const AUTH_EMAIL_VERIFY_ENDPOINT = "/api/auth/email/verify";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
 const TODO_AUTH_ENDPOINT = "/api/todo-auth";
 const TODOS_API_ENDPOINT = "/api/todos";
@@ -36,6 +38,11 @@ const STORAGE_MODE_LOCAL = "local";
 const authTitle = document.querySelector("#authTitle");
 const authStatus = document.querySelector("#authStatus");
 const googleSignInButton = document.querySelector("#googleSignInButton");
+const emailAuthForm = document.querySelector("#emailAuthForm");
+const emailAuthInput = document.querySelector("#emailAuthInput");
+const emailAuthCodeInput = document.querySelector("#emailAuthCodeInput");
+const emailAuthCodeButton = document.querySelector("#emailAuthCodeButton");
+const emailAuthVerifyButton = document.querySelector("#emailAuthVerifyButton");
 const authAccount = document.querySelector("#authAccount");
 const authEmailLabel = document.querySelector("#authEmailLabel");
 const logoutButton = document.querySelector("#logoutButton");
@@ -103,10 +110,12 @@ let authSession = {
   authenticated: false,
   email: "",
   databaseConfigured: false,
+  googleLoginConfigured: false,
   emailLoginConfigured: false,
   googleClientId: "",
 };
 let authInFlight = false;
+let emailAuthInFlight = false;
 let authNotice = "";
 let googleButtonRenderedForClientId = "";
 let googleButtonRenderRetry = 0;
@@ -298,6 +307,19 @@ window.handleGoogleCredentialResponse = handleGoogleCredentialResponse;
 
 logoutButton?.addEventListener("click", async () => {
   await logoutAuthSession();
+});
+
+emailAuthForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  requestEmailAuthCode();
+});
+
+emailAuthVerifyButton?.addEventListener("click", () => {
+  verifyEmailAuthCode();
+});
+
+emailAuthCodeInput?.addEventListener("input", () => {
+  emailAuthCodeInput.value = emailAuthCodeInput.value.replace(/\D/g, "").slice(0, 6);
 });
 
 cueForm.addEventListener("submit", (event) => {
@@ -2012,6 +2034,7 @@ async function loadAuthSession() {
       authenticated: false,
       email: "",
       databaseConfigured: false,
+      googleLoginConfigured: false,
       emailLoginConfigured: false,
       googleClientId: "",
       message: "로그인 상태를 확인하지 못했습니다.",
@@ -2055,7 +2078,8 @@ async function handleGoogleCredentialResponse(googleResponse) {
     authSession = normalizeAuthSession({
       ...payload,
       databaseConfigured: true,
-      emailLoginConfigured: true,
+      googleLoginConfigured: true,
+      emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
     });
     authNotice = "로그인되었습니다.";
@@ -2064,6 +2088,105 @@ async function handleGoogleCredentialResponse(googleResponse) {
     authNotice = "로그인 처리를 완료하지 못했습니다.";
   } finally {
     authInFlight = false;
+    updateAuthUi();
+  }
+}
+
+async function requestEmailAuthCode() {
+  if (emailAuthInFlight || authSession.authenticated) {
+    return;
+  }
+
+  const email = normalizeEmail(emailAuthInput?.value || "");
+
+  if (!isValidEmail(email)) {
+    authNotice = "이메일 주소를 확인해 주세요.";
+    updateAuthUi();
+    emailAuthInput?.focus();
+    return;
+  }
+
+  emailAuthInFlight = true;
+  authNotice = "인증코드를 보내는 중입니다.";
+  updateAuthUi();
+
+  try {
+    const response = await fetch(AUTH_EMAIL_START_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      authNotice = payload.message || "인증코드를 보내지 못했습니다.";
+      return;
+    }
+
+    emailAuthInput.value = email;
+    emailAuthCodeInput.value = "";
+    authNotice = "인증코드를 보냈습니다. 메일함을 확인해 주세요.";
+    emailAuthCodeInput?.focus();
+  } catch {
+    authNotice = "인증코드를 보내지 못했습니다.";
+  } finally {
+    emailAuthInFlight = false;
+    updateAuthUi();
+  }
+}
+
+async function verifyEmailAuthCode() {
+  if (emailAuthInFlight || authSession.authenticated) {
+    return;
+  }
+
+  const email = normalizeEmail(emailAuthInput?.value || "");
+  const code = String(emailAuthCodeInput?.value || "").replace(/\D/g, "").slice(0, 6);
+
+  if (!isValidEmail(email) || code.length !== 6) {
+    authNotice = "이메일과 6자리 인증코드를 확인해 주세요.";
+    updateAuthUi();
+    (isValidEmail(email) ? emailAuthCodeInput : emailAuthInput)?.focus();
+    return;
+  }
+
+  emailAuthInFlight = true;
+  authNotice = "인증코드를 확인하는 중입니다.";
+  updateAuthUi();
+
+  try {
+    const response = await fetch(AUTH_EMAIL_VERIFY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email, code }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      authNotice = payload.message || "이메일 인증에 실패했습니다.";
+      return;
+    }
+
+    authSession = normalizeAuthSession({
+      ...payload,
+      databaseConfigured: true,
+      googleLoginConfigured: authSession.googleLoginConfigured,
+      emailLoginConfigured: authSession.emailLoginConfigured,
+      googleClientId: authSession.googleClientId,
+    });
+    emailAuthCodeInput.value = "";
+    authNotice = "로그인되었습니다.";
+    await initializeStorage();
+  } catch {
+    authNotice = "이메일 인증을 완료하지 못했습니다.";
+  } finally {
+    emailAuthInFlight = false;
     updateAuthUi();
   }
 }
@@ -2097,6 +2220,7 @@ async function logoutAuthSession() {
       authenticated: false,
       email: "",
       databaseConfigured: authSession.databaseConfigured,
+      googleLoginConfigured: authSession.googleLoginConfigured,
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
     };
@@ -2116,6 +2240,7 @@ function normalizeAuthSession(value) {
     authenticated: Boolean(value?.authenticated),
     email: normalizeEmail(value?.email),
     databaseConfigured: Boolean(value?.databaseConfigured),
+    googleLoginConfigured: Boolean(value?.googleLoginConfigured),
     emailLoginConfigured: Boolean(value?.emailLoginConfigured),
     googleClientId: String(value?.googleClientId || "").trim(),
     message: typeof value?.message === "string" ? value.message : "",
@@ -2805,7 +2930,7 @@ function updateActionState(saved = false) {
 }
 
 function renderGoogleSignInButton() {
-  const configured = authSession.databaseConfigured && authSession.emailLoginConfigured;
+  const configured = authSession.databaseConfigured && authSession.googleLoginConfigured;
   const clientId = authSession.googleClientId;
 
   if (!googleSignInButton || !configured || authSession.authenticated || !clientId) {
@@ -2843,13 +2968,29 @@ function renderGoogleSignInButton() {
 }
 
 function updateAuthUi() {
-  const configured = authSession.databaseConfigured && authSession.emailLoginConfigured;
+  const googleConfigured = authSession.databaseConfigured && authSession.googleLoginConfigured;
+  const emailConfigured = authSession.databaseConfigured && authSession.emailLoginConfigured;
 
   if (googleSignInButton) {
-    googleSignInButton.hidden = authSession.authenticated || !configured;
+    googleSignInButton.hidden = authSession.authenticated || !googleConfigured;
+  }
+  if (emailAuthForm) {
+    emailAuthForm.hidden = authSession.authenticated || !emailConfigured;
+  }
+  if (emailAuthInput) {
+    emailAuthInput.disabled = emailAuthInFlight || authSession.authenticated || !emailConfigured;
+  }
+  if (emailAuthCodeInput) {
+    emailAuthCodeInput.disabled = emailAuthInFlight || authSession.authenticated || !emailConfigured;
+  }
+  if (emailAuthCodeButton) {
+    emailAuthCodeButton.disabled = emailAuthInFlight || authSession.authenticated || !emailConfigured;
+  }
+  if (emailAuthVerifyButton) {
+    emailAuthVerifyButton.disabled = emailAuthInFlight || authSession.authenticated || !emailConfigured;
   }
   authAccount.hidden = !authSession.authenticated;
-  logoutButton.disabled = authInFlight;
+  logoutButton.disabled = authInFlight || emailAuthInFlight;
 
   if (authSession.authenticated) {
     const maskedEmail = maskEmail(authSession.email);
@@ -2861,19 +3002,19 @@ function updateAuthUi() {
   }
 
   authEmailLabel.textContent = "";
-  authTitle.textContent = "Google 계정으로 로그인";
+  authTitle.textContent = "계정으로 로그인";
 
   if (!authSession.databaseConfigured) {
     authStatus.textContent = authSession.message || "DB 연결이 아직 설정되지 않았습니다.";
     return;
   }
 
-  if (!authSession.emailLoginConfigured) {
-    authStatus.textContent = "Google 로그인 설정이 필요합니다.";
+  if (!googleConfigured && !emailConfigured) {
+    authStatus.textContent = "Google 또는 SMTP 로그인 환경변수 설정이 필요합니다.";
     return;
   }
 
-  authStatus.textContent = authNotice || "Google 로그인 후 개인 큐시트를 저장할 수 있습니다.";
+  authStatus.textContent = authNotice || "Google 로그인 또는 이메일 인증 후 개인 큐시트를 저장할 수 있습니다.";
   renderGoogleSignInButton();
 }
 

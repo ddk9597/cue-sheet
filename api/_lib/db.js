@@ -47,10 +47,17 @@ async function ensureSchemaLocked(sql) {
       "CREATE TABLE IF NOT EXISTS app_users (",
       "id BIGSERIAL PRIMARY KEY,",
       "email TEXT NOT NULL UNIQUE,",
+      "google_sub TEXT UNIQUE,",
+      "name TEXT NOT NULL DEFAULT '',",
+      "picture_url TEXT NOT NULL DEFAULT '',",
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
     ].join(" "));
+
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_url TEXT NOT NULL DEFAULT ''");
 
     await sql.query([
       "CREATE TABLE IF NOT EXISTS user_sessions (",
@@ -66,6 +73,23 @@ async function ensureSchemaLocked(sql) {
     await sql.query([
       "CREATE INDEX IF NOT EXISTS user_sessions_user_id_idx",
       "ON user_sessions (user_id)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS email_auth_challenges (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "email TEXT NOT NULL,",
+      "code_hash TEXT NOT NULL,",
+      "attempts INTEGER NOT NULL DEFAULT 0,",
+      "expires_at TIMESTAMPTZ NOT NULL,",
+      "consumed_at TIMESTAMPTZ,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS email_auth_challenges_email_idx",
+      "ON email_auth_challenges (email, created_at DESC)",
     ].join(" "));
 
     await sql.query([

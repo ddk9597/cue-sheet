@@ -226,6 +226,27 @@ select {
   min-height: 44px;
 }
 
+.email-auth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.email-auth-form[hidden] {
+  display: none;
+}
+
+.email-auth-form .field {
+  min-width: 0;
+}
+
+.email-auth-form .primary-button,
+.email-auth-form .ghost-button {
+  min-height: 50px;
+  white-space: nowrap;
+}
+
 .auth-account {
   display: flex;
   align-items: center;
@@ -960,6 +981,15 @@ body.has-todo-touch-drag {
     border-color 0.2s ease;
 }
 
+a.primary-button,
+a.ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
 .primary-button:hover,
 .ghost-button:hover,
 .delete-button:hover,
@@ -1689,6 +1719,7 @@ body.has-cue-touch-drag {
 
   .auth-form,
   .auth-form-compact,
+  .email-auth-form,
   .auth-account {
     grid-template-columns: 1fr;
     align-items: stretch;

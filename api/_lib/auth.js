@@ -7,12 +7,93 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+}
+
 async function cleanupExpiredAuthRows(sql) {
   await sql.query("DELETE FROM user_sessions WHERE expires_at <= NOW()");
 }
 
-async function findOrCreateUser(sql, email) {
+async function findOrCreateUser(sql, googleUser) {
+  const normalizedEmail = normalizeEmail(googleUser?.email);
+  const googleSub = String(googleUser?.googleSub || "").trim();
+  const name = String(googleUser?.name || "").trim();
+  const pictureUrl = String(googleUser?.pictureUrl || "").trim();
+
+  if (!normalizedEmail || !googleSub) {
+    const error = new Error("Google 계정 정보를 확인할 수 없습니다.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const googleRows = await sql.query(
+    "SELECT id, email, google_sub FROM app_users WHERE google_sub = $1 LIMIT 1",
+    [googleSub],
+  );
+
+  if (googleRows[0]) {
+    await sql.query(
+      [
+        "UPDATE app_users",
+        "SET email = $2, name = $3, picture_url = $4, last_login_at = NOW()",
+        "WHERE id = $1",
+      ].join(" "),
+      [googleRows[0].id, normalizedEmail, name, pictureUrl],
+    );
+    return {
+      id: googleRows[0].id,
+      email: normalizedEmail,
+    };
+  }
+
+  const existingRows = await sql.query(
+    "SELECT id, email, google_sub FROM app_users WHERE email = $1 LIMIT 1",
+    [normalizedEmail],
+  );
+
+  if (existingRows[0]) {
+    if (existingRows[0].google_sub && existingRows[0].google_sub !== googleSub) {
+      const error = new Error("이미 다른 Google 계정으로 연결된 이메일입니다.");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    await sql.query(
+      [
+        "UPDATE app_users",
+        "SET google_sub = $2, name = $3, picture_url = $4, last_login_at = NOW()",
+        "WHERE id = $1",
+      ].join(" "),
+      [existingRows[0].id, googleSub, name, pictureUrl],
+    );
+    return {
+      id: existingRows[0].id,
+      email: existingRows[0].email,
+    };
+  }
+
+  const insertedRows = await sql.query(
+    [
+      "INSERT INTO app_users (email, google_sub, name, picture_url, last_login_at)",
+      "VALUES ($1, $2, $3, $4, NOW())",
+      "RETURNING id, email",
+    ].join(" "),
+    [normalizedEmail, googleSub, name, pictureUrl],
+  );
+
+  return insertedRows[0];
+}
+
+async function findOrCreateEmailUser(sql, email) {
   const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    const error = new Error("이메일 주소를 확인해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
 
   const existingRows = await sql.query(
     "SELECT id, email FROM app_users WHERE email = $1 LIMIT 1",
@@ -187,7 +268,9 @@ function hashValue(value) {
 module.exports = {
   createSession,
   destroySession,
+  findOrCreateEmailUser,
   findOrCreateUser,
   getSessionUser,
+  isValidEmail,
   normalizeEmail,
 };

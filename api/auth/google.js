@@ -35,7 +35,7 @@ module.exports = async (request, response) => {
     await ensureSchema(sql);
     const payload = await readJsonBody(request);
     const googleUser = await verifyGoogleCredential(payload.credential);
-    const user = await findOrCreateUser(sql, googleUser.email);
+    const user = await findOrCreateUser(sql, googleUser);
 
     await createSession(sql, request, response, user.id);
 
