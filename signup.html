@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>회원가입 | Cue Sheet</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    body {
+      min-height: 100dvh;
+    }
+
+    .signup-shell {
+      width: min(960px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 18px 0 34px;
+    }
+
+    .signup-panel {
+      display: grid;
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .signup-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .signup-title {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(1.5rem, 4vw, 2.15rem);
+      line-height: 1.18;
+    }
+
+    .signup-status {
+      margin: 0;
+      color: var(--text-subtle);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .signup-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .signup-section {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid rgba(53, 68, 58, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .signup-section-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .signup-section-title {
+      display: block;
+      font-size: 1.08rem;
+      line-height: 1.3;
+    }
+
+    .signup-section-state {
+      color: var(--text-subtle);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .signup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .signup-check-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+    }
+
+    .signup-check {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(24, 32, 25, 0.04);
+      color: var(--text-main);
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .signup-check input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+
+    .signup-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .signup-result {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(24, 32, 25, 0.06);
+    }
+
+    .signup-result strong {
+      font-size: 1rem;
+    }
+
+    .signup-result ul {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text-subtle);
+      font-size: 0.94rem;
+    }
+
+    .password-rules {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--text-subtle);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .password-rules li::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 7px;
+      border-radius: 999px;
+      background: rgba(85, 97, 87, 0.35);
+      vertical-align: 1px;
+    }
+
+    .password-rules li.is-valid {
+      color: var(--accent-deep);
+    }
+
+    .password-rules li.is-valid::before {
+      background: var(--accent);
+    }
+
+    .field-note {
+      margin: -2px 0 0;
+      color: var(--text-subtle);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .field input[type="password"] {
+      font-family: "Avenir Next", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+
+    @media (max-width: 720px) {
+      .signup-shell {
+        width: min(100% - 20px, 960px);
+        padding-top: 10px;
+      }
+
+      .signup-panel {
+        padding: 16px;
+        border-radius: 20px;
+      }
+
+      .signup-section {
+        padding: 14px;
+        border-radius: 16px;
+      }
+
+      .signup-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .signup-actions .primary-button,
+      .signup-actions .ghost-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="site-brand" href="./index.html">Cue Sheet</a>
+      <nav class="site-nav" aria-label="상단 메뉴">
+        <a href="./index.html">홈</a>
+        <a href="./audience.html">관객용 목록</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="signup-shell">
+    <section class="panel signup-panel" aria-labelledby="signupTitle">
+      <div class="signup-heading">
+        <div>
+          <p class="panel-label">Sign Up</p>
+          <h1 id="signupTitle" class="signup-title">이메일 아이디 회원가입</h1>
+        </div>
+        <a class="ghost-button" href="./index.html">돌아가기</a>
+      </div>
+      <p id="signupStatus" class="signup-status" aria-live="polite">
+        이메일을 아이디로 사용하고, 동의 항목과 개인정보를 순서대로 저장합니다.
+      </p>
+
+      <form id="signupForm" class="signup-form" autocomplete="on">
+        <section class="signup-section" aria-labelledby="consentTitle">
+          <div class="signup-section-header">
+            <div>
+              <p class="panel-label">Step 1</p>
+              <strong id="consentTitle" class="signup-section-title">개인정보 동의</strong>
+            </div>
+            <span id="consentState" class="signup-section-state">미저장</span>
+          </div>
+          <div class="signup-check-list">
+            <label class="signup-check">
+              <input id="termsConsent" type="checkbox" required>
+              <span>서비스 이용약관에 동의합니다.</span>
+            </label>
+            <label class="signup-check">
+              <input id="privacyConsent" type="checkbox" required>
+              <span>회원 식별, 로그인, 서비스 이용을 위한 개인정보 수집 및 이용에 동의합니다.</span>
+            </label>
+            <label class="signup-check">
+              <input id="ageConsent" type="checkbox" required>
+              <span>만 14세 이상입니다.</span>
+            </label>
+          </div>
+          <div class="signup-actions">
+            <button id="saveConsentButton" class="primary-button" type="button">동의 저장</button>
+          </div>
+        </section>
+
+        <section class="signup-section" aria-labelledby="profileTitle">
+          <div class="signup-section-header">
+            <div>
+              <p class="panel-label">Step 2</p>
+              <strong id="profileTitle" class="signup-section-title">개인정보 입력</strong>
+            </div>
+            <span id="profileState" class="signup-section-state">미저장</span>
+          </div>
+          <div class="signup-grid">
+            <label class="field" for="emailInput">
+              <span>아이디 이메일</span>
+              <input id="emailInput" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
+              <p class="field-note">로그인 아이디로 사용할 이메일 주소입니다.</p>
+            </label>
+            <label class="field" for="nameInput">
+              <span>이름</span>
+              <input id="nameInput" name="name" type="text" autocomplete="name" placeholder="홍길동" required>
+            </label>
+            <label class="field" for="birthInput">
+              <span>생년월일</span>
+              <input id="birthInput" name="birthDate" type="date" autocomplete="bday">
+            </label>
+            <label class="field" for="memoInput">
+              <span>메모</span>
+              <input id="memoInput" name="memo" type="text" maxlength="80" placeholder="팀명, 역할 등">
+            </label>
+          </div>
+          <div class="signup-actions">
+            <button id="saveProfileButton" class="primary-button" type="button">개인정보 저장</button>
+          </div>
+        </section>
+
+        <section class="signup-section" aria-labelledby="phoneTitle">
+          <div class="signup-section-header">
+            <div>
+              <p class="panel-label">Step 3</p>
+              <strong id="phoneTitle" class="signup-section-title">휴대폰번호 입력</strong>
+            </div>
+            <span id="phoneState" class="signup-section-state">미저장</span>
+          </div>
+          <label class="field" for="phoneInput">
+            <span>휴대폰번호</span>
+            <input id="phoneInput" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required>
+          </label>
+          <div class="signup-actions">
+            <button id="savePhoneButton" class="primary-button" type="button">휴대폰번호 저장</button>
+          </div>
+        </section>
+
+        <section class="signup-section" aria-labelledby="passwordTitle">
+          <div class="signup-section-header">
+            <div>
+              <p class="panel-label">Step 4</p>
+              <strong id="passwordTitle" class="signup-section-title">비밀번호 체크 및 저장</strong>
+            </div>
+            <span id="passwordState" class="signup-section-state">미저장</span>
+          </div>
+          <div class="signup-grid">
+            <label class="field" for="passwordInput">
+              <span>비밀번호</span>
+              <input id="passwordInput" name="password" type="password" autocomplete="new-password" required>
+            </label>
+            <label class="field" for="passwordConfirmInput">
+              <span>비밀번호 확인</span>
+              <input id="passwordConfirmInput" name="passwordConfirm" type="password" autocomplete="new-password" required>
+            </label>
+          </div>
+          <ul class="password-rules" aria-label="비밀번호 조건">
+            <li id="passwordLengthRule">8자 이상</li>
+            <li id="passwordMixRule">영문과 숫자 포함</li>
+            <li id="passwordMatchRule">비밀번호 확인 일치</li>
+          </ul>
+          <div class="signup-actions">
+            <button id="savePasswordButton" class="primary-button" type="button">비밀번호 저장</button>
+          </div>
+        </section>
+
+        <section class="signup-result" aria-labelledby="signupSummaryTitle">
+          <strong id="signupSummaryTitle">저장 상태</strong>
+          <ul id="signupSummary">
+            <li>개인정보 동의: 미저장</li>
+            <li>개인정보: 미저장</li>
+            <li>휴대폰번호: 미저장</li>
+            <li>비밀번호: 미저장</li>
+          </ul>
+          <div class="signup-actions">
+            <button id="saveAllButton" class="primary-button" type="button">가입 정보 저장</button>
+          </div>
+        </section>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
+    const signupState = {
+      consent: null,
+      profile: null,
+      phone: null,
+      password: null,
+      updatedAt: "",
+    };
+
+    const signupStatus = document.querySelector("#signupStatus");
+    const signupSummary = document.querySelector("#signupSummary");
+    const consentState = document.querySelector("#consentState");
+    const profileState = document.querySelector("#profileState");
+    const phoneState = document.querySelector("#phoneState");
+    const passwordState = document.querySelector("#passwordState");
+    const termsConsent = document.querySelector("#termsConsent");
+    const privacyConsent = document.querySelector("#privacyConsent");
+    const ageConsent = document.querySelector("#ageConsent");
+    const emailInput = document.querySelector("#emailInput");
+    const nameInput = document.querySelector("#nameInput");
+    const birthInput = document.querySelector("#birthInput");
+    const memoInput = document.querySelector("#memoInput");
+    const phoneInput = document.querySelector("#phoneInput");
+    const passwordInput = document.querySelector("#passwordInput");
+    const passwordConfirmInput = document.querySelector("#passwordConfirmInput");
+    const passwordLengthRule = document.querySelector("#passwordLengthRule");
+    const passwordMixRule = document.querySelector("#passwordMixRule");
+    const passwordMatchRule = document.querySelector("#passwordMatchRule");
+
+    document.querySelector("#saveConsentButton").addEventListener("click", saveConsent);
+    document.querySelector("#saveProfileButton").addEventListener("click", saveProfile);
+    document.querySelector("#savePhoneButton").addEventListener("click", savePhone);
+    document.querySelector("#savePasswordButton").addEventListener("click", savePassword);
+    document.querySelector("#saveAllButton").addEventListener("click", saveAll);
+
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = formatPhone(phoneInput.value);
+    });
+
+    passwordInput.addEventListener("input", updatePasswordRules);
+    passwordConfirmInput.addEventListener("input", updatePasswordRules);
+
+    loadDraft();
+    updatePasswordRules();
+    renderState();
+
+    function saveConsent() {
+      if (!termsConsent.checked || !privacyConsent.checked || !ageConsent.checked) {
+        setStatus("필수 동의 항목을 모두 선택해 주세요.", true);
+        return false;
+      }
+
+      signupState.consent = {
+        terms: true,
+        privacy: true,
+        age: true,
+        savedAt: new Date().toISOString(),
+      };
+      persistDraft();
+      setStatus("개인정보 동의를 저장했습니다.");
+      renderState();
+      return true;
+    }
+
+    function saveProfile() {
+      const email = normalizeEmail(emailInput.value);
+      const name = nameInput.value.trim();
+
+      if (!isValidEmail(email)) {
+        setStatus("아이디로 사용할 이메일 주소를 확인해 주세요.", true);
+        emailInput.focus();
+        return false;
+      }
+
+      if (!name) {
+        setStatus("이름을 입력해 주세요.", true);
+        nameInput.focus();
+        return false;
+      }
+
+      signupState.profile = {
+        email,
+        name,
+        birthDate: birthInput.value,
+        memo: memoInput.value.trim(),
+        savedAt: new Date().toISOString(),
+      };
+      emailInput.value = email;
+      persistDraft();
+      setStatus("개인정보를 저장했습니다.");
+      renderState();
+      return true;
+    }
+
+    function savePhone() {
+      const phone = normalizePhone(phoneInput.value);
+
+      if (!/^010\d{8}$/.test(phone)) {
+        setStatus("휴대폰번호를 010-0000-0000 형식으로 입력해 주세요.", true);
+        phoneInput.focus();
+        return false;
+      }
+
+      signupState.phone = {
+        phone,
+        displayPhone: formatPhone(phone),
+        savedAt: new Date().toISOString(),
+      };
+      phoneInput.value = signupState.phone.displayPhone;
+      persistDraft();
+      setStatus("휴대폰번호를 저장했습니다.");
+      renderState();
+      return true;
+    }
+
+    async function savePassword() {
+      const password = passwordInput.value;
+
+      if (!isPasswordValid()) {
+        setStatus("비밀번호 조건을 확인해 주세요.", true);
+        passwordInput.focus();
+        return false;
+      }
+
+      const salt = createSalt();
+      const passwordHash = await hashPassword(password, salt);
+
+      signupState.password = {
+        salt,
+        passwordHash,
+        savedAt: new Date().toISOString(),
+      };
+      passwordInput.value = "";
+      passwordConfirmInput.value = "";
+      updatePasswordRules();
+      persistDraft();
+      setStatus("비밀번호를 저장했습니다.");
+      renderState();
+      return true;
+    }
+
+    async function saveAll() {
+      const consentSaved = signupState.consent || saveConsent();
+      const profileSaved = signupState.profile || saveProfile();
+      const phoneSaved = signupState.phone || savePhone();
+      const passwordSaved = signupState.password || await savePassword();
+
+      if (!consentSaved || !profileSaved || !phoneSaved || !passwordSaved) {
+        return;
+      }
+
+      persistDraft();
+      setStatus("가입 정보를 저장했습니다. 이후 서버 가입 API에 연결하면 이 값을 전송할 수 있습니다.");
+      renderState();
+    }
+
+    function persistDraft() {
+      signupState.updatedAt = new Date().toISOString();
+      window.localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(signupState));
+    }
+
+    function loadDraft() {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(SIGNUP_STORAGE_KEY) || "{}");
+
+        Object.assign(signupState, saved && typeof saved === "object" ? saved : {});
+      } catch {
+        return;
+      }
+
+      if (signupState.consent) {
+        termsConsent.checked = Boolean(signupState.consent.terms);
+        privacyConsent.checked = Boolean(signupState.consent.privacy);
+        ageConsent.checked = Boolean(signupState.consent.age);
+      }
+
+      if (signupState.profile) {
+        emailInput.value = signupState.profile.email || "";
+        nameInput.value = signupState.profile.name || "";
+        birthInput.value = signupState.profile.birthDate || "";
+        memoInput.value = signupState.profile.memo || "";
+      }
+
+      if (signupState.phone) {
+        phoneInput.value = signupState.phone.displayPhone || formatPhone(signupState.phone.phone || "");
+      }
+    }
+
+    function renderState() {
+      consentState.textContent = signupState.consent ? "저장됨" : "미저장";
+      profileState.textContent = signupState.profile ? "저장됨" : "미저장";
+      phoneState.textContent = signupState.phone ? "저장됨" : "미저장";
+      passwordState.textContent = signupState.password ? "저장됨" : "미저장";
+
+      signupSummary.replaceChildren(
+        createSummaryItem(`개인정보 동의: ${signupState.consent ? "저장됨" : "미저장"}`),
+        createSummaryItem(`개인정보: ${signupState.profile?.email || "미저장"}`),
+        createSummaryItem(`휴대폰번호: ${signupState.phone?.displayPhone || "미저장"}`),
+        createSummaryItem(`비밀번호: ${signupState.password ? "저장됨" : "미저장"}`),
+      );
+    }
+
+    function createSummaryItem(text) {
+      const item = document.createElement("li");
+
+      item.textContent = text;
+      return item;
+    }
+
+    function updatePasswordRules() {
+      const password = passwordInput.value;
+      const confirmPassword = passwordConfirmInput.value;
+
+      passwordLengthRule.classList.toggle("is-valid", password.length >= 8);
+      passwordMixRule.classList.toggle("is-valid", /[A-Za-z]/.test(password) && /\d/.test(password));
+      passwordMatchRule.classList.toggle("is-valid", Boolean(password) && password === confirmPassword);
+    }
+
+    function isPasswordValid() {
+      const password = passwordInput.value;
+
+      return password.length >= 8
+        && /[A-Za-z]/.test(password)
+        && /\d/.test(password)
+        && password === passwordConfirmInput.value;
+    }
+
+    async function hashPassword(password, salt) {
+      const data = new TextEncoder().encode(`${salt}:${password}`);
+      const digest = await window.crypto.subtle.digest("SHA-256", data);
+
+      return arrayBufferToBase64(digest);
+    }
+
+    function createSalt() {
+      const bytes = new Uint8Array(16);
+
+      window.crypto.getRandomValues(bytes);
+      return arrayBufferToBase64(bytes);
+    }
+
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+
+      for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+      }
+
+      return window.btoa(binary);
+    }
+
+    function normalizeEmail(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+    }
+
+    function normalizePhone(value) {
+      return String(value || "").replace(/\D/g, "").slice(0, 11);
+    }
+
+    function formatPhone(value) {
+      const digits = normalizePhone(value);
+
+      if (digits.length <= 3) {
+        return digits;
+      }
+
+      if (digits.length <= 7) {
+        return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      }
+
+      return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    }
+
+    function setStatus(message, isError = false) {
+      signupStatus.textContent = message;
+      signupStatus.classList.toggle("is-error", isError);
+    }
+  </script>
+</body>
+</html>
