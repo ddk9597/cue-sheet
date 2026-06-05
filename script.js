@@ -3002,7 +3002,9 @@ function updateAuthUi() {
   }
 
   authEmailLabel.textContent = "";
-  authTitle.textContent = "계정으로 로그인";
+  authTitle.textContent = emailConfigured
+    ? "이메일로 가입 / 로그인"
+    : "Google 계정으로 가입 / 로그인";
 
   if (!authSession.databaseConfigured) {
     authStatus.textContent = authSession.message || "DB 연결이 아직 설정되지 않았습니다.";
@@ -3010,11 +3012,13 @@ function updateAuthUi() {
   }
 
   if (!googleConfigured && !emailConfigured) {
-    authStatus.textContent = "Google 또는 SMTP 로그인 환경변수 설정이 필요합니다.";
+    authStatus.textContent = "SMTP 또는 Google 로그인 환경변수 설정이 필요합니다.";
     return;
   }
 
-  authStatus.textContent = authNotice || "Google 로그인 또는 이메일 인증 후 개인 큐시트를 저장할 수 있습니다.";
+  authStatus.textContent = authNotice || (emailConfigured
+    ? "이메일 인증으로 가입하거나 로그인할 수 있습니다."
+    : "Google 계정으로 가입하거나 로그인할 수 있습니다.");
   renderGoogleSignInButton();
 }
 

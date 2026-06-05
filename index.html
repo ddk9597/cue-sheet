@@ -42,13 +42,12 @@
       <div class="auth-header">
         <div>
           <p class="panel-label">Account</p>
-          <strong id="authTitle" class="auth-title">계정으로 로그인</strong>
+          <strong id="authTitle" class="auth-title">이메일로 가입 / 로그인</strong>
         </div>
       </div>
       <p id="authStatus" class="save-status" aria-live="polite">
-        Google 로그인 또는 이메일 인증 후 개인 큐시트를 저장할 수 있습니다.
+        이메일 인증으로 가입하거나 로그인할 수 있습니다.
       </p>
-      <div id="googleSignInButton" class="google-sign-in"></div>
       <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
         <label class="field" for="emailAuthInput">
           <span>이메일</span>
@@ -73,8 +72,9 @@
             maxlength="6"
           >
         </label>
-        <button id="emailAuthVerifyButton" class="primary-button" type="button">이메일로 로그인</button>
+        <button id="emailAuthVerifyButton" class="primary-button" type="button">가입 / 로그인</button>
       </form>
+      <div id="googleSignInButton" class="google-sign-in"></div>
       <div id="authAccount" class="auth-account" hidden>
         <span id="authEmailLabel" class="auth-email"></span>
         <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
