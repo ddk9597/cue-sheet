@@ -42,11 +42,11 @@
       <div class="auth-header">
         <div>
           <p class="panel-label">Account</p>
-          <strong id="authTitle" class="auth-title">이메일로 가입 / 로그인</strong>
+          <strong id="authTitle" class="auth-title">이메일 로그인</strong>
         </div>
       </div>
       <p id="authStatus" class="save-status" aria-live="polite">
-        이메일 인증으로 가입하거나 로그인할 수 있습니다.
+        가입한 이메일과 비밀번호로 로그인합니다.
       </p>
       <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
         <label class="field" for="emailAuthInput">
@@ -59,20 +59,18 @@
             placeholder="name@example.com"
           >
         </label>
-        <button id="emailAuthCodeButton" class="ghost-button" type="submit">인증코드 받기</button>
-        <label class="field" for="emailAuthCodeInput">
-          <span>인증코드</span>
+        <label class="field" for="emailPasswordInput">
+          <span>비밀번호</span>
           <input
-            id="emailAuthCodeInput"
-            name="code"
-            type="text"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            placeholder="6자리"
-            maxlength="6"
+            id="emailPasswordInput"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="비밀번호"
           >
         </label>
-        <button id="emailAuthVerifyButton" class="primary-button" type="button">가입 / 로그인</button>
+        <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
+        <a class="ghost-button" href="./signup.html">회원가입</a>
       </form>
       <div id="googleSignInButton" class="google-sign-in"></div>
       <div id="authAccount" class="auth-account" hidden>
