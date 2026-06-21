@@ -626,9 +626,6 @@
               <span>만 14세 이상입니다.</span>
             </label>
           </div>
-          <div class="signup-actions">
-            <button id="saveConsentButton" class="primary-button" type="button">동의 저장</button>
-          </div>
         </section>
 
         <section id="profileSection" class="signup-section" aria-labelledby="profileTitle">
@@ -677,9 +674,6 @@
               <input id="memoInput" name="memo" type="text" maxlength="80" placeholder="팀명, 역할 등">
             </label>
           </div>
-          <div class="signup-actions">
-            <button id="saveProfileButton" class="primary-button" type="button">개인정보 저장</button>
-          </div>
         </section>
 
         <section id="phoneSection" class="signup-section" aria-labelledby="phoneTitle">
@@ -694,9 +688,6 @@
             <span>휴대폰번호</span>
             <input id="phoneInput" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required>
           </label>
-          <div class="signup-actions">
-            <button id="savePhoneButton" class="primary-button" type="button">휴대폰번호 저장</button>
-          </div>
         </section>
 
         <section id="passwordSection" class="signup-section" aria-labelledby="passwordTitle">
@@ -722,9 +713,6 @@
             <li id="passwordMixRule">영문과 숫자 포함</li>
             <li id="passwordMatchRule">비밀번호 확인 일치</li>
           </ul>
-          <div class="signup-actions">
-            <button id="savePasswordButton" class="primary-button" type="button">비밀번호 저장</button>
-          </div>
         </section>
 
         <section class="signup-result" aria-labelledby="signupSummaryTitle">
@@ -737,7 +725,7 @@
             <li>비밀번호: 미저장</li>
           </ul>
           <div class="signup-actions">
-            <button id="saveAllButton" class="primary-button" type="button">가입 정보 최종 저장</button>
+            <button id="saveAllButton" class="primary-button" type="button">최종 가입하기</button>
           </div>
         </section>
       </form>
@@ -814,10 +802,6 @@
     const passwordMixRule = document.querySelector("#passwordMixRule");
     const passwordMatchRule = document.querySelector("#passwordMatchRule");
 
-    document.querySelector("#saveConsentButton").addEventListener("click", saveConsent);
-    document.querySelector("#saveProfileButton").addEventListener("click", saveProfile);
-    document.querySelector("#savePhoneButton").addEventListener("click", savePhone);
-    document.querySelector("#savePasswordButton").addEventListener("click", savePassword);
     document.querySelector("#saveAllButton").addEventListener("click", saveAll);
     sendEmailCodeButton.addEventListener("click", sendEmailCode);
     verifyEmailButton.addEventListener("click", verifyEmailCode);
@@ -832,10 +816,14 @@
       termsConsent.checked = allConsent.checked;
       privacyConsent.checked = allConsent.checked;
       ageConsent.checked = allConsent.checked;
+      clearSavedSection("consent");
     });
 
     for (const checkbox of [termsConsent, privacyConsent, ageConsent]) {
-      checkbox.addEventListener("change", syncAllConsent);
+      checkbox.addEventListener("change", () => {
+        syncAllConsent();
+        clearSavedSection("consent");
+      });
     }
 
     emailInput.addEventListener("input", () => {
@@ -843,9 +831,16 @@
 
       if (signupState.emailVerification?.email && signupState.emailVerification.email !== email) {
         signupState.emailVerification = null;
-        renderState();
       }
+
+      clearSavedSection("profile");
     });
+
+    for (const input of [nameInput, birthInput, memoInput]) {
+      input.addEventListener("input", () => {
+        clearSavedSection("profile");
+      });
+    }
 
     emailCodeInput.addEventListener("input", () => {
       emailCodeInput.value = emailCodeInput.value.replace(/\D/g, "").slice(0, 6);
@@ -853,32 +848,35 @@
 
     phoneInput.addEventListener("input", () => {
       phoneInput.value = formatPhone(phoneInput.value);
+      clearSavedSection("phone");
     });
 
-    passwordInput.addEventListener("input", updatePasswordRules);
-    passwordConfirmInput.addEventListener("input", updatePasswordRules);
+    passwordInput.addEventListener("input", () => {
+      clearSavedSection("password");
+      updatePasswordRules();
+    });
+    passwordConfirmInput.addEventListener("input", () => {
+      clearSavedSection("password");
+      updatePasswordRules();
+    });
 
     loadDraft();
     updatePasswordRules();
     renderState();
 
-    function saveConsent() {
+    function collectConsent() {
       if (!termsConsent.checked || !privacyConsent.checked || !ageConsent.checked) {
         setStatus("필수 동의 항목을 모두 선택해 주세요.", true);
+        termsConsent.focus();
         return false;
       }
 
-      signupState.consent = {
+      return {
         terms: true,
         privacy: true,
         age: true,
         savedAt: new Date().toISOString(),
       };
-      persistDraft();
-      setStatus("개인정보 동의를 저장했습니다.");
-      renderState();
-      emailInput.focus();
-      return true;
     }
 
     async function sendEmailCode() {
@@ -977,7 +975,7 @@
       }
     }
 
-    function saveProfile() {
+    function collectProfile() {
       const email = normalizeEmail(emailInput.value);
       const name = nameInput.value.trim();
 
@@ -999,22 +997,16 @@
         return false;
       }
 
-      signupState.profile = {
+      return {
         email,
         name,
         birthDate: birthInput.value,
         memo: memoInput.value.trim(),
         savedAt: new Date().toISOString(),
       };
-      emailInput.value = email;
-      persistDraft();
-      setStatus("개인정보를 저장했습니다.");
-      renderState();
-      phoneInput.focus();
-      return true;
     }
 
-    function savePhone() {
+    function collectPhone() {
       const phone = normalizePhone(phoneInput.value);
 
       if (!/^010\d{8}$/.test(phone)) {
@@ -1023,20 +1015,14 @@
         return false;
       }
 
-      signupState.phone = {
+      return {
         phone,
         displayPhone: formatPhone(phone),
         savedAt: new Date().toISOString(),
       };
-      phoneInput.value = signupState.phone.displayPhone;
-      persistDraft();
-      setStatus("휴대폰번호를 저장했습니다.");
-      renderState();
-      passwordInput.focus();
-      return true;
     }
 
-    async function savePassword() {
+    async function collectPassword() {
       const password = passwordInput.value;
 
       if (!isPasswordValid()) {
@@ -1048,32 +1034,49 @@
       const salt = createSalt();
       const passwordHash = await hashPassword(password, salt);
 
-      signupState.password = {
+      return {
         salt,
         passwordHash,
         savedAt: new Date().toISOString(),
       };
+    }
+
+    async function saveAll() {
+      const consent = collectConsent();
+
+      if (!consent) {
+        return;
+      }
+
+      const profile = collectProfile();
+
+      if (!profile) {
+        return;
+      }
+
+      const phone = collectPhone();
+
+      if (!phone) {
+        return;
+      }
+
+      const password = await collectPassword();
+
+      if (!password) {
+        return;
+      }
+
+      signupState.consent = consent;
+      signupState.profile = profile;
+      signupState.phone = phone;
+      signupState.password = password;
+      emailInput.value = profile.email;
+      phoneInput.value = phone.displayPhone;
       passwordInput.value = "";
       passwordConfirmInput.value = "";
       updatePasswordRules();
       persistDraft();
-      setStatus("비밀번호를 저장했습니다.");
-      renderState();
-      return true;
-    }
-
-    async function saveAll() {
-      const consentSaved = saveConsent();
-      const profileSaved = saveProfile();
-      const phoneSaved = savePhone();
-      const passwordSaved = signupState.password || await savePassword();
-
-      if (!consentSaved || !profileSaved || !phoneSaved || !passwordSaved) {
-        return;
-      }
-
-      persistDraft();
-      setStatus("가입 정보를 저장했습니다. 이후 서버 가입 API에 연결하면 이 값을 전송할 수 있습니다.");
+      setStatus("가입 정보를 최종 확인했습니다. 이후 서버 가입 API에 연결하면 이 값을 전송할 수 있습니다.");
       renderState();
     }
 
@@ -1108,6 +1111,27 @@
       if (signupState.phone) {
         phoneInput.value = signupState.phone.displayPhone || formatPhone(signupState.phone.phone || "");
       }
+    }
+
+    function clearSavedSection(section) {
+      if (section === "consent") {
+        signupState.consent = null;
+      }
+
+      if (section === "profile") {
+        signupState.profile = null;
+      }
+
+      if (section === "phone") {
+        signupState.phone = null;
+      }
+
+      if (section === "password") {
+        signupState.password = null;
+      }
+
+      persistDraft();
+      renderState();
     }
 
     function renderState() {
