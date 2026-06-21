@@ -12,6 +12,7 @@
       <a class="site-brand" href="#overview">Cue Sheet</a>
       <nav class="site-nav" aria-label="상단 메뉴">
         <a href="#overview">홈</a>
+        <a href="./about.html">소개</a>
         <button class="site-nav-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
         <button class="site-nav-button" type="button" data-modal-target="todoModal">할 일</button>
         <button class="site-nav-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
@@ -21,22 +22,43 @@
       </nav>
     </div>
   </header>
-  <main class="page">
-    <section id="overview" class="hero">
-      <p class="eyebrow">Cue Sheet</p>
-      <h1 class="logo-title">
-        <img class="hero-logo" src="./imgs/logo.png" alt="ㅅㅁㅅ">
-      </h1>
-      <p class="hero-copy">
-        곡 순서와 우측 튜닝 칸을 함께 보면서 통기타, 일렉기타, 베이스의 연속 세팅 가능 여부를 확인합니다.
-      </p>
-      <div class="hero-actions">
-        <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐 입력</button>
-        <button class="ghost-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록 보기</button>
-        <a class="ghost-button" href="./audience.html">관객용 목록</a>
-        <a class="ghost-button" href="./signup.html">회원가입</a>
-        <button class="ghost-button" type="button" data-modal-target="todoModal">할 일</button>
-        <button class="ghost-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
+  <main class="page home-page">
+    <section id="overview" class="hero home-hero">
+      <div class="home-hero-copy">
+        <div class="home-brand-mark">
+          <img src="./imgs/logo.png" alt="ㅅㅁㅅ">
+        </div>
+        <p class="eyebrow">Cue Sheet Studio</p>
+        <h1 class="home-title">합주 일정을 한번에 관리</h1>
+        <p class="hero-copy">
+          곡 순서, BPM, 튜닝, 연습시간, 할 일을 공연 전까지 같은 화면 흐름으로 정리합니다.
+        </p>
+        <div class="hero-actions">
+          <button class="primary-button" type="button" data-modal-target="cueModal" data-modal-section="input">큐시트 만들기</button>
+          <button class="ghost-button" type="button" data-modal-target="cueModal" data-modal-section="list">목록 확인</button>
+          <a class="ghost-button" href="./audience.html">관객용 목록</a>
+        </div>
+      </div>
+      <div class="home-hero-preview" aria-label="큐시트 미리보기">
+        <div class="preview-header">
+          <span>Set List</span>
+          <strong>00:00:00</strong>
+        </div>
+        <div class="preview-row">
+          <span class="preview-index">01</span>
+          <strong>오프닝</strong>
+          <span>120 BPM</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-index">02</span>
+          <strong>메인 곡</strong>
+          <span>하프다운</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-index">03</span>
+          <strong>엔딩 멘트</strong>
+          <span>정튜닝</span>
+        </div>
       </div>
     </section>
 
@@ -84,7 +106,8 @@
     <section class="panel summary-panel" aria-label="총 소요 시간">
       <div class="summary-main">
         <div>
-          <p class="panel-label">총 소요 시간</p>
+          <p class="panel-label">Current Cue</p>
+          <strong class="summary-title">현재 큐시트</strong>
           <strong id="totalDuration" class="total-duration">00:00:00</strong>
         </div>
         <p id="saveStatus" class="save-status" aria-live="polite">
@@ -93,8 +116,29 @@
       </div>
       <div class="summary-actions">
         <button id="saveButton" class="primary-button" type="button">목록 저장하기</button>
-        <a class="ghost-button" href="./audience.html">관객용 목록 바로가기</a>
         <button id="clearAllButton" class="ghost-button" type="button">전체 삭제</button>
+      </div>
+      <div class="home-tool-grid" aria-label="주요 도구">
+        <button class="home-tool-card" type="button" data-modal-target="cueModal" data-modal-section="input">
+          <span>01</span>
+          <strong>큐 입력</strong>
+          <small>곡, 멘트, 구분선을 추가합니다.</small>
+        </button>
+        <button class="home-tool-card" type="button" data-modal-target="practiceModal">
+          <span>02</span>
+          <strong>연습 캘린더</strong>
+          <small>날짜별 연습시간을 기록합니다.</small>
+        </button>
+        <button class="home-tool-card" type="button" data-modal-target="todoModal">
+          <span>03</span>
+          <strong>할 일</strong>
+          <small>공연 준비 목록을 정리합니다.</small>
+        </button>
+        <a class="home-tool-card" href="./signup.html">
+          <span>04</span>
+          <strong>회원가입</strong>
+          <small>개인 저장을 위한 계정을 만듭니다.</small>
+        </a>
       </div>
       <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
         <div class="tap-meter-main">

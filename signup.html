@@ -11,15 +11,33 @@
     }
 
     .signup-shell {
-      width: min(960px, calc(100% - 28px));
+      width: min(1480px, calc(100% - 56px));
       margin: 0 auto;
       padding: 18px 0 34px;
+      display: grid;
+      grid-template-columns: minmax(0, 1120px) 224px;
+      gap: 24px;
+      align-items: start;
+      justify-content: center;
     }
 
     .signup-panel {
+      min-width: 0;
       display: grid;
+      gap: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .signup-intro {
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 18px;
-      padding: 22px;
+      padding: 26px;
+      background:
+        linear-gradient(135deg, rgba(24, 32, 25, 0.96), rgba(47, 69, 57, 0.92)),
+        rgba(24, 32, 25, 0.96);
+      color: #fffaf0;
     }
 
     .signup-heading {
@@ -28,6 +46,10 @@
       justify-content: space-between;
       gap: 14px;
       flex-wrap: wrap;
+    }
+
+    .signup-intro .panel-label {
+      color: rgba(255, 250, 240, 0.66);
     }
 
     .signup-title {
@@ -39,14 +61,90 @@
 
     .signup-status {
       margin: 0;
-      color: var(--text-subtle);
+      color: rgba(255, 250, 240, 0.76);
       font-size: 0.95rem;
       line-height: 1.5;
+    }
+
+    .signup-intro-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .signup-intro-actions .ghost-button {
+      background: rgba(255, 250, 240, 0.12);
+      color: #fffaf0;
+    }
+
+    .signup-progress {
+      position: sticky;
+      top: 104px;
+      z-index: 30;
+      width: 224px;
+      display: grid;
+      gap: 8px;
+      align-content: center;
+      padding: 14px;
+      border: 1px solid rgba(255, 250, 240, 0.16);
+      border-radius: 18px;
+      background: rgba(24, 32, 25, 0.9);
+      box-shadow: 0 18px 42px rgba(24, 32, 25, 0.22);
+      backdrop-filter: blur(12px);
+    }
+
+    .signup-progress-step {
+      width: 100%;
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 6px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: rgba(255, 250, 240, 0.74);
+      font: inherit;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .signup-progress-step:hover,
+    .signup-progress-step:focus-visible {
+      background: rgba(255, 250, 240, 0.1);
+      color: #fffaf0;
+      outline: none;
+    }
+
+    .signup-progress-number {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255, 250, 240, 0.12);
+      color: rgba(255, 250, 240, 0.82);
+      font-size: 0.86rem;
+    }
+
+    .signup-progress-step.is-complete {
+      color: #fffaf0;
+    }
+
+    .signup-progress-step.is-complete .signup-progress-number {
+      background: #d4a944;
+      color: #182019;
     }
 
     .signup-form {
       display: grid;
       gap: 14px;
+      padding: 20px 22px 22px;
     }
 
     .signup-section {
@@ -56,6 +154,13 @@
       border: 1px solid rgba(53, 68, 58, 0.12);
       border-radius: 18px;
       background: rgba(255, 255, 255, 0.48);
+      transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .signup-section.is-complete {
+      border-color: rgba(182, 93, 53, 0.28);
+      background: rgba(255, 251, 245, 0.82);
+      box-shadow: 0 12px 26px rgba(42, 54, 44, 0.08);
     }
 
     .signup-section-header {
@@ -78,10 +183,60 @@
       font-weight: 800;
     }
 
+    .signup-section.is-complete .signup-section-state {
+      color: var(--accent-deep);
+    }
+
     .signup-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
+    }
+
+    #profileSection {
+      border-color: rgba(182, 93, 53, 0.16);
+      background:
+        linear-gradient(90deg, rgba(182, 93, 53, 0.1), transparent 38%),
+        linear-gradient(135deg, rgba(255, 251, 245, 0.94), rgba(244, 239, 228, 0.74)),
+        rgba(255, 255, 255, 0.62);
+    }
+
+    .profile-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .profile-email-card {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.82fr);
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(53, 68, 58, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      box-shadow: 0 12px 28px rgba(42, 54, 44, 0.08);
+    }
+
+    .profile-email-card .field {
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .profile-field {
+      padding: 13px;
+      border: 1px solid rgba(53, 68, 58, 0.1);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .profile-field.is-name,
+    .profile-field.is-birth {
+      grid-column: span 3;
+    }
+
+    .profile-field.is-memo {
+      grid-column: 1 / -1;
     }
 
     .signup-check-list {
@@ -108,6 +263,52 @@
       height: 18px;
       margin-top: 2px;
       accent-color: var(--accent);
+    }
+
+    .signup-check.is-master {
+      background: rgba(182, 93, 53, 0.1);
+      color: var(--accent-deep);
+    }
+
+    .terms-disclosure {
+      overflow: hidden;
+      border: 1px solid rgba(53, 68, 58, 0.12);
+      border-radius: 14px;
+      background: rgba(255, 251, 245, 0.72);
+    }
+
+    .terms-disclosure summary {
+      padding: 13px 14px;
+      color: var(--text-main);
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .terms-content {
+      display: grid;
+      gap: 12px;
+      max-height: 280px;
+      overflow: auto;
+      padding: 0 14px 14px;
+      color: var(--text-subtle);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    .terms-content h3 {
+      margin: 8px 0 0;
+      color: var(--text-main);
+      font-size: 0.98rem;
+    }
+
+    .terms-content p,
+    .terms-content ul {
+      margin: 0;
+    }
+
+    .terms-content ul {
+      padding-left: 18px;
     }
 
     .signup-actions {
@@ -175,19 +376,106 @@
       line-height: 1.45;
     }
 
+    .email-verification {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid rgba(24, 32, 25, 0.08);
+      border-radius: 16px;
+      background: rgba(24, 32, 25, 0.05);
+    }
+
+    .email-verification .field {
+      min-width: 0;
+    }
+
+    .email-verification .primary-button,
+    .email-verification .ghost-button {
+      min-height: 50px;
+      white-space: nowrap;
+    }
+
+    .email-verification-status {
+      grid-column: 1 / -1;
+      margin: -2px 2px 0;
+      color: var(--text-subtle);
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .email-verification-status.is-verified {
+      color: var(--accent-deep);
+    }
+
     .field input[type="password"] {
       font-family: "Avenir Next", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
 
+    @media (max-width: 860px) {
+      .signup-shell {
+        width: min(960px, calc(100% - 20px));
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .signup-progress {
+        order: -1;
+        top: 78px;
+        width: 100%;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+        padding: 8px;
+        border-radius: 14px;
+        background: rgba(24, 32, 25, 0.92);
+        box-shadow: 0 16px 36px rgba(24, 32, 25, 0.25);
+      }
+
+      .signup-progress-step {
+        min-height: 48px;
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 4px;
+        padding: 6px 4px;
+        font-size: 0.72rem;
+        text-align: center;
+      }
+
+      .signup-progress-step span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .signup-progress-number {
+        width: 26px;
+        height: 26px;
+        font-size: 0.78rem;
+      }
+    }
+
     @media (max-width: 720px) {
       .signup-shell {
-        width: min(100% - 20px, 960px);
         padding-top: 10px;
       }
 
+      .signup-intro {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
+
+      .signup-intro-actions .ghost-button {
+        width: 100%;
+      }
+
       .signup-panel {
-        padding: 16px;
         border-radius: 20px;
+      }
+
+      .signup-form {
+        padding: 14px;
       }
 
       .signup-section {
@@ -197,6 +485,26 @@
 
       .signup-grid {
         grid-template-columns: 1fr;
+      }
+
+      .email-verification {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-grid,
+      .profile-email-card {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-field.is-name,
+      .profile-field.is-birth,
+      .profile-field.is-memo {
+        grid-column: 1 / -1;
+      }
+
+      .email-verification .primary-button,
+      .email-verification .ghost-button {
+        width: 100%;
       }
 
       .signup-actions .primary-button,
@@ -219,19 +527,26 @@
 
   <main class="signup-shell">
     <section class="panel signup-panel" aria-labelledby="signupTitle">
-      <div class="signup-heading">
-        <div>
-          <p class="panel-label">Sign Up</p>
-          <h1 id="signupTitle" class="signup-title">이메일 아이디 회원가입</h1>
+      <div class="signup-intro">
+        <div class="signup-intro-main">
+          <div class="signup-heading">
+            <div>
+              <p class="panel-label">Sign Up</p>
+              <h1 id="signupTitle" class="signup-title">이메일 아이디 회원가입</h1>
+            </div>
+          </div>
+          <p id="signupStatus" class="signup-status" aria-live="polite">
+            이메일 인증부터 비밀번호 저장까지 한 번에 끝낼 수 있습니다.
+          </p>
+          <div class="signup-intro-actions">
+            <a class="ghost-button" href="./index.html">돌아가기</a>
+            <a class="ghost-button" href="./audience.html">관객용 목록</a>
+          </div>
         </div>
-        <a class="ghost-button" href="./index.html">돌아가기</a>
       </div>
-      <p id="signupStatus" class="signup-status" aria-live="polite">
-        이메일을 아이디로 사용하고, 동의 항목과 개인정보를 순서대로 저장합니다.
-      </p>
 
       <form id="signupForm" class="signup-form" autocomplete="on">
-        <section class="signup-section" aria-labelledby="consentTitle">
+        <section id="consentSection" class="signup-section" aria-labelledby="consentTitle">
           <div class="signup-section-header">
             <div>
               <p class="panel-label">Step 1</p>
@@ -240,14 +555,72 @@
             <span id="consentState" class="signup-section-state">미저장</span>
           </div>
           <div class="signup-check-list">
+            <label class="signup-check is-master">
+              <input id="allConsent" type="checkbox">
+              <span>필수 항목 모두 동의</span>
+            </label>
             <label class="signup-check">
               <input id="termsConsent" type="checkbox" required>
               <span>서비스 이용약관에 동의합니다.</span>
             </label>
+            <details class="terms-disclosure">
+              <summary>서비스 이용약관 확인</summary>
+              <div class="terms-content">
+                <section>
+                  <h3>1. 목적</h3>
+                  <p>이 약관은 Cue Sheet 서비스의 회원가입, 로그인, 큐시트 저장 및 관리 기능 이용 조건을 정합니다.</p>
+                </section>
+                <section>
+                  <h3>2. 계정</h3>
+                  <ul>
+                    <li>회원은 이메일을 아이디로 사용합니다.</li>
+                    <li>회원은 본인의 정확한 정보를 입력해야 합니다.</li>
+                    <li>계정과 비밀번호 관리는 회원 본인의 책임입니다.</li>
+                  </ul>
+                </section>
+                <section>
+                  <h3>3. 서비스 이용</h3>
+                  <ul>
+                    <li>회원은 공연 큐시트, 할 일 목록, 연습 기록 등 서비스가 제공하는 기능을 사용할 수 있습니다.</li>
+                    <li>서비스 운영을 방해하거나 타인의 정보를 무단으로 사용하는 행위는 제한됩니다.</li>
+                    <li>시스템 점검, 장애, 외부 서비스 문제로 일부 기능이 일시적으로 제한될 수 있습니다.</li>
+                  </ul>
+                </section>
+                <section>
+                  <h3>4. 저장 데이터</h3>
+                  <p>회원이 입력한 큐시트와 가입 정보는 서비스 제공을 위해 저장될 수 있으며, 회원 식별과 로그인 처리에 사용됩니다.</p>
+                </section>
+                <section>
+                  <h3>5. 변경 및 문의</h3>
+                  <p>약관은 서비스 운영 상황에 따라 변경될 수 있으며, 중요한 변경사항은 서비스 화면을 통해 안내합니다.</p>
+                </section>
+              </div>
+            </details>
             <label class="signup-check">
               <input id="privacyConsent" type="checkbox" required>
               <span>회원 식별, 로그인, 서비스 이용을 위한 개인정보 수집 및 이용에 동의합니다.</span>
             </label>
+            <details class="terms-disclosure">
+              <summary>개인정보 수집 및 이용 내용 확인</summary>
+              <div class="terms-content">
+                <section>
+                  <h3>수집 항목</h3>
+                  <p>이메일, 이름, 생년월일, 휴대폰번호, 비밀번호 해시, 서비스 이용 중 저장한 큐시트 및 할 일 정보</p>
+                </section>
+                <section>
+                  <h3>이용 목적</h3>
+                  <ul>
+                    <li>회원 식별 및 로그인</li>
+                    <li>개인 큐시트와 서비스 데이터 저장</li>
+                    <li>서비스 운영 및 문의 대응</li>
+                  </ul>
+                </section>
+                <section>
+                  <h3>보관 기간</h3>
+                  <p>회원 탈퇴 또는 서비스 제공 목적 달성 시까지 보관하며, 법령상 필요한 경우 해당 기간 동안 보관할 수 있습니다.</p>
+                </section>
+              </div>
+            </details>
             <label class="signup-check">
               <input id="ageConsent" type="checkbox" required>
               <span>만 14세 이상입니다.</span>
@@ -258,7 +631,7 @@
           </div>
         </section>
 
-        <section class="signup-section" aria-labelledby="profileTitle">
+        <section id="profileSection" class="signup-section" aria-labelledby="profileTitle">
           <div class="signup-section-header">
             <div>
               <p class="panel-label">Step 2</p>
@@ -266,21 +639,40 @@
             </div>
             <span id="profileState" class="signup-section-state">미저장</span>
           </div>
-          <div class="signup-grid">
-            <label class="field" for="emailInput">
-              <span>아이디 이메일</span>
-              <input id="emailInput" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
-              <p class="field-note">로그인 아이디로 사용할 이메일 주소입니다.</p>
-            </label>
-            <label class="field" for="nameInput">
+          <div class="signup-grid profile-grid">
+            <div class="profile-email-card">
+              <label class="field" for="emailInput">
+                <span>아이디 이메일</span>
+                <input id="emailInput" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
+                <p class="field-note">로그인 아이디로 사용할 이메일 주소입니다. 저장 전에 인증이 필요합니다.</p>
+              </label>
+              <div class="email-verification" aria-label="이메일 인증">
+                <button id="sendEmailCodeButton" class="ghost-button" type="button">인증코드 받기</button>
+                <label class="field" for="emailCodeInput">
+                  <span>이메일 인증코드</span>
+                  <input
+                    id="emailCodeInput"
+                    name="emailCode"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="6자리"
+                    maxlength="6"
+                  >
+                </label>
+                <button id="verifyEmailButton" class="primary-button" type="button">이메일 인증</button>
+                <p id="emailVerificationStatus" class="email-verification-status">이메일 인증 전입니다.</p>
+              </div>
+            </div>
+            <label class="field profile-field is-name" for="nameInput">
               <span>이름</span>
               <input id="nameInput" name="name" type="text" autocomplete="name" placeholder="홍길동" required>
             </label>
-            <label class="field" for="birthInput">
+            <label class="field profile-field is-birth" for="birthInput">
               <span>생년월일</span>
               <input id="birthInput" name="birthDate" type="date" autocomplete="bday">
             </label>
-            <label class="field" for="memoInput">
+            <label class="field profile-field is-memo" for="memoInput">
               <span>메모</span>
               <input id="memoInput" name="memo" type="text" maxlength="80" placeholder="팀명, 역할 등">
             </label>
@@ -290,7 +682,7 @@
           </div>
         </section>
 
-        <section class="signup-section" aria-labelledby="phoneTitle">
+        <section id="phoneSection" class="signup-section" aria-labelledby="phoneTitle">
           <div class="signup-section-header">
             <div>
               <p class="panel-label">Step 3</p>
@@ -307,7 +699,7 @@
           </div>
         </section>
 
-        <section class="signup-section" aria-labelledby="passwordTitle">
+        <section id="passwordSection" class="signup-section" aria-labelledby="passwordTitle">
           <div class="signup-section-header">
             <div>
               <p class="panel-label">Step 4</p>
@@ -336,25 +728,52 @@
         </section>
 
         <section class="signup-result" aria-labelledby="signupSummaryTitle">
-          <strong id="signupSummaryTitle">저장 상태</strong>
+          <strong id="signupSummaryTitle">가입 준비 상태</strong>
           <ul id="signupSummary">
             <li>개인정보 동의: 미저장</li>
+            <li>이메일 인증: 미완료</li>
             <li>개인정보: 미저장</li>
             <li>휴대폰번호: 미저장</li>
             <li>비밀번호: 미저장</li>
           </ul>
           <div class="signup-actions">
-            <button id="saveAllButton" class="primary-button" type="button">가입 정보 저장</button>
+            <button id="saveAllButton" class="primary-button" type="button">가입 정보 최종 저장</button>
           </div>
         </section>
       </form>
     </section>
+
+    <nav class="signup-progress" aria-label="가입 진행 상태">
+      <button id="progressConsent" class="signup-progress-step" type="button" data-scroll-target="consentSection">
+        <span class="signup-progress-number">1</span>
+        <span>동의</span>
+      </button>
+      <button id="progressEmail" class="signup-progress-step" type="button" data-scroll-target="profileSection">
+        <span class="signup-progress-number">2</span>
+        <span>이메일 인증</span>
+      </button>
+      <button id="progressProfile" class="signup-progress-step" type="button" data-scroll-target="profileSection">
+        <span class="signup-progress-number">3</span>
+        <span>개인정보</span>
+      </button>
+      <button id="progressPhone" class="signup-progress-step" type="button" data-scroll-target="phoneSection">
+        <span class="signup-progress-number">4</span>
+        <span>휴대폰번호</span>
+      </button>
+      <button id="progressPassword" class="signup-progress-step" type="button" data-scroll-target="passwordSection">
+        <span class="signup-progress-number">5</span>
+        <span>비밀번호</span>
+      </button>
+    </nav>
   </main>
 
   <script>
+    const EMAIL_AUTH_START_ENDPOINT = "/api/auth/email/start";
+    const EMAIL_AUTH_VERIFY_ENDPOINT = "/api/auth/email/verify";
     const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
     const signupState = {
       consent: null,
+      emailVerification: null,
       profile: null,
       phone: null,
       password: null,
@@ -367,10 +786,24 @@
     const profileState = document.querySelector("#profileState");
     const phoneState = document.querySelector("#phoneState");
     const passwordState = document.querySelector("#passwordState");
+    const consentSection = document.querySelector("#consentSection");
+    const profileSection = document.querySelector("#profileSection");
+    const phoneSection = document.querySelector("#phoneSection");
+    const passwordSection = document.querySelector("#passwordSection");
+    const progressConsent = document.querySelector("#progressConsent");
+    const progressEmail = document.querySelector("#progressEmail");
+    const progressProfile = document.querySelector("#progressProfile");
+    const progressPhone = document.querySelector("#progressPhone");
+    const progressPassword = document.querySelector("#progressPassword");
+    const allConsent = document.querySelector("#allConsent");
     const termsConsent = document.querySelector("#termsConsent");
     const privacyConsent = document.querySelector("#privacyConsent");
     const ageConsent = document.querySelector("#ageConsent");
     const emailInput = document.querySelector("#emailInput");
+    const sendEmailCodeButton = document.querySelector("#sendEmailCodeButton");
+    const emailCodeInput = document.querySelector("#emailCodeInput");
+    const verifyEmailButton = document.querySelector("#verifyEmailButton");
+    const emailVerificationStatus = document.querySelector("#emailVerificationStatus");
     const nameInput = document.querySelector("#nameInput");
     const birthInput = document.querySelector("#birthInput");
     const memoInput = document.querySelector("#memoInput");
@@ -386,6 +819,37 @@
     document.querySelector("#savePhoneButton").addEventListener("click", savePhone);
     document.querySelector("#savePasswordButton").addEventListener("click", savePassword);
     document.querySelector("#saveAllButton").addEventListener("click", saveAll);
+    sendEmailCodeButton.addEventListener("click", sendEmailCode);
+    verifyEmailButton.addEventListener("click", verifyEmailCode);
+
+    for (const progressStep of document.querySelectorAll("[data-scroll-target]")) {
+      progressStep.addEventListener("click", () => {
+        scrollToSection(progressStep.dataset.scrollTarget);
+      });
+    }
+
+    allConsent.addEventListener("change", () => {
+      termsConsent.checked = allConsent.checked;
+      privacyConsent.checked = allConsent.checked;
+      ageConsent.checked = allConsent.checked;
+    });
+
+    for (const checkbox of [termsConsent, privacyConsent, ageConsent]) {
+      checkbox.addEventListener("change", syncAllConsent);
+    }
+
+    emailInput.addEventListener("input", () => {
+      const email = normalizeEmail(emailInput.value);
+
+      if (signupState.emailVerification?.email && signupState.emailVerification.email !== email) {
+        signupState.emailVerification = null;
+        renderState();
+      }
+    });
+
+    emailCodeInput.addEventListener("input", () => {
+      emailCodeInput.value = emailCodeInput.value.replace(/\D/g, "").slice(0, 6);
+    });
 
     phoneInput.addEventListener("input", () => {
       phoneInput.value = formatPhone(phoneInput.value);
@@ -413,7 +877,104 @@
       persistDraft();
       setStatus("개인정보 동의를 저장했습니다.");
       renderState();
+      emailInput.focus();
       return true;
+    }
+
+    async function sendEmailCode() {
+      const email = normalizeEmail(emailInput.value);
+
+      if (!isValidEmail(email)) {
+        setStatus("인증할 이메일 주소를 확인해 주세요.", true);
+        emailInput.focus();
+        return false;
+      }
+
+      setEmailVerificationBusy(true);
+      setStatus("이메일 인증코드를 보내는 중입니다.");
+
+      try {
+        const response = await fetch(EMAIL_AUTH_START_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+        const payload = await safeReadJson(response);
+
+        if (!response.ok) {
+          setStatus(payload.message || "인증코드를 보내지 못했습니다.", true);
+          return false;
+        }
+
+        signupState.emailVerification = {
+          email,
+          verified: false,
+          requestedAt: new Date().toISOString(),
+        };
+        emailInput.value = email;
+        emailCodeInput.value = "";
+        persistDraft();
+        setStatus("인증코드를 보냈습니다. 메일함을 확인해 주세요.");
+        emailCodeInput.focus();
+        renderState();
+        return true;
+      } catch {
+        setStatus("인증코드를 보내지 못했습니다.", true);
+        return false;
+      } finally {
+        setEmailVerificationBusy(false);
+      }
+    }
+
+    async function verifyEmailCode() {
+      const email = normalizeEmail(emailInput.value);
+      const code = emailCodeInput.value.replace(/\D/g, "").slice(0, 6);
+
+      if (!isValidEmail(email) || code.length !== 6) {
+        setStatus("이메일과 6자리 인증코드를 확인해 주세요.", true);
+        (isValidEmail(email) ? emailCodeInput : emailInput).focus();
+        return false;
+      }
+
+      setEmailVerificationBusy(true);
+      setStatus("이메일 인증코드를 확인하는 중입니다.");
+
+      try {
+        const response = await fetch(EMAIL_AUTH_VERIFY_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ email, code }),
+        });
+        const payload = await safeReadJson(response);
+
+        if (!response.ok) {
+          setStatus(payload.message || "이메일 인증에 실패했습니다.", true);
+          return false;
+        }
+
+        signupState.emailVerification = {
+          email,
+          verified: true,
+          verifiedAt: new Date().toISOString(),
+        };
+        emailCodeInput.value = "";
+        persistDraft();
+        setStatus("이메일 인증이 완료되었습니다.");
+        renderState();
+        nameInput.focus();
+        return true;
+      } catch {
+        setStatus("이메일 인증을 완료하지 못했습니다.", true);
+        return false;
+      } finally {
+        setEmailVerificationBusy(false);
+      }
     }
 
     function saveProfile() {
@@ -422,6 +983,12 @@
 
       if (!isValidEmail(email)) {
         setStatus("아이디로 사용할 이메일 주소를 확인해 주세요.", true);
+        emailInput.focus();
+        return false;
+      }
+
+      if (!isEmailVerified(email)) {
+        setStatus("이메일 인증을 먼저 완료해 주세요.", true);
         emailInput.focus();
         return false;
       }
@@ -443,6 +1010,7 @@
       persistDraft();
       setStatus("개인정보를 저장했습니다.");
       renderState();
+      phoneInput.focus();
       return true;
     }
 
@@ -464,6 +1032,7 @@
       persistDraft();
       setStatus("휴대폰번호를 저장했습니다.");
       renderState();
+      passwordInput.focus();
       return true;
     }
 
@@ -494,9 +1063,9 @@
     }
 
     async function saveAll() {
-      const consentSaved = signupState.consent || saveConsent();
-      const profileSaved = signupState.profile || saveProfile();
-      const phoneSaved = signupState.phone || savePhone();
+      const consentSaved = saveConsent();
+      const profileSaved = saveProfile();
+      const phoneSaved = savePhone();
       const passwordSaved = signupState.password || await savePassword();
 
       if (!consentSaved || !profileSaved || !phoneSaved || !passwordSaved) {
@@ -526,6 +1095,7 @@
         termsConsent.checked = Boolean(signupState.consent.terms);
         privacyConsent.checked = Boolean(signupState.consent.privacy);
         ageConsent.checked = Boolean(signupState.consent.age);
+        syncAllConsent();
       }
 
       if (signupState.profile) {
@@ -546,12 +1116,48 @@
       phoneState.textContent = signupState.phone ? "저장됨" : "미저장";
       passwordState.textContent = signupState.password ? "저장됨" : "미저장";
 
+      const currentEmail = normalizeEmail(emailInput.value);
+      const verified = isEmailVerified(currentEmail);
+
+      consentSection.classList.toggle("is-complete", Boolean(signupState.consent));
+      profileSection.classList.toggle("is-complete", Boolean(signupState.profile));
+      phoneSection.classList.toggle("is-complete", Boolean(signupState.phone));
+      passwordSection.classList.toggle("is-complete", Boolean(signupState.password));
+      progressConsent.classList.toggle("is-complete", Boolean(signupState.consent));
+      progressEmail.classList.toggle("is-complete", verified);
+      progressProfile.classList.toggle("is-complete", Boolean(signupState.profile));
+      progressPhone.classList.toggle("is-complete", Boolean(signupState.phone));
+      progressPassword.classList.toggle("is-complete", Boolean(signupState.password));
+
+      emailVerificationStatus.textContent = verified
+        ? `${currentEmail} 인증 완료`
+        : "이메일 인증 전입니다.";
+      emailVerificationStatus.classList.toggle("is-verified", verified);
+
       signupSummary.replaceChildren(
         createSummaryItem(`개인정보 동의: ${signupState.consent ? "저장됨" : "미저장"}`),
+        createSummaryItem(`이메일 인증: ${verified ? "완료" : "미완료"}`),
         createSummaryItem(`개인정보: ${signupState.profile?.email || "미저장"}`),
         createSummaryItem(`휴대폰번호: ${signupState.phone?.displayPhone || "미저장"}`),
         createSummaryItem(`비밀번호: ${signupState.password ? "저장됨" : "미저장"}`),
       );
+    }
+
+    function syncAllConsent() {
+      allConsent.checked = termsConsent.checked && privacyConsent.checked && ageConsent.checked;
+    }
+
+    function scrollToSection(sectionId) {
+      const section = document.getElementById(sectionId);
+
+      if (!section) {
+        return;
+      }
+
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
 
     function createSummaryItem(text) {
@@ -559,6 +1165,19 @@
 
       item.textContent = text;
       return item;
+    }
+
+    function isEmailVerified(email) {
+      return Boolean(
+        signupState.emailVerification?.verified
+          && signupState.emailVerification.email === normalizeEmail(email),
+      );
+    }
+
+    function setEmailVerificationBusy(isBusy) {
+      sendEmailCodeButton.disabled = isBusy;
+      verifyEmailButton.disabled = isBusy;
+      emailCodeInput.disabled = isBusy;
     }
 
     function updatePasswordRules() {
@@ -602,6 +1221,14 @@
       }
 
       return window.btoa(binary);
+    }
+
+    async function safeReadJson(response) {
+      try {
+        return await response.json();
+      } catch {
+        return {};
+      }
     }
 
     function normalizeEmail(value) {
