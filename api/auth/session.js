@@ -1,6 +1,5 @@
 const { getSql, ensureSchema } = require("../_lib/db");
 const { getGoogleClientId, isGoogleAuthConfigured } = require("../_lib/google-auth");
-const { isEmailAuthConfigured } = require("../_lib/email");
 const { getSessionUser } = require("../_lib/auth");
 const { methodNotAllowed, sendJson } = require("../_lib/http");
 
@@ -33,7 +32,7 @@ module.exports = async (request, response) => {
       email: sessionUser?.email ?? null,
       databaseConfigured: true,
       googleLoginConfigured: isGoogleAuthConfigured(),
-      emailLoginConfigured: isEmailAuthConfigured(),
+      emailLoginConfigured: true,
       googleClientId: getGoogleClientId(),
     });
   } catch (error) {
@@ -45,7 +44,7 @@ module.exports = async (request, response) => {
       email: null,
       databaseConfigured: true,
       googleLoginConfigured: isGoogleAuthConfigured(),
-      emailLoginConfigured: isEmailAuthConfigured(),
+      emailLoginConfigured: true,
       googleClientId: getGoogleClientId(),
     });
   }

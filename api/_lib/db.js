@@ -50,6 +50,11 @@ async function ensureSchemaLocked(sql) {
       "google_sub TEXT UNIQUE,",
       "name TEXT NOT NULL DEFAULT '',",
       "picture_url TEXT NOT NULL DEFAULT '',",
+      "birth_date TEXT NOT NULL DEFAULT '',",
+      "phone TEXT NOT NULL DEFAULT '',",
+      "memo TEXT NOT NULL DEFAULT '',",
+      "password_hash TEXT NOT NULL DEFAULT '',",
+      "password_salt TEXT NOT NULL DEFAULT '',",
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
@@ -58,6 +63,11 @@ async function ensureSchemaLocked(sql) {
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_url TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS birth_date TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS memo TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password_salt TEXT NOT NULL DEFAULT ''");
 
     await sql.query([
       "CREATE TABLE IF NOT EXISTS user_sessions (",

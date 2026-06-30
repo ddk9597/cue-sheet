@@ -2,6 +2,7 @@ const CUES_API_ENDPOINT = "/api/cues";
 const PRACTICE_API_ENDPOINT = "/api/practice";
 const AUTH_SESSION_ENDPOINT = "/api/auth/session";
 const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
+const AUTH_LOGIN_ENDPOINT = "/api/auth/login";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
 const TODO_AUTH_ENDPOINT = "/api/todo-auth";
 const TODOS_API_ENDPOINT = "/api/todos";
@@ -2096,8 +2097,42 @@ async function loginWithEmailPassword() {
     return;
   }
 
-  authNotice = "비밀번호 로그인 API 연결이 아직 필요합니다. 회원가입은 회원가입 버튼에서 진행하세요.";
+  emailAuthInFlight = true;
+  authNotice = "로그인하는 중입니다.";
   updateAuthUi();
+
+  try {
+    const response = await fetch(AUTH_LOGIN_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      authNotice = payload.message || "로그인하지 못했습니다.";
+      return;
+    }
+
+    authSession = normalizeAuthSession({
+      ...payload,
+      databaseConfigured: true,
+      googleLoginConfigured: authSession.googleLoginConfigured,
+      emailLoginConfigured: true,
+      googleClientId: authSession.googleClientId,
+    });
+    emailPasswordInput.value = "";
+    authNotice = "로그인되었습니다.";
+    await initializeStorage();
+  } catch {
+    authNotice = "로그인 요청을 완료하지 못했습니다.";
+  } finally {
+    emailAuthInFlight = false;
+    updateAuthUi();
+  }
 }
 
 async function logoutAuthSession() {

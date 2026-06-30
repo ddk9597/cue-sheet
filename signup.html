@@ -8,6 +8,7 @@
   <style>
     body {
       min-height: 100dvh;
+      overflow-x: hidden;
     }
 
     .signup-shell {
@@ -64,6 +65,7 @@
       color: rgba(255, 250, 240, 0.76);
       font-size: 0.95rem;
       line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
     .signup-intro-actions {
@@ -250,12 +252,20 @@
       grid-template-columns: auto minmax(0, 1fr);
       gap: 10px;
       align-items: start;
+      min-width: 0;
       padding: 12px;
       border-radius: 14px;
       background: rgba(24, 32, 25, 0.04);
       color: var(--text-main);
       font-weight: 700;
       line-height: 1.45;
+    }
+
+    .signup-check span {
+      display: block;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-all;
     }
 
     .signup-check input {
@@ -351,6 +361,44 @@
       color: var(--danger);
     }
 
+    .signup-complete-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(24, 32, 25, 0.58);
+      backdrop-filter: blur(8px);
+    }
+
+    .signup-complete-modal.is-open {
+      display: grid;
+    }
+
+    .signup-complete-dialog {
+      width: min(420px, 100%);
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border: 1px solid rgba(255, 250, 240, 0.2);
+      border-radius: 20px;
+      background: #fffaf0;
+      box-shadow: 0 24px 70px rgba(24, 32, 25, 0.28);
+    }
+
+    .signup-complete-dialog strong {
+      color: var(--text-main);
+      font-size: 1.28rem;
+      line-height: 1.3;
+    }
+
+    .signup-complete-dialog p {
+      margin: 0;
+      color: var(--text-subtle);
+      line-height: 1.55;
+    }
+
     .password-rules {
       display: grid;
       gap: 7px;
@@ -437,12 +485,18 @@
         order: -1;
         top: 78px;
         width: 100%;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(56px, 1fr));
         gap: 4px;
         padding: 8px;
+        overflow-x: auto;
         border-radius: 14px;
         background: rgba(24, 32, 25, 0.92);
         box-shadow: 0 16px 36px rgba(24, 32, 25, 0.25);
+        scrollbar-width: none;
+      }
+
+      .signup-progress::-webkit-scrollbar {
+        display: none;
       }
 
       .signup-progress-step {
@@ -470,6 +524,7 @@
 
     @media (max-width: 720px) {
       .signup-shell {
+        width: min(100% - 14px, 960px);
         padding-top: 10px;
       }
 
@@ -493,6 +548,24 @@
       .signup-section {
         padding: 14px;
         border-radius: 16px;
+      }
+
+      .signup-status,
+      .email-verification-status,
+      .signup-final-status {
+        max-width: min(100%, 250px);
+        font-size: 0.84rem;
+      }
+
+      .signup-check span {
+        max-width: min(100%, 210px);
+      }
+
+      .signup-progress {
+        top: 72px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 2px;
+        padding: 6px;
       }
 
       .signup-grid {
@@ -519,9 +592,64 @@
         width: 100%;
       }
 
+      .signup-complete-modal {
+        padding: 14px;
+      }
+
+      .signup-complete-dialog {
+        padding: 18px;
+        border-radius: 18px;
+      }
+
       .signup-actions .primary-button,
       .signup-actions .ghost-button {
         width: 100%;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .signup-intro {
+        padding: 16px;
+      }
+
+      .signup-title {
+        font-size: 1.42rem;
+      }
+
+      .signup-status,
+      .email-verification-status,
+      .signup-final-status {
+        max-width: calc(100vw - 52px);
+        font-size: 0.82rem;
+      }
+
+      .signup-form {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .signup-section,
+      .profile-email-card,
+      .email-verification {
+        padding: 12px;
+      }
+
+      .signup-check span {
+        max-width: min(100%, 205px);
+      }
+
+      .signup-progress {
+        grid-template-columns: repeat(5, minmax(48px, 1fr));
+      }
+
+      .signup-progress-step {
+        min-height: 44px;
+        font-size: 0.64rem;
+      }
+
+      .signup-progress-number {
+        width: 24px;
+        height: 24px;
       }
     }
   </style>
@@ -770,9 +898,23 @@
     </nav>
   </main>
 
+  <div id="signupCompleteModal" class="signup-complete-modal" role="dialog" aria-modal="true" aria-labelledby="signupCompleteTitle" aria-describedby="signupCompleteMessage">
+    <div class="signup-complete-dialog">
+      <strong id="signupCompleteTitle">가입이 완료되었습니다.</strong>
+      <p id="signupCompleteMessage">이메일 인증 계정으로 로그인되었습니다. 잠시 후 메인 화면으로 이동합니다.</p>
+      <div class="signup-actions">
+        <button id="goHomeButton" class="primary-button" type="button">메인으로 이동</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    const AUTH_SESSION_ENDPOINT = "/api/auth/session";
+    const AUTH_SIGNUP_ENDPOINT = "/api/auth/signup";
     const EMAIL_AUTH_START_ENDPOINT = "/api/auth/email/start";
     const EMAIL_AUTH_VERIFY_ENDPOINT = "/api/auth/email/verify";
+    const HOME_URL = "./index.html";
+    const SIGNUP_REDIRECT_DELAY_MS = 1800;
     const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
     const signupState = {
       consent: null,
@@ -785,6 +927,8 @@
 
     const signupStatus = document.querySelector("#signupStatus");
     const signupFinalStatus = document.querySelector("#signupFinalStatus");
+    const signupCompleteModal = document.querySelector("#signupCompleteModal");
+    const goHomeButton = document.querySelector("#goHomeButton");
     const signupSummary = document.querySelector("#signupSummary");
     const consentState = document.querySelector("#consentState");
     const profileState = document.querySelector("#profileState");
@@ -819,6 +963,7 @@
     const passwordMatchRule = document.querySelector("#passwordMatchRule");
 
     document.querySelector("#saveAllButton").addEventListener("click", saveAll);
+    goHomeButton.addEventListener("click", goHome);
     sendEmailCodeButton.addEventListener("click", sendEmailCode);
     verifyEmailButton.addEventListener("click", verifyEmailCode);
 
@@ -1047,14 +1192,7 @@
         return false;
       }
 
-      const salt = createSalt();
-      const passwordHash = await hashPassword(password, salt);
-
-      return {
-        salt,
-        passwordHash,
-        savedAt: new Date().toISOString(),
-      };
+      return password;
     }
 
     async function saveAll() {
@@ -1082,10 +1220,19 @@
         return;
       }
 
+      setStatus("가입 정보를 저장하는 중입니다.");
+      const signedUp = await submitSignup(profile, phone, password);
+
+      if (!signedUp) {
+        return;
+      }
+
       signupState.consent = consent;
       signupState.profile = profile;
       signupState.phone = phone;
-      signupState.password = password;
+      signupState.password = {
+        savedAt: new Date().toISOString(),
+      };
       emailInput.value = profile.email;
       phoneInput.value = phone.displayPhone;
       passwordInput.value = "";
@@ -1094,6 +1241,71 @@
       persistDraft();
       setStatus("가입 정보를 최종 확인했습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
       renderState();
+      const authenticated = await confirmAuthenticatedSession();
+
+      if (!authenticated) {
+        setStatus("로그인 세션을 확인하지 못했습니다. 이메일 인증을 다시 완료해 주세요.", true);
+        emailInput.focus();
+        return;
+      }
+
+      showSignupCompleteModal();
+    }
+
+    async function submitSignup(profile, phone, password) {
+      try {
+        const response = await fetch(AUTH_SIGNUP_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            email: profile.email,
+            name: profile.name,
+            birthDate: profile.birthDate,
+            memo: profile.memo,
+            phone: phone.phone,
+            password,
+          }),
+        });
+        const payload = await safeReadJson(response);
+
+        if (!response.ok) {
+          setStatus(payload.message || "가입 정보를 저장하지 못했습니다.", true);
+          return false;
+        }
+
+        return true;
+      } catch {
+        setStatus("가입 정보를 저장하지 못했습니다.", true);
+        return false;
+      }
+    }
+
+    async function confirmAuthenticatedSession() {
+      try {
+        const response = await fetch(AUTH_SESSION_ENDPOINT, {
+          headers: {
+            Accept: "application/json",
+          },
+        });
+        const payload = await safeReadJson(response);
+
+        return Boolean(response.ok && payload.authenticated);
+      } catch {
+        return false;
+      }
+    }
+
+    function showSignupCompleteModal() {
+      signupCompleteModal.classList.add("is-open");
+      goHomeButton.focus();
+      window.setTimeout(goHome, SIGNUP_REDIRECT_DELAY_MS);
+    }
+
+    function goHome() {
+      window.location.href = HOME_URL;
     }
 
     function persistDraft() {
@@ -1236,31 +1448,6 @@
         && /[A-Za-z]/.test(password)
         && /\d/.test(password)
         && password === passwordConfirmInput.value;
-    }
-
-    async function hashPassword(password, salt) {
-      const data = new TextEncoder().encode(`${salt}:${password}`);
-      const digest = await window.crypto.subtle.digest("SHA-256", data);
-
-      return arrayBufferToBase64(digest);
-    }
-
-    function createSalt() {
-      const bytes = new Uint8Array(16);
-
-      window.crypto.getRandomValues(bytes);
-      return arrayBufferToBase64(bytes);
-    }
-
-    function arrayBufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-
-      for (const byte of bytes) {
-        binary += String.fromCharCode(byte);
-      }
-
-      return window.btoa(binary);
     }
 
     async function safeReadJson(response) {

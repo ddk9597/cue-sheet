@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 
 const SESSION_COOKIE_NAME = "cue_sheet_session";
 const AUTH_SESSION_DAYS = Math.max(1, Number(process.env.AUTH_SESSION_DAYS) || 30);
+const PASSWORD_HASH_BYTES = 64;
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
@@ -118,6 +119,142 @@ async function findOrCreateEmailUser(sql, email) {
   );
 
   return insertedRows[0];
+}
+
+function isValidPassword(value) {
+  const password = String(value || "");
+
+  return password.length >= 8
+    && /[A-Za-z]/.test(password)
+    && /\d/.test(password);
+}
+
+function createPasswordRecord(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(String(password), salt, PASSWORD_HASH_BYTES).toString("hex");
+
+  return { hash, salt };
+}
+
+function verifyPassword(password, salt, hash) {
+  if (!salt || !hash) {
+    return false;
+  }
+
+  const expected = Buffer.from(String(hash), "hex");
+  const actual = crypto.scryptSync(String(password), String(salt), expected.length);
+
+  if (actual.length !== expected.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(actual, expected);
+}
+
+async function updateEmailUserSignup(sql, userId, payload) {
+  const email = normalizeEmail(payload.email);
+  const name = String(payload.name || "").trim().slice(0, 80);
+  const birthDate = String(payload.birthDate || "").trim().slice(0, 20);
+  const phone = String(payload.phone || "").replace(/\D/g, "").slice(0, 11);
+  const memo = String(payload.memo || "").trim().slice(0, 120);
+  const password = String(payload.password || "");
+
+  if (!isValidEmail(email)) {
+    const error = new Error("이메일 주소를 확인해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!name) {
+    const error = new Error("이름을 입력해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!/^010\d{8}$/.test(phone)) {
+    const error = new Error("휴대폰번호를 확인해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!isValidPassword(password)) {
+    const error = new Error("비밀번호 조건을 확인해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const passwordRecord = createPasswordRecord(password);
+  const rows = await sql.query(
+    [
+      "UPDATE app_users",
+      "SET email = $2, name = $3, birth_date = $4, phone = $5, memo = $6,",
+      "password_hash = $7, password_salt = $8, last_login_at = NOW()",
+      "WHERE id = $1",
+      "RETURNING id, email",
+    ].join(" "),
+    [
+      userId,
+      email,
+      name,
+      birthDate,
+      phone,
+      memo,
+      passwordRecord.hash,
+      passwordRecord.salt,
+    ],
+  );
+
+  if (!rows[0]) {
+    const error = new Error("회원 정보를 찾을 수 없습니다.");
+
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return rows[0];
+}
+
+async function authenticateEmailPassword(sql, email, password) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail) || !String(password || "")) {
+    const error = new Error("이메일 또는 비밀번호를 확인해 주세요.");
+
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const rows = await sql.query(
+    [
+      "SELECT id, email, password_hash, password_salt",
+      "FROM app_users",
+      "WHERE email = $1",
+      "LIMIT 1",
+    ].join(" "),
+    [normalizedEmail],
+  );
+  const user = rows[0];
+
+  if (!user || !verifyPassword(password, user.password_salt, user.password_hash)) {
+    const error = new Error("이메일 또는 비밀번호를 확인해 주세요.");
+
+    error.statusCode = 401;
+    throw error;
+  }
+
+  await sql.query(
+    "UPDATE app_users SET last_login_at = NOW() WHERE id = $1",
+    [user.id],
+  );
+
+  return {
+    id: user.id,
+    email: user.email,
+  };
 }
 
 async function createSession(sql, request, response, userId) {
@@ -266,11 +403,14 @@ function hashValue(value) {
 }
 
 module.exports = {
+  authenticateEmailPassword,
   createSession,
   destroySession,
   findOrCreateEmailUser,
   findOrCreateUser,
   getSessionUser,
+  isValidPassword,
   isValidEmail,
   normalizeEmail,
+  updateEmailUserSignup,
 };
