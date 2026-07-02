@@ -111,6 +111,75 @@ async function ensureSchemaLocked(sql) {
     ].join(" "));
 
     await sql.query([
+      "CREATE TABLE IF NOT EXISTS groups (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "name TEXT NOT NULL DEFAULT '',",
+      "owner_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS groups_owner_user_id_idx",
+      "ON groups (owner_user_id)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS group_members (",
+      "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
+      "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "PRIMARY KEY (group_id, user_id)",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS group_members_user_id_idx",
+      "ON group_members (user_id)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS group_invites (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
+      "inviter_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "invitee_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "responded_at TIMESTAMPTZ",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE UNIQUE INDEX IF NOT EXISTS group_invites_pending_unique_idx",
+      "ON group_invites (group_id, invitee_user_id)",
+      "WHERE status = 'pending'",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS group_invites_invitee_user_id_idx",
+      "ON group_invites (invitee_user_id, status, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS user_memos (",
+      "user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,",
+      "content TEXT NOT NULL DEFAULT '',",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS user_practice_calendar_state (",
+      "user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,",
+      "logs JSONB NOT NULL DEFAULT '{}'::jsonb,",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
       "CREATE TABLE IF NOT EXISTS save_password_attempts (",
       "ip_address TEXT PRIMARY KEY,",
       "failure_count INTEGER NOT NULL DEFAULT 0,",

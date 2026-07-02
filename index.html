@@ -100,6 +100,68 @@
       </div>
     </section>
 
+    <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
+      <div class="member-header">
+        <div>
+          <p class="panel-label">Member</p>
+          <strong id="memberTitle" class="member-title">회원 전용</strong>
+        </div>
+      </div>
+      <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+      <div class="member-grid">
+        <section class="member-block" aria-labelledby="memberGroupsTitle">
+          <div class="member-block-header">
+            <strong id="memberGroupsTitle">내 그룹</strong>
+          </div>
+          <form id="memberGroupForm" class="member-inline-form" autocomplete="off">
+            <label class="field" for="memberGroupNameInput">
+              <span>그룹 이름</span>
+              <input id="memberGroupNameInput" name="groupName" type="text" maxlength="80" placeholder="예: 7월 공연팀">
+            </label>
+            <button class="primary-button" type="submit">그룹 만들기</button>
+          </form>
+          <ul id="memberGroupList" class="member-list"></ul>
+        </section>
+
+        <section class="member-block" aria-labelledby="memberInviteTitle">
+          <div class="member-block-header">
+            <strong id="memberInviteTitle">그룹 초대</strong>
+          </div>
+          <form id="memberInviteForm" class="member-inline-form" autocomplete="off">
+            <label class="field" for="memberInviteGroupSelect">
+              <span>초대할 그룹</span>
+              <select id="memberInviteGroupSelect" name="inviteGroup"></select>
+            </label>
+            <label class="field" for="memberInviteEmailInput">
+              <span>초대 이메일</span>
+              <input id="memberInviteEmailInput" name="inviteEmail" type="email" autocomplete="email" placeholder="name@example.com">
+            </label>
+            <button id="memberInviteButton" class="primary-button" type="submit">초대 보내기</button>
+          </form>
+        </section>
+
+        <section class="member-block" aria-labelledby="memberMessagesTitle">
+          <div class="member-block-header">
+            <strong id="memberMessagesTitle">메시지함</strong>
+          </div>
+          <ul id="memberMessageList" class="member-list"></ul>
+        </section>
+
+        <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
+          <div class="member-block-header">
+            <strong id="memberMemoTitle">내 메모</strong>
+          </div>
+          <form id="memberMemoForm" class="member-memo-form">
+            <label class="field" for="memberMemoInput">
+              <span>메모</span>
+              <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
+            </label>
+            <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
     <section class="panel summary-panel" aria-label="총 소요 시간">
       <div class="summary-main">
         <div>
