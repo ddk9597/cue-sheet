@@ -239,7 +239,21 @@ async function authenticateEmailPassword(sql, email, password) {
   );
   const user = rows[0];
 
-  if (!user || !verifyPassword(password, user.password_salt, user.password_hash)) {
+  if (!user) {
+    const error = new Error("이메일 또는 비밀번호를 확인해 주세요.");
+
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!user.password_hash || !user.password_salt) {
+    const error = new Error("비밀번호가 아직 등록되지 않았습니다. 회원가입을 다시 완료해 주세요.");
+
+    error.statusCode = 409;
+    throw error;
+  }
+
+  if (!verifyPassword(password, user.password_salt, user.password_hash)) {
     const error = new Error("이메일 또는 비밀번호를 확인해 주세요.");
 
     error.statusCode = 401;
