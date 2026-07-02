@@ -35,6 +35,7 @@ const TODO_DEFAULT_HTML = `
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
+const isCueWorkspacePage = document.body.classList.contains("cue-workspace-page");
 const authTitle = document.querySelector("#authTitle");
 const authStatus = document.querySelector("#authStatus");
 const googleSignInButton = document.querySelector("#googleSignInButton");
@@ -854,6 +855,11 @@ function openModalById(modalId, section = "") {
     return;
   }
 
+  if (isCueWorkspacePage && modal === cueModal) {
+    focusCueModalSection(section);
+    return;
+  }
+
   if (!modal.open) {
     if (typeof modal.showModal === "function") {
       modal.showModal();
@@ -891,6 +897,11 @@ function closeModal(modal) {
     return;
   }
 
+  if (isCueWorkspacePage && modal === cueModal) {
+    closeCueEntryOverlay({ restoreFocus: false });
+    return;
+  }
+
   if (modal === cueModal) {
     closeCueEntryOverlay({ restoreFocus: false });
   }
@@ -904,16 +915,19 @@ function closeModal(modal) {
 }
 
 function syncModalState() {
-  document.body.classList.toggle("has-modal-open", Boolean(document.querySelector("dialog[open]")));
+  const hasOpenBlockingDialog = [...document.querySelectorAll("dialog[open]")]
+    .some((dialog) => !(isCueWorkspacePage && dialog === cueModal));
+
+  document.body.classList.toggle("has-modal-open", hasOpenBlockingDialog);
 }
 
 function focusCueModalSection(section) {
   if (section === "list") {
-    cueListPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    cueListPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
-  cueEditorPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  cueEditorPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
   openCueEntryButton?.focus();
 }
 
@@ -1462,7 +1476,7 @@ function openCueEntryOverlay(options = {}) {
     return;
   }
 
-  if (!cueModal?.open) {
+  if (!isCueWorkspacePage && !cueModal?.open) {
     openModalById("cueModal", "input");
   }
 

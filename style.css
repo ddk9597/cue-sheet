@@ -670,6 +670,36 @@ textarea {
   width: min(1280px, calc(100vw - 28px));
 }
 
+body.cue-workspace-page .page {
+  min-height: auto;
+}
+
+body.cue-workspace-page .cue-workspace-modal[open] {
+  position: static;
+  display: block;
+  width: min(1280px, calc(100% - 32px));
+  max-height: none;
+  margin: 0 auto 32px;
+}
+
+body.cue-workspace-page .cue-workspace-modal::backdrop {
+  display: none;
+}
+
+body.cue-workspace-page .cue-workspace-modal .modal-card {
+  overflow: visible;
+  box-shadow: var(--shadow);
+}
+
+body.cue-workspace-page .cue-workspace-modal .modal-body {
+  max-height: none;
+  overflow: visible;
+}
+
+body.cue-workspace-page .cue-workspace-modal .modal-close {
+  display: none;
+}
+
 .modal::backdrop {
   background: rgba(24, 32, 25, 0.42);
   backdrop-filter: blur(8px);
