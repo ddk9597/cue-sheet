@@ -916,6 +916,8 @@
     const HOME_URL = "./index.html";
     const SIGNUP_REDIRECT_DELAY_MS = 1800;
     const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
+    let signupSubmitInFlight = false;
+    let signupCompleted = false;
     const signupState = {
       consent: null,
       emailVerification: null,
@@ -927,8 +929,10 @@
 
     const signupStatus = document.querySelector("#signupStatus");
     const signupFinalStatus = document.querySelector("#signupFinalStatus");
+    const signupForm = document.querySelector("#signupForm");
     const signupCompleteModal = document.querySelector("#signupCompleteModal");
     const goHomeButton = document.querySelector("#goHomeButton");
+    const saveAllButton = document.querySelector("#saveAllButton");
     const signupSummary = document.querySelector("#signupSummary");
     const consentState = document.querySelector("#consentState");
     const profileState = document.querySelector("#profileState");
@@ -962,7 +966,11 @@
     const passwordMixRule = document.querySelector("#passwordMixRule");
     const passwordMatchRule = document.querySelector("#passwordMatchRule");
 
-    document.querySelector("#saveAllButton").addEventListener("click", saveAll);
+    saveAllButton.addEventListener("click", saveAll);
+    signupForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveAll();
+    });
     goHomeButton.addEventListener("click", goHome);
     sendEmailCodeButton.addEventListener("click", sendEmailCode);
     verifyEmailButton.addEventListener("click", verifyEmailCode);
@@ -1196,6 +1204,10 @@
     }
 
     async function saveAll() {
+      if (signupSubmitInFlight || signupCompleted) {
+        return;
+      }
+
       const consent = collectConsent();
 
       if (!consent) {
@@ -1220,36 +1232,49 @@
         return;
       }
 
+      signupSubmitInFlight = true;
+      setFinalSubmitBusy(true);
       setStatus("가입 정보를 저장하는 중입니다.");
-      const signedUp = await submitSignup(profile, phone, password);
 
-      if (!signedUp) {
-        return;
+      try {
+        const signedUp = await submitSignup(profile, phone, password);
+
+        if (!signedUp) {
+          return;
+        }
+
+        signupState.consent = consent;
+        signupState.profile = profile;
+        signupState.phone = phone;
+        signupState.password = {
+          savedAt: new Date().toISOString(),
+        };
+        emailInput.value = profile.email;
+        phoneInput.value = phone.displayPhone;
+        passwordInput.value = "";
+        passwordConfirmInput.value = "";
+        updatePasswordRules();
+        persistDraft();
+        setStatus("가입 정보를 최종 확인했습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
+        renderState();
+        const authenticated = await confirmAuthenticatedSession();
+
+        if (!authenticated) {
+          setStatus("로그인 세션을 확인하지 못했습니다. 이메일 인증을 다시 완료해 주세요.", true);
+          emailInput.focus();
+          return;
+        }
+
+        clearDraft();
+        signupCompleted = true;
+        showSignupCompleteModal();
+      } finally {
+        signupSubmitInFlight = false;
+
+        if (!signupCompleted) {
+          setFinalSubmitBusy(false);
+        }
       }
-
-      signupState.consent = consent;
-      signupState.profile = profile;
-      signupState.phone = phone;
-      signupState.password = {
-        savedAt: new Date().toISOString(),
-      };
-      emailInput.value = profile.email;
-      phoneInput.value = phone.displayPhone;
-      passwordInput.value = "";
-      passwordConfirmInput.value = "";
-      updatePasswordRules();
-      persistDraft();
-      setStatus("가입 정보를 최종 확인했습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
-      renderState();
-      const authenticated = await confirmAuthenticatedSession();
-
-      if (!authenticated) {
-        setStatus("로그인 세션을 확인하지 못했습니다. 이메일 인증을 다시 완료해 주세요.", true);
-        emailInput.focus();
-        return;
-      }
-
-      showSignupCompleteModal();
     }
 
     async function submitSignup(profile, phone, password) {
@@ -1311,6 +1336,10 @@
     function persistDraft() {
       signupState.updatedAt = new Date().toISOString();
       window.localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(signupState));
+    }
+
+    function clearDraft() {
+      window.localStorage.removeItem(SIGNUP_STORAGE_KEY);
     }
 
     function loadDraft() {
@@ -1430,6 +1459,11 @@
       sendEmailCodeButton.disabled = isBusy;
       verifyEmailButton.disabled = isBusy;
       emailCodeInput.disabled = isBusy;
+    }
+
+    function setFinalSubmitBusy(isBusy) {
+      saveAllButton.disabled = isBusy;
+      saveAllButton.textContent = isBusy ? "가입 처리 중" : "최종 가입하기";
     }
 
     function updatePasswordRules() {
