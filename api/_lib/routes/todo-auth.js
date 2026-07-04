@@ -1,6 +1,6 @@
-const { ensureSchema, getSql } = require("./_lib/db");
-const { methodNotAllowed, readJsonBody, sendJson } = require("./_lib/http");
-const { validateSavePassword } = require("./_lib/save-password");
+const { ensureSchema, getSql } = require("../db");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { validateSavePassword } = require("../save-password");
 
 module.exports = async (request, response) => {
   if (request.method !== "POST") {

@@ -1,4 +1,4 @@
-const { methodNotAllowed, sendJson } = require("./_lib/http");
+const { methodNotAllowed, sendJson } = require("../http");
 
 const ITUNES_SEARCH_URL = "https://itunes.apple.com/search";
 const CUSTOM_ARTWORK_BY_TITLE = new Map([

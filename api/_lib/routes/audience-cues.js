@@ -1,6 +1,6 @@
-const { normalizeCueList } = require("./_lib/cues");
-const { LEGACY_STORAGE_ROW_ID, ensureSchema, getSql } = require("./_lib/db");
-const { methodNotAllowed, sendJson } = require("./_lib/http");
+const { normalizeCueList } = require("../cues");
+const { LEGACY_STORAGE_ROW_ID, ensureSchema, getSql } = require("../db");
+const { methodNotAllowed, sendJson } = require("../http");
 
 module.exports = async (request, response) => {
   if (request.method !== "GET") {

@@ -1,7 +1,7 @@
-const { TODO_DOCUMENT_ROW_ID, ensureSchema, getSql } = require("./_lib/db");
-const { methodNotAllowed, readJsonBody, sendJson } = require("./_lib/http");
-const { validateSavePassword } = require("./_lib/save-password");
-const { normalizeTodoHtml } = require("./_lib/todo");
+const { TODO_DOCUMENT_ROW_ID, ensureSchema, getSql } = require("../db");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { validateSavePassword } = require("../save-password");
+const { normalizeTodoHtml } = require("../todo");
 
 module.exports = async (request, response) => {
   if (!["GET", "PUT"].includes(request.method)) {

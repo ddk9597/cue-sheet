@@ -1,8 +1,8 @@
-const { PRACTICE_LOG_ROW_ID, ensureSchema, getSql } = require("./_lib/db");
-const { getSessionUser } = require("./_lib/auth");
-const { methodNotAllowed, readJsonBody, sendJson } = require("./_lib/http");
-const { normalizePracticeLogs } = require("./_lib/practice");
-const { validateSavePassword } = require("./_lib/save-password");
+const { PRACTICE_LOG_ROW_ID, ensureSchema, getSql } = require("../db");
+const { getSessionUser } = require("../auth");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { normalizePracticeLogs } = require("../practice");
+const { validateSavePassword } = require("../save-password");
 
 module.exports = async (request, response) => {
   if (!["GET", "PUT"].includes(request.method)) {

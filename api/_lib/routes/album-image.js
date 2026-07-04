@@ -1,4 +1,4 @@
-const { methodNotAllowed, sendJson } = require("./_lib/http");
+const { methodNotAllowed, sendJson } = require("../http");
 
 const ALLOWED_ARTWORK_HOST_PATTERN = /^is\d-ssl\.mzstatic\.com$/i;
 const IMAGE_FETCH_TIMEOUT_MS = 5000;

@@ -8,22 +8,22 @@ const {
   normalizeEmail,
   isValidEmail,
   updateEmailUserSignup,
-} = require("../_lib/auth");
-const { ensureSchema, getSql } = require("../_lib/db");
+} = require("../auth");
+const { ensureSchema, getSql } = require("../db");
 const {
   createEmailAuthCode,
   getEmailAuthCodeMaxAttempts,
   getEmailAuthCodeTtlMinutes,
   hashEmailAuthCode,
-} = require("../_lib/email-auth-code");
-const { isEmailAuthConfigured, sendEmailAuthCode } = require("../_lib/email");
+} = require("../email-auth-code");
+const { isEmailAuthConfigured, sendEmailAuthCode } = require("../email");
 const {
   GoogleAuthConfigError,
   getGoogleClientId,
   isGoogleAuthConfigured,
   verifyGoogleCredential,
-} = require("../_lib/google-auth");
-const { methodNotAllowed, readJsonBody, sendJson } = require("../_lib/http");
+} = require("../google-auth");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 
 module.exports = async (request, response) => {
   const route = getAuthRoute(request);
@@ -73,17 +73,23 @@ function getAuthRoute(request) {
   const queryPath = request.query?.path;
 
   if (Array.isArray(queryPath)) {
-    return queryPath.join("/");
+    return stripRoutePrefix(queryPath.join("/"), "auth");
   }
 
   if (typeof queryPath === "string" && queryPath) {
-    return queryPath;
+    return stripRoutePrefix(queryPath, "auth");
   }
 
   const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
 
   return url.pathname
     .replace(/^\/api\/auth\/?/, "")
+    .replace(/\/$/, "");
+}
+
+function stripRoutePrefix(route, prefix) {
+  return String(route || "")
+    .replace(new RegExp(`^${prefix}/?`), "")
     .replace(/\/$/, "");
 }
 

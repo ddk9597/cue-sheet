@@ -8,8 +8,12 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "@nestjs/common": "^11.1.27",
+    "@nestjs/core": "^11.1.27",
     "google-auth-library": "^10.6.2",
-    "nodemailer": "^8.0.10"
+    "nodemailer": "^9.0.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "vercel": "^54.3.0"

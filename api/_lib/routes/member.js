@@ -2,9 +2,9 @@ const {
   getSessionUser,
   isValidEmail,
   normalizeEmail,
-} = require("../_lib/auth");
-const { ensureSchema, getSql } = require("../_lib/db");
-const { methodNotAllowed, readJsonBody, sendJson } = require("../_lib/http");
+} = require("../auth");
+const { ensureSchema, getSql } = require("../db");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_MEMO_LENGTH = 5000;
@@ -122,17 +122,23 @@ function getMemberRoute(request) {
   const queryPath = request.query?.path;
 
   if (Array.isArray(queryPath)) {
-    return queryPath.join("/");
+    return stripRoutePrefix(queryPath.join("/"), "member");
   }
 
   if (typeof queryPath === "string" && queryPath) {
-    return queryPath;
+    return stripRoutePrefix(queryPath, "member");
   }
 
   const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
 
   return url.pathname
     .replace(/^\/api\/member\/?/, "")
+    .replace(/\/$/, "");
+}
+
+function stripRoutePrefix(route, prefix) {
+  return String(route || "")
+    .replace(new RegExp(`^${prefix}/?`), "")
     .replace(/\/$/, "");
 }
 

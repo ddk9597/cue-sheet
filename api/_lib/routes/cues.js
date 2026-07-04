@@ -1,8 +1,8 @@
-const { normalizeCueList } = require("./_lib/cues");
-const { LEGACY_STORAGE_ROW_ID, ensureSchema, getSql } = require("./_lib/db");
-const { validateSavePassword } = require("./_lib/save-password");
-const { getSessionUser } = require("./_lib/auth");
-const { methodNotAllowed, readJsonBody, sendJson } = require("./_lib/http");
+const { normalizeCueList } = require("../cues");
+const { LEGACY_STORAGE_ROW_ID, ensureSchema, getSql } = require("../db");
+const { validateSavePassword } = require("../save-password");
+const { getSessionUser } = require("../auth");
+const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 
 module.exports = async (request, response) => {
   if (!["GET", "PUT"].includes(request.method)) {
