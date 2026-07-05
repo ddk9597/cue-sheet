@@ -7,21 +7,8 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="site-header-inner">
-      <a class="site-brand" href="#overview">Cue Sheet</a>
-      <nav class="site-nav" aria-label="상단 메뉴">
-        <a href="#overview">홈</a>
-        <a href="./about.html">소개</a>
-        <button class="site-nav-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
-        <button class="site-nav-button" type="button" data-modal-target="todoModal">할 일</button>
-        <a href="./cues.html#cue-editor">큐 입력</a>
-        <a href="./cues.html#cue-list-panel">목록</a>
-        <a href="./audience.html">관객용 목록</a>
-        <a href="./signup.html">회원가입</a>
-      </nav>
-    </div>
-  </header>
+  <div data-site-header data-current="home"></div>
+  <script src="./site-header.js"></script>
   <main class="page home-page">
     <section id="overview" class="hero home-hero">
       <div class="home-hero-copy">
@@ -34,27 +21,6 @@
           <a class="primary-button" href="./cues.html#cue-editor">큐시트 만들기</a>
           <a class="ghost-button" href="./cues.html#cue-list-panel">목록 확인</a>
           <a class="ghost-button" href="./audience.html">관객용 목록</a>
-        </div>
-      </div>
-      <div class="home-hero-preview" aria-label="큐시트 미리보기">
-        <div class="preview-header">
-          <span>Set List</span>
-          <strong>00:00:00</strong>
-        </div>
-        <div class="preview-row">
-          <span class="preview-index">01</span>
-          <strong>오프닝</strong>
-          <span>120 BPM</span>
-        </div>
-        <div class="preview-row">
-          <span class="preview-index">02</span>
-          <strong>메인 곡</strong>
-          <span>하프다운</span>
-        </div>
-        <div class="preview-row">
-          <span class="preview-index">03</span>
-          <strong>엔딩 멘트</strong>
-          <span>정튜닝</span>
         </div>
       </div>
     </section>
@@ -175,14 +141,12 @@
       </div>
       <div class="summary-actions">
         <a class="primary-button" href="./cues.html">목록 생성/편집/조회</a>
-        <button id="saveButton" class="primary-button" type="button" hidden>목록 저장하기</button>
-        <button id="clearAllButton" class="ghost-button" type="button" hidden>전체 삭제</button>
       </div>
       <div class="home-tool-grid" aria-label="주요 도구">
         <a class="home-tool-card" href="./cues.html#cue-editor">
           <span>01</span>
-          <strong>큐 입력</strong>
-          <small>곡, 멘트, 구분선을 추가합니다.</small>
+          <strong>목록 편집</strong>
+          <small>생성, 편집, 조회 페이지로 이동합니다.</small>
         </a>
         <button class="home-tool-card" type="button" data-modal-target="practiceModal">
           <span>02</span>
@@ -377,250 +341,9 @@
     </div>
   </dialog>
 
-  <dialog id="cueModal" class="modal modal-wide" aria-labelledby="cueModalTitle">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div>
-          <p class="panel-label">Cue Sheet</p>
-          <strong id="cueModalTitle" class="modal-title">큐시트 편집</strong>
-        </div>
-        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
-      </div>
-      <div class="modal-body modal-stack">
-        <section id="cue-editor" class="panel form-panel" aria-label="큐시트 입력" tabindex="-1">
-          <div class="form-panel-header">
-            <div class="form-panel-copy">
-              <p class="panel-label">큐시트 입력</p>
-              <strong class="form-panel-title">항목 추가</strong>
-            </div>
-            <div class="form-panel-actions">
-              <button id="openCueEntryButton" class="primary-button" type="button">항목 추가</button>
-              <button id="addIntermissionButton" class="ghost-button" type="button">구분선 추가</button>
-            </div>
-          </div>
-        </section>
-
-        <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록" tabindex="-1">
-          <div class="list-scroll">
-            <div class="list-header">
-              <span>이동</span>
-              <span>제목</span>
-              <span>BPM</span>
-              <span>시간</span>
-              <span>통기타</span>
-              <span>일렉기타</span>
-              <span>베이스</span>
-              <span>관리</span>
-            </div>
-            <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
-            <div class="list-header-mobile" aria-hidden="true">
-              <span>이동</span>
-              <span>제목</span>
-              <span>재생</span>
-              <span class="list-header-mobile-tunings">A E B</span>
-              <span>메뉴</span>
-            </div>
-            <ul id="cueList" class="cue-list"></ul>
-            <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
-          </div>
-        </section>
-      </div>
-      <div id="cueEntryOverlay" class="submodal" hidden>
-        <div class="submodal-card" role="dialog" aria-modal="true" aria-labelledby="cueEntryTitle">
-          <div class="submodal-header">
-            <div>
-              <p class="panel-label">Cue Sheet</p>
-              <strong id="cueEntryTitle" class="submodal-title">항목 추가</strong>
-            </div>
-            <button class="modal-close" type="button" data-cue-entry-close aria-label="입력 모달 닫기">닫기</button>
-          </div>
-          <form id="cueForm" class="cue-entry-form">
-            <label class="field">
-              <span id="titleFieldLabel">멘트</span>
-              <input
-                id="titleInput"
-                name="title"
-                type="text"
-                maxlength="60"
-                placeholder="예: 오프닝 멘트"
-                required
-              >
-            </label>
-
-            <label id="bpmField" class="field bpm-field">
-              <span>BPM</span>
-              <input
-                id="bpmInput"
-                name="bpm"
-                type="text"
-                inputmode="numeric"
-                maxlength="3"
-                placeholder="예: 120"
-              >
-            </label>
-
-            <fieldset class="field duration-field">
-              <legend>시간</legend>
-              <div class="duration-inputs">
-                <label>
-                  <input
-                    id="durationMinutesInput"
-                    name="durationMinutes"
-                    type="number"
-                    inputmode="numeric"
-                    min="0"
-                    placeholder="분"
-                    required
-                  >
-                  <span>분</span>
-                </label>
-                <label>
-                  <input
-                    id="durationSecondsInput"
-                    name="durationSeconds"
-                    type="number"
-                    inputmode="numeric"
-                    min="0"
-                    max="59"
-                    placeholder="초"
-                    value="0"
-                    required
-                  >
-                  <span>초</span>
-                </label>
-              </div>
-            </fieldset>
-
-            <div class="cue-entry-actions">
-              <button class="ghost-button" type="button" data-cue-entry-close>취소</button>
-              <button id="cueEntrySubmitButton" class="primary-button" type="submit">추가</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </dialog>
-
-  <template id="cueItemTemplate">
-    <li class="cue-item">
-      <button class="drag-handle" type="button" aria-label="순서 이동" title="드래그하여 순서 이동">
-        <span class="drag-dots" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-      </button>
-      <div class="cue-main">
-        <strong class="cue-title"></strong>
-      </div>
-      <div class="bpm-cell">
-        <input
-          class="bpm-list-input"
-          type="text"
-          inputmode="numeric"
-          maxlength="3"
-          aria-label="BPM"
-          placeholder="BPM"
-        >
-        <button
-          class="metronome-button"
-          type="button"
-          aria-label="메트로놈 재생"
-          aria-pressed="false"
-          title="메트로놈 재생"
-        >
-          <span class="metronome-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-      <span class="cue-duration"></span>
-      <div class="cue-desktop-tunings">
-        <label class="tuning-cell" data-field="acousticTuning">
-          <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
-            <option value="standard">정튜닝</option>
-            <option value="half-down">하프다운</option>
-            <option value="inactive">쉬는타임</option>
-          </select>
-        </label>
-        <label class="tuning-cell" data-field="electricTuning">
-          <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
-            <option value="standard">정튜닝</option>
-            <option value="half-down">하프다운</option>
-          </select>
-        </label>
-        <label class="tuning-cell" data-field="bassTuning">
-          <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
-            <option value="standard">정튜닝</option>
-            <option value="half-down">하프다운</option>
-            <option value="d-drop">D 드랍</option>
-            <option value="inactive">쉬는타임</option>
-          </select>
-        </label>
-      </div>
-      <div class="cue-mobile-tuning-group" aria-hidden="true">
-        <span class="cue-mobile-tuning-chip" data-field="acousticTuning">A</span>
-        <span class="cue-mobile-tuning-chip" data-field="electricTuning">E</span>
-        <span class="cue-mobile-tuning-chip" data-field="bassTuning">B</span>
-      </div>
-      <button class="delete-button" type="button">삭제</button>
-      <details class="cue-mobile-actions">
-        <summary class="cue-menu-button" aria-label="항목 메뉴" title="항목 메뉴">
-          <span class="cue-menu-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </summary>
-        <div class="cue-mobile-actions-panel">
-          <label class="cue-mobile-bpm-row">
-            <span>BPM</span>
-            <input
-              class="bpm-list-input cue-mobile-bpm-input"
-              type="text"
-              inputmode="numeric"
-              maxlength="3"
-              aria-label="BPM"
-              placeholder="BPM"
-            >
-          </label>
-          <p class="cue-mobile-meta">시간 <span class="cue-mobile-duration-value"></span></p>
-          <div class="cue-mobile-tuning-editor">
-            <label class="cue-mobile-tuning-row">
-              <span>A</span>
-              <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
-                <option value="standard">정튜닝</option>
-                <option value="half-down">하프다운</option>
-                <option value="inactive">쉬는타임</option>
-              </select>
-            </label>
-            <label class="cue-mobile-tuning-row">
-              <span>E</span>
-              <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
-                <option value="standard">정튜닝</option>
-                <option value="half-down">하프다운</option>
-              </select>
-            </label>
-            <label class="cue-mobile-tuning-row">
-              <span>B</span>
-              <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
-                <option value="standard">정튜닝</option>
-                <option value="half-down">하프다운</option>
-                <option value="d-drop">D 드랍</option>
-                <option value="inactive">쉬는타임</option>
-              </select>
-            </label>
-          </div>
-          <div class="cue-mobile-action-grid">
-            <button class="ghost-button cue-move-button" type="button" data-direction="up">위로</button>
-            <button class="ghost-button cue-move-button" type="button" data-direction="down">아래로</button>
-          </div>
-          <button class="delete-button cue-mobile-delete" type="button">삭제</button>
-        </div>
-      </details>
-    </li>
-  </template>
-
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="./auth-nav.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>

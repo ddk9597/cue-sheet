@@ -655,15 +655,8 @@
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="site-header-inner">
-      <a class="site-brand" href="./index.html">Cue Sheet</a>
-      <nav class="site-nav" aria-label="상단 메뉴">
-        <a href="./index.html">홈</a>
-        <a href="./audience.html">관객용 목록</a>
-      </nav>
-    </div>
-  </header>
+  <div data-site-header data-current="signup"></div>
+  <script src="./site-header.js"></script>
 
   <main class="signup-shell">
     <section class="panel signup-panel" aria-labelledby="signupTitle">
@@ -908,6 +901,7 @@
     </div>
   </div>
 
+  <script src="./auth-nav.js"></script>
   <script>
     const AUTH_SESSION_ENDPOINT = "/api/auth/session";
     const AUTH_SIGNUP_ENDPOINT = "/api/auth/signup";

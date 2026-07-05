@@ -106,17 +106,8 @@
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="site-header-inner">
-      <a class="site-brand" href="./index.html">Cue Sheet</a>
-      <nav class="site-nav" aria-label="상단 메뉴">
-        <a href="./index.html">메인</a>
-        <a href="./about.html" aria-current="page">소개</a>
-        <a href="./audience.html">관객용 목록</a>
-        <a href="./signup.html">회원가입</a>
-      </nav>
-    </div>
-  </header>
+  <div data-site-header data-current="about"></div>
+  <script src="./site-header.js"></script>
 
   <main class="about-page">
     <section class="hero about-hero" aria-labelledby="aboutTitle">
@@ -151,5 +142,6 @@
       </article>
     </section>
   </main>
+  <script src="./auth-nav.js"></script>
 </body>
 </html>

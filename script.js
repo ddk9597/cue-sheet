@@ -358,7 +358,7 @@ memberMemoForm?.addEventListener("submit", (event) => {
   saveMemberMemo();
 });
 
-cueForm.addEventListener("submit", (event) => {
+cueForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   const completedEntryMode = cueEntryMode;
 
@@ -371,7 +371,7 @@ cueForm.addEventListener("submit", (event) => {
   (completedEntryMode === CUE_TYPE_INTERMISSION ? addIntermissionButton : openCueEntryButton)?.focus();
 });
 
-saveButton.addEventListener("click", async () => {
+saveButton?.addEventListener("click", async () => {
   if (saveInFlight || storageMode !== STORAGE_MODE_DATABASE || !hasPendingChanges()) {
     return;
   }
@@ -409,7 +409,7 @@ saveButton.addEventListener("click", async () => {
   updateActionState(true);
 });
 
-clearAllButton.addEventListener("click", () => {
+clearAllButton?.addEventListener("click", () => {
   if (!cues.length || storageMode === STORAGE_MODE_LOADING) {
     return;
   }
@@ -425,15 +425,15 @@ clearAllButton.addEventListener("click", () => {
   render();
 });
 
-bpmInput.addEventListener("input", () => {
+bpmInput?.addEventListener("input", () => {
   bpmInput.value = normalizeBpm(bpmInput.value);
 });
 
-tapTempoButton.addEventListener("click", () => {
+tapTempoButton?.addEventListener("click", () => {
   registerTapTempoClick();
 });
 
-tapTempoApplyButton.addEventListener("click", () => {
+tapTempoApplyButton?.addEventListener("click", () => {
   if (!measuredTapBpm) {
     return;
   }
@@ -455,12 +455,14 @@ tapTempoApplyButton.addEventListener("click", () => {
     restoreTarget: openCueEntryButton,
   });
 
-  bpmInput.value = measuredTapBpm;
-  bpmInput.focus();
-  bpmInput.select();
+  if (bpmInput) {
+    bpmInput.value = measuredTapBpm;
+    bpmInput.focus();
+    bpmInput.select();
+  }
 });
 
-tapTempoResetButton.addEventListener("click", () => {
+tapTempoResetButton?.addEventListener("click", () => {
   resetTapTempo();
 });
 
@@ -604,7 +606,7 @@ practiceSessionList.addEventListener("click", async (event) => {
   renderPracticeCalendar();
 });
 
-cueList.addEventListener("input", (event) => {
+cueList?.addEventListener("input", (event) => {
   const bpmListInput = event.target.closest(".bpm-list-input");
 
   if (!bpmListInput) {
@@ -635,7 +637,7 @@ cueList.addEventListener("input", (event) => {
   updateActionState();
 });
 
-cueList.addEventListener("click", (event) => {
+cueList?.addEventListener("click", (event) => {
   const menuButton = event.target.closest(".cue-menu-button");
 
   if (menuButton) {
@@ -693,7 +695,7 @@ cueList.addEventListener("click", (event) => {
   deleteCue(item.dataset.id);
 });
 
-cueList.addEventListener("change", (event) => {
+cueList?.addEventListener("change", (event) => {
   const tuningSelect = event.target.closest(".tuning-select");
 
   if (!tuningSelect) {
@@ -725,7 +727,7 @@ cueList.addEventListener("change", (event) => {
   updateActionState();
 });
 
-cueList.addEventListener("contextmenu", (event) => {
+cueList?.addEventListener("contextmenu", (event) => {
   if (cueInteractDragState) {
     event.preventDefault();
   }
@@ -1485,7 +1487,7 @@ function openCueEntryOverlay(options = {}) {
     restoreTarget = openCueEntryButton,
   } = options;
 
-  if (!cueEntryOverlay) {
+  if (!cueEntryOverlay || !cueForm) {
     return;
   }
 
@@ -1504,11 +1506,11 @@ function openCueEntryOverlay(options = {}) {
   cueEntryOverlay.hidden = false;
   window.requestAnimationFrame(() => {
     if (cueEntryMode === CUE_TYPE_INTERMISSION) {
-      durationMinutesInput.focus();
+      durationMinutesInput?.focus();
       return;
     }
 
-    titleInput.focus();
+    titleInput?.focus();
   });
 }
 
@@ -1522,7 +1524,7 @@ function closeCueEntryOverlay(options = {}) {
   cueEntryOverlay.hidden = true;
 
   if (resetForm) {
-    cueForm.reset();
+    cueForm?.reset();
   }
 
   if (restoreFocus) {
@@ -1541,25 +1543,41 @@ function syncCueEntryMode({ resetForm = false } = {}) {
     titleFieldLabel.textContent = isIntermission ? "구분선 제목" : "멘트";
   }
 
-  titleInput.placeholder = isIntermission ? "예: 인터미션" : "예: 오프닝 멘트";
-  bpmField.hidden = isIntermission;
-  bpmInput.disabled = isIntermission;
+  if (titleInput) {
+    titleInput.placeholder = isIntermission ? "예: 인터미션" : "예: 오프닝 멘트";
+  }
+  if (bpmField) {
+    bpmField.hidden = isIntermission;
+  }
+  if (bpmInput) {
+    bpmInput.disabled = isIntermission;
+  }
 
   if (cueEntrySubmitButton) {
     cueEntrySubmitButton.textContent = isIntermission ? "구분선 추가" : "추가";
   }
 
   if (isIntermission) {
-    bpmInput.value = "";
+    if (bpmInput) {
+      bpmInput.value = "";
+    }
 
     if (resetForm) {
-      titleInput.value = "인터미션";
-      durationSecondsInput.value = "0";
+      if (titleInput) {
+        titleInput.value = "인터미션";
+      }
+      if (durationSecondsInput) {
+        durationSecondsInput.value = "0";
+      }
     }
   }
 }
 
 function appendCueFromForm() {
+  if (!titleInput || !durationMinutesInput || !durationSecondsInput) {
+    return false;
+  }
+
   const title = titleInput.value.trim();
   const seconds = parseDurationInputs();
   const isIntermission = cueEntryMode === CUE_TYPE_INTERMISSION;
@@ -1580,7 +1598,7 @@ function appendCueFromForm() {
     id: createCueId(),
     type: isIntermission ? CUE_TYPE_INTERMISSION : CUE_TYPE_SONG,
     title,
-    bpm: isIntermission ? "" : normalizeBpm(bpmInput.value),
+    bpm: isIntermission ? "" : normalizeBpm(bpmInput?.value || ""),
     seconds,
     acousticTuning: TUNING_STANDARD,
     electricTuning: TUNING_STANDARD,
@@ -2757,64 +2775,66 @@ function render() {
     stopMetronome();
   }
 
-  cueList.innerHTML = "";
+  if (cueList && cueItemTemplate) {
+    cueList.innerHTML = "";
 
-  if (!cues.length) {
-    emptyState.hidden = false;
-  } else {
-    emptyState.hidden = true;
-  }
-
-  for (const [index, cue] of cues.entries()) {
-    const fragment = cueItemTemplate.content.cloneNode(true);
-    const item = fragment.querySelector(".cue-item");
-    const title = fragment.querySelector(".cue-title");
-    const bpmListInputs = fragment.querySelectorAll(".bpm-list-input");
-    const duration = fragment.querySelector(".cue-duration");
-    const mobileDuration = fragment.querySelector(".cue-mobile-duration-value");
-    const tuningSelects = fragment.querySelectorAll(".tuning-select");
-    const moveButtons = fragment.querySelectorAll(".cue-move-button");
-    const isIntermission = cue.type === CUE_TYPE_INTERMISSION;
-
-    title.textContent = cue.title;
-    item.classList.toggle("cue-item-intermission", isIntermission);
-    item.dataset.type = cue.type;
-
-    for (const bpmListInput of bpmListInputs) {
-      bpmListInput.value = normalizeBpm(cue.bpm);
+    if (emptyState) {
+      emptyState.hidden = cues.length > 0;
     }
-    duration.textContent = formatDuration(cue.seconds);
-    if (mobileDuration) {
-      mobileDuration.textContent = formatDuration(cue.seconds);
-    }
-    item.dataset.id = cue.id;
 
-    for (const select of tuningSelects) {
-      const field = select.dataset.field;
+    for (const [index, cue] of cues.entries()) {
+      const fragment = cueItemTemplate.content.cloneNode(true);
+      const item = fragment.querySelector(".cue-item");
+      const title = fragment.querySelector(".cue-title");
+      const bpmListInputs = fragment.querySelectorAll(".bpm-list-input");
+      const duration = fragment.querySelector(".cue-duration");
+      const mobileDuration = fragment.querySelector(".cue-mobile-duration-value");
+      const tuningSelects = fragment.querySelectorAll(".tuning-select");
+      const moveButtons = fragment.querySelectorAll(".cue-move-button");
+      const isIntermission = cue.type === CUE_TYPE_INTERMISSION;
 
-      if (!TUNING_FIELDS.has(field)) {
-        continue;
+      title.textContent = cue.title;
+      item.classList.toggle("cue-item-intermission", isIntermission);
+      item.dataset.type = cue.type;
+
+      for (const bpmListInput of bpmListInputs) {
+        bpmListInput.value = normalizeBpm(cue.bpm);
+      }
+      duration.textContent = formatDuration(cue.seconds);
+      if (mobileDuration) {
+        mobileDuration.textContent = formatDuration(cue.seconds);
+      }
+      item.dataset.id = cue.id;
+
+      for (const select of tuningSelects) {
+        const field = select.dataset.field;
+
+        if (!TUNING_FIELDS.has(field)) {
+          continue;
+        }
+
+        const tuningValue = normalizeTuning(field, cue[field]);
+
+        select.value = tuningValue;
+        syncTuningCell(select.closest(".tuning-cell"), field, tuningValue);
+        syncCueMobileTuningChip(item, field, tuningValue);
       }
 
-      const tuningValue = normalizeTuning(field, cue[field]);
+      for (const button of moveButtons) {
+        const direction = button.dataset.direction;
+        const isUp = direction === "up";
+        button.disabled = isUp ? index === 0 : index === cues.length - 1;
+      }
 
-      select.value = tuningValue;
-      syncTuningCell(select.closest(".tuning-cell"), field, tuningValue);
-      syncCueMobileTuningChip(item, field, tuningValue);
+      cueList.appendChild(fragment);
     }
-
-    for (const button of moveButtons) {
-      const direction = button.dataset.direction;
-      const isUp = direction === "up";
-      button.disabled = isUp ? index === 0 : index === cues.length - 1;
-    }
-
-    cueList.appendChild(fragment);
   }
 
-  totalDuration.textContent = formatDuration(
-    cues.reduce((sum, cue) => sum + cue.seconds, 0),
-  );
+  if (totalDuration) {
+    totalDuration.textContent = formatDuration(
+      cues.reduce((sum, cue) => sum + cue.seconds, 0),
+    );
+  }
 
   updateActionState();
   syncMetronomeButtons();
@@ -2952,7 +2972,9 @@ function registerTapTempoClick() {
   const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
 
   measuredTapBpm = normalizeBpm(Math.round(60000 / averageInterval));
-  bpmInput.value = measuredTapBpm;
+  if (bpmInput) {
+    bpmInput.value = measuredTapBpm;
+  }
   updateTapTempoState();
 }
 
@@ -3112,6 +3134,10 @@ function stopMetronome() {
 }
 
 function syncMetronomeButtons() {
+  if (!cueList) {
+    return;
+  }
+
   const buttons = cueList.querySelectorAll(".metronome-button");
 
   for (const button of buttons) {
@@ -3193,19 +3219,30 @@ function updateActionState(saved = false) {
   const canSaveToDatabase = storageMode === STORAGE_MODE_DATABASE;
   const isPersonalStorage = authSession.authenticated;
 
-  saveButton.disabled = !canSaveToDatabase || saveInFlight || !dirty;
-  clearAllButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || cues.length === 0;
+  if (saveButton) {
+    saveButton.disabled = !canSaveToDatabase || saveInFlight || !dirty;
+    saveButton.textContent = isPersonalStorage ? "내 목록 저장하기" : "목록 저장하기";
+  }
+  if (clearAllButton) {
+    clearAllButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || cues.length === 0;
+  }
+  if (!saveStatus) {
+    return;
+  }
+
   saveStatus.classList.toggle("is-dirty", needsAttention);
   saveStatus.classList.toggle(
     "is-error",
     storageMode === STORAGE_MODE_LOCAL && Boolean(storageWarningMessage),
   );
 
-  saveButton.textContent = isPersonalStorage ? "내 목록 저장하기" : "목록 저장하기";
-
   if (!isCueWorkspacePage) {
-    saveButton.disabled = true;
-    clearAllButton.disabled = true;
+    if (saveButton) {
+      saveButton.disabled = true;
+    }
+    if (clearAllButton) {
+      clearAllButton.disabled = true;
+    }
     saveStatus.classList.remove("is-dirty", "is-error");
 
     if (storageMode === STORAGE_MODE_LOADING) {
@@ -3302,9 +3339,11 @@ function restorePendingTapBpm() {
       restoreTarget: openCueEntryButton,
     });
 
-    bpmInput.value = pendingBpm;
-    bpmInput.focus();
-    bpmInput.select();
+    if (bpmInput) {
+      bpmInput.value = pendingBpm;
+      bpmInput.focus();
+      bpmInput.select();
+    }
   });
 }
 
@@ -3523,6 +3562,8 @@ function formatMemberDate(value) {
 }
 
 function updateAuthUi() {
+  window.CueSheetAuthNav?.setAuthenticated(authSession.authenticated);
+
   const googleConfigured = authSession.databaseConfigured && authSession.googleLoginConfigured;
 
   if (googleSignInButton) {
@@ -3565,6 +3606,10 @@ function updateAuthUi() {
 }
 
 function getDragAfterElement(container, pointerY) {
+  if (!container) {
+    return null;
+  }
+
   const items = [...container.querySelectorAll(
     ".cue-item:not(.is-dragging):not(.is-touch-dragging)",
   )];
@@ -3589,6 +3634,10 @@ function setupCueInteractDrag() {
     return;
   }
 
+  if (!cueList) {
+    return;
+  }
+
   if (typeof window.interact !== "function") {
     console.warn("Interact.js가 로드되지 않아 큐시트 드래그 정렬을 사용할 수 없습니다.");
     return;
@@ -3609,7 +3658,7 @@ function setupCueInteractDrag() {
 function startCueInteractDrag(event) {
   const item = event.target.closest(".cue-item");
 
-  if (!item || !cueList.contains(item) || cues.length < 2) {
+  if (!item || !cueList?.contains(item) || cues.length < 2) {
     clearCueInteractDragState();
     return;
   }
@@ -3653,7 +3702,7 @@ function startCueInteractDrag(event) {
 function moveCueInteractDrag(event) {
   const state = cueInteractDragState;
 
-  if (!state?.item.isConnected) {
+  if (!state?.item.isConnected || !cueList) {
     clearCueInteractDragState();
     return;
   }
@@ -3754,6 +3803,11 @@ function getInteractDelta(event, axis, fallback) {
 }
 
 function syncCueOrderWithDom() {
+  if (!cueList) {
+    updateActionState();
+    return;
+  }
+
   const orderedIds = [...cueList.querySelectorAll(".cue-item")]
     .filter((item) => !item.classList.contains("cue-touch-drag-ghost"))
     .map((item) => item.dataset.id);

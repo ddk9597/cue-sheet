@@ -169,6 +169,19 @@ button {
   line-height: 1.35;
 }
 
+.audience-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.audience-actions .save-image-button {
+  background: rgba(212, 169, 68, 0.92);
+  border-color: rgba(255, 250, 240, 0.28);
+  color: #151d19;
+}
+
 .summary-stats {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -7,21 +7,8 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body class="cue-workspace-page">
-  <header class="site-header">
-    <div class="site-header-inner">
-      <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
-      <nav class="site-nav" aria-label="상단 메뉴">
-        <a href="./index.html#overview">홈</a>
-        <a href="./about.html">소개</a>
-        <button class="site-nav-button" type="button" data-modal-target="practiceModal">연습 캘린더</button>
-        <button class="site-nav-button" type="button" data-modal-target="todoModal">할 일</button>
-        <a href="#cue-editor">큐 입력</a>
-        <a href="#cue-list-panel">목록</a>
-        <a href="./audience.html">관객용 목록</a>
-        <a href="./signup.html">회원가입</a>
-      </nav>
-    </div>
-  </header>
+  <div data-site-header data-current="cues"></div>
+  <script src="./site-header.js"></script>
   <main class="page home-page">
     <section id="overview" class="hero home-hero">
       <div class="home-hero-copy">
@@ -620,6 +607,7 @@
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="./auth-nav.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>
