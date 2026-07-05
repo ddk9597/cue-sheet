@@ -9,160 +9,294 @@
 <body>
   <div data-site-header data-current="home"></div>
   <script src="./site-header.js"></script>
-  <main class="page home-page">
-    <section id="overview" class="hero home-hero">
-      <div class="home-hero-copy">
-        <p class="eyebrow">Cue Sheet Studio</p>
-        <h1 class="home-title"><span>합주 일정을</span> <span>한번에 관리</span></h1>
+  <main class="page main-page">
+    <section id="overview" class="hero main-hero" aria-labelledby="mainTitle">
+      <div class="main-hero-copy">
+        <p class="eyebrow">Cue Sheet Network</p>
+        <h1 id="mainTitle" class="home-title"><span>공연 준비와</span> <span>밴드 연결을 한 곳에서</span></h1>
         <p class="hero-copy">
-          곡 순서, BPM, 튜닝, 연습시간, 할 일을 공연 전까지 같은 화면 흐름으로 정리합니다.
+          큐시트 작성, 연습 기록, 밴드 탐색, 구인 게시글, 커뮤니티와 공연 일정을 함께 확인하는 밴드 활동 허브입니다.
         </p>
         <div class="hero-actions">
-          <a class="primary-button" href="./cues.html#cue-editor">큐시트 만들기</a>
-          <a class="ghost-button" href="./cues.html#cue-list-panel">목록 확인</a>
-          <a class="ghost-button" href="./audience.html">관객용 목록</a>
+          <a class="primary-button" href="./about.html">기능 더보기</a>
+          <a class="ghost-button" href="./cues.html#cue-editor">목록 편집</a>
+          <a class="ghost-button" href="#upcomingShows">공연 확인</a>
         </div>
       </div>
     </section>
 
-    <section class="panel auth-panel" aria-label="계정">
-      <div class="auth-header">
+    <section class="main-section intro-section" aria-labelledby="introTitle">
+      <div class="main-section-header">
         <div>
-          <p class="panel-label">Account</p>
-          <strong id="authTitle" class="auth-title">이메일 로그인</strong>
+          <p class="panel-label">Service</p>
+          <h2 id="introTitle">서비스 간단 소개</h2>
         </div>
+        <a class="ghost-button" href="./about.html">기능 더보기</a>
       </div>
-      <p id="authStatus" class="save-status" aria-live="polite">
-        가입한 이메일과 비밀번호로 로그인합니다.
-      </p>
-      <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
-        <label class="field" for="emailAuthInput">
-          <span>이메일</span>
-          <input
-            id="emailAuthInput"
-            name="email"
-            type="email"
-            autocomplete="email"
-            placeholder="name@example.com"
-          >
-        </label>
-        <label class="field" for="emailPasswordInput">
-          <span>비밀번호</span>
-          <input
-            id="emailPasswordInput"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="비밀번호"
-          >
-        </label>
-        <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
-        <a class="ghost-button" href="./signup.html">회원가입</a>
-      </form>
-      <div id="googleSignInButton" class="google-sign-in"></div>
-      <div id="authAccount" class="auth-account" hidden>
-        <span id="authEmailLabel" class="auth-email"></span>
-        <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
+      <div class="intro-grid">
+        <article class="intro-card">
+          <strong>큐시트 관리</strong>
+          <p>곡 순서, BPM, 튜닝, 구분선을 별도 편집 페이지에서 정리하고 저장합니다.</p>
+        </article>
+        <article class="intro-card">
+          <strong>팀 활동 관리</strong>
+          <p>회원 계정 기준으로 그룹, 초대, 메모, 연습 기록을 분리해서 관리합니다.</p>
+        </article>
+        <article class="intro-card">
+          <strong>공연 준비 흐름</strong>
+          <p>구인, 커뮤니티, 공연 일정까지 한 화면에서 빠르게 훑을 수 있게 구성합니다.</p>
+        </article>
       </div>
     </section>
 
-    <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
-      <div class="member-header">
+    <section class="main-section directory-section" aria-labelledby="membersTitle">
+      <div class="main-section-header">
         <div>
-          <p class="panel-label">Member</p>
-          <strong id="memberTitle" class="member-title">회원 전용</strong>
+          <p class="panel-label">Members</p>
+          <h2 id="membersTitle">회원 목록</h2>
         </div>
+        <a class="text-link" href="./signup.html">회원가입</a>
       </div>
-      <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
-      <div class="member-grid">
-        <section class="member-block" aria-labelledby="memberGroupsTitle">
-          <div class="member-block-header">
-            <strong id="memberGroupsTitle">내 그룹</strong>
+      <div class="directory-list">
+        <article class="directory-item">
+          <span class="directory-avatar">V</span>
+          <div>
+            <strong>김하린</strong>
+            <p>보컬 · 서울 · 팝/록</p>
           </div>
-          <form id="memberGroupForm" class="member-inline-form" autocomplete="off">
-            <label class="field" for="memberGroupNameInput">
-              <span>그룹 이름</span>
-              <input id="memberGroupNameInput" name="groupName" type="text" maxlength="80" placeholder="예: 7월 공연팀">
-            </label>
-            <button class="primary-button" type="submit">그룹 만들기</button>
-          </form>
-          <ul id="memberGroupList" class="member-list"></ul>
-        </section>
-
-        <section class="member-block" aria-labelledby="memberInviteTitle">
-          <div class="member-block-header">
-            <strong id="memberInviteTitle">그룹 초대</strong>
+        </article>
+        <article class="directory-item">
+          <span class="directory-avatar">G</span>
+          <div>
+            <strong>박준서</strong>
+            <p>기타 · 인천 · 얼터너티브</p>
           </div>
-          <form id="memberInviteForm" class="member-inline-form" autocomplete="off">
-            <label class="field" for="memberInviteGroupSelect">
-              <span>초대할 그룹</span>
-              <select id="memberInviteGroupSelect" name="inviteGroup"></select>
-            </label>
-            <label class="field" for="memberInviteEmailInput">
-              <span>초대 이메일</span>
-              <input id="memberInviteEmailInput" name="inviteEmail" type="email" autocomplete="email" placeholder="name@example.com">
-            </label>
-            <button id="memberInviteButton" class="primary-button" type="submit">초대 보내기</button>
-          </form>
-        </section>
-
-        <section class="member-block" aria-labelledby="memberMessagesTitle">
-          <div class="member-block-header">
-            <strong id="memberMessagesTitle">메시지함</strong>
+        </article>
+        <article class="directory-item">
+          <span class="directory-avatar">D</span>
+          <div>
+            <strong>이서윤</strong>
+            <p>드럼 · 경기 · 펑크/인디</p>
           </div>
-          <ul id="memberMessageList" class="member-list"></ul>
-        </section>
-
-        <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
-          <div class="member-block-header">
-            <strong id="memberMemoTitle">내 메모</strong>
-          </div>
-          <form id="memberMemoForm" class="member-memo-form">
-            <label class="field" for="memberMemoInput">
-              <span>메모</span>
-              <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
-            </label>
-            <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
-          </form>
-        </section>
+        </article>
       </div>
     </section>
 
-    <section class="panel summary-panel" aria-label="총 소요 시간">
-      <div class="summary-main">
+    <section class="main-section directory-section" aria-labelledby="bandsTitle">
+      <div class="main-section-header">
         <div>
-          <p class="panel-label">Current Cue</p>
-          <strong class="summary-title">현재 큐시트</strong>
-          <strong id="totalDuration" class="total-duration">00:00:00</strong>
+          <p class="panel-label">Bands</p>
+          <h2 id="bandsTitle">밴드 목록</h2>
         </div>
-        <p id="saveStatus" class="save-status" aria-live="polite">
-          현재 순서가 로컬에 저장되어 있습니다.
+      </div>
+      <div class="band-list">
+        <article class="band-card">
+          <strong>Late Signal</strong>
+          <p>4인조 인디록 · 합주실 홍대</p>
+          <span>기타 구인 중</span>
+        </article>
+        <article class="band-card">
+          <strong>Blue Noon</strong>
+          <p>시티팝 커버 · 합주실 강남</p>
+          <span>공연 준비 중</span>
+        </article>
+        <article class="band-card">
+          <strong>North Stage</strong>
+          <p>모던록 · 합주실 성수</p>
+          <span>신규 멤버 환영</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="main-section board-section" aria-labelledby="jobsTitle">
+      <div class="main-section-header">
+        <div>
+          <p class="panel-label">Recruit</p>
+          <h2 id="jobsTitle">구인 게시글</h2>
+        </div>
+      </div>
+      <ul class="main-post-list">
+        <li>
+          <strong>토요일 합주 가능한 베이시스트를 찾습니다.</strong>
+          <span>서울 · 인디록 · 주 1회</span>
+        </li>
+        <li>
+          <strong>여성 보컬 객원 모집, 7월 공연 2곡 참여</strong>
+          <span>홍대 · 팝/록 · 단기</span>
+        </li>
+        <li>
+          <strong>키보드 세션 구합니다. 공연 큐시트 공유 가능</strong>
+          <span>성수 · 시티팝 · 공연 준비</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="main-section board-section" aria-labelledby="communityTitle">
+      <div class="main-section-header">
+        <div>
+          <p class="panel-label">Community</p>
+          <h2 id="communityTitle">커뮤니티</h2>
+        </div>
+      </div>
+      <ul class="main-post-list">
+        <li>
+          <strong>첫 공연 큐시트는 몇 곡 정도가 적당할까요?</strong>
+          <span>질문 · 댓글 8</span>
+        </li>
+        <li>
+          <strong>하프다운 튜닝 전환 시간을 줄이는 방법</strong>
+          <span>팁 · 댓글 5</span>
+        </li>
+        <li>
+          <strong>공연 전 리허설 체크리스트 공유합니다.</strong>
+          <span>자료 · 댓글 11</span>
+        </li>
+      </ul>
+    </section>
+
+    <section id="upcomingShows" class="main-section shows-section" aria-labelledby="showsTitle">
+      <div class="main-section-header">
+        <div>
+          <p class="panel-label">Shows</p>
+          <h2 id="showsTitle">예정된 공연 목록</h2>
+        </div>
+        <a class="text-link" href="./audience.html">관객용 목록</a>
+      </div>
+      <div class="show-list">
+        <article class="show-item">
+          <time datetime="2026-07-18">7월 18일</time>
+          <div>
+            <strong>Summer Set Night</strong>
+            <p>홍대 클럽 A · 4팀 합동 공연</p>
+          </div>
+        </article>
+        <article class="show-item">
+          <time datetime="2026-07-25">7월 25일</time>
+          <div>
+            <strong>Indie Practice Live</strong>
+            <p>성수 라이브홀 · 신인 밴드 쇼케이스</p>
+          </div>
+        </article>
+        <article class="show-item">
+          <time datetime="2026-08-02">8월 2일</time>
+          <div>
+            <strong>Weekend Band Meet</strong>
+            <p>합정 스튜디오 · 커뮤니티 오픈 스테이지</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="main-section account-section" aria-label="계정과 내 작업 공간">
+      <section class="panel auth-panel" aria-label="계정">
+        <div class="auth-header">
+          <div>
+            <p class="panel-label">Account</p>
+            <strong id="authTitle" class="auth-title">이메일 로그인</strong>
+          </div>
+        </div>
+        <p id="authStatus" class="save-status" aria-live="polite">
+          가입한 이메일과 비밀번호로 로그인합니다.
         </p>
-      </div>
-      <div class="summary-actions">
-        <a class="primary-button" href="./cues.html">목록 생성/편집/조회</a>
-      </div>
-      <div class="home-tool-grid" aria-label="주요 도구">
-        <a class="home-tool-card" href="./cues.html#cue-editor">
-          <span>01</span>
-          <strong>목록 편집</strong>
-          <small>생성, 편집, 조회 페이지로 이동합니다.</small>
-        </a>
-        <button class="home-tool-card" type="button" data-modal-target="practiceModal">
-          <span>02</span>
-          <strong>연습 캘린더</strong>
-          <small>날짜별 연습시간을 기록합니다.</small>
-        </button>
-        <button class="home-tool-card" type="button" data-modal-target="todoModal">
-          <span>03</span>
-          <strong>할 일</strong>
-          <small>공연 준비 목록을 정리합니다.</small>
-        </button>
-        <a class="home-tool-card" href="./signup.html">
-          <span>04</span>
-          <strong>회원가입</strong>
-          <small>개인 저장을 위한 계정을 만듭니다.</small>
-        </a>
+        <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
+          <label class="field" for="emailAuthInput">
+            <span>이메일</span>
+            <input
+              id="emailAuthInput"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="name@example.com"
+            >
+          </label>
+          <label class="field" for="emailPasswordInput">
+            <span>비밀번호</span>
+            <input
+              id="emailPasswordInput"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="비밀번호"
+            >
+          </label>
+          <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
+          <a class="ghost-button" href="./signup.html">회원가입</a>
+        </form>
+        <div id="googleSignInButton" class="google-sign-in"></div>
+        <div id="authAccount" class="auth-account" hidden>
+          <span id="authEmailLabel" class="auth-email"></span>
+          <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
+        </div>
+      </section>
+
+      <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
+        <div class="member-header">
+          <div>
+            <p class="panel-label">Member</p>
+            <strong id="memberTitle" class="member-title">내 작업 공간</strong>
+          </div>
+        </div>
+        <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+        <div class="member-grid">
+          <section class="member-block" aria-labelledby="memberGroupsTitle">
+            <div class="member-block-header">
+              <strong id="memberGroupsTitle">내 그룹</strong>
+            </div>
+            <form id="memberGroupForm" class="member-inline-form" autocomplete="off">
+              <label class="field" for="memberGroupNameInput">
+                <span>그룹 이름</span>
+                <input id="memberGroupNameInput" name="groupName" type="text" maxlength="80" placeholder="예: 7월 공연팀">
+              </label>
+              <button class="primary-button" type="submit">그룹 만들기</button>
+            </form>
+            <ul id="memberGroupList" class="member-list"></ul>
+          </section>
+
+          <section class="member-block" aria-labelledby="memberInviteTitle">
+            <div class="member-block-header">
+              <strong id="memberInviteTitle">그룹 초대</strong>
+            </div>
+            <form id="memberInviteForm" class="member-inline-form" autocomplete="off">
+              <label class="field" for="memberInviteGroupSelect">
+                <span>초대할 그룹</span>
+                <select id="memberInviteGroupSelect" name="inviteGroup"></select>
+              </label>
+              <label class="field" for="memberInviteEmailInput">
+                <span>초대 이메일</span>
+                <input id="memberInviteEmailInput" name="inviteEmail" type="email" autocomplete="email" placeholder="name@example.com">
+              </label>
+              <button id="memberInviteButton" class="primary-button" type="submit">초대 보내기</button>
+            </form>
+          </section>
+
+          <section class="member-block" aria-labelledby="memberMessagesTitle">
+            <div class="member-block-header">
+              <strong id="memberMessagesTitle">메시지함</strong>
+            </div>
+            <ul id="memberMessageList" class="member-list"></ul>
+          </section>
+
+          <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
+            <div class="member-block-header">
+              <strong id="memberMemoTitle">내 메모</strong>
+            </div>
+            <form id="memberMemoForm" class="member-memo-form">
+              <label class="field" for="memberMemoInput">
+                <span>메모</span>
+                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
+              </label>
+              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    </section>
+
+    <div class="main-utility-surface" aria-label="큐시트 상태와 BPM 도구">
+      <div class="cue-status-line">
+        <strong>현재 큐시트 길이</strong>
+        <span id="totalDuration" class="total-duration">00:00:00</span>
+        <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
       </div>
       <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
         <div class="tap-meter-main">
@@ -180,7 +314,7 @@
           <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
         </div>
       </div>
-    </section>
+    </div>
   </main>
 
   <dialog id="practiceModal" class="modal" aria-labelledby="practiceModalTitle">
