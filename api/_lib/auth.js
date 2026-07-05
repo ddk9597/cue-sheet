@@ -157,6 +157,10 @@ async function updateEmailUserSignup(sql, userId, payload) {
   const birthDate = String(payload.birthDate || "").trim().slice(0, 20);
   const phone = String(payload.phone || "").replace(/\D/g, "").slice(0, 11);
   const memo = String(payload.memo || "").trim().slice(0, 120);
+  const region = normalizeProfileText(payload.region, 40);
+  const position = normalizeProfileText(payload.position, 40);
+  const genre = normalizeProfileText(payload.genre, 80);
+  const pictureUrl = normalizeProfileUrl(payload.pictureUrl);
   const password = String(payload.password || "");
 
   if (!isValidEmail(email)) {
@@ -187,12 +191,20 @@ async function updateEmailUserSignup(sql, userId, payload) {
     throw error;
   }
 
+  if (String(payload.pictureUrl || "").trim() && !pictureUrl) {
+    const error = new Error("프로필사진 URL을 확인해 주세요.");
+
+    error.statusCode = 400;
+    throw error;
+  }
+
   const passwordRecord = createPasswordRecord(password);
   const rows = await sql.query(
     [
       "UPDATE app_users",
       "SET email = $2, name = $3, birth_date = $4, phone = $5, memo = $6,",
-      "password_hash = $7, password_salt = $8, last_login_at = NOW()",
+      "region = $7, \"position\" = $8, genre = $9, picture_url = $10,",
+      "password_hash = $11, password_salt = $12, last_login_at = NOW()",
       "WHERE id = $1",
       "RETURNING id, email",
     ].join(" "),
@@ -203,6 +215,10 @@ async function updateEmailUserSignup(sql, userId, payload) {
       birthDate,
       phone,
       memo,
+      region,
+      position,
+      genre,
+      pictureUrl,
       passwordRecord.hash,
       passwordRecord.salt,
     ],
@@ -216,6 +232,26 @@ async function updateEmailUserSignup(sql, userId, payload) {
   }
 
   return rows[0];
+}
+
+function normalizeProfileText(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function normalizeProfileUrl(value) {
+  const url = String(value || "").trim().slice(0, 500);
+
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 async function authenticateEmailPassword(sql, email, password) {

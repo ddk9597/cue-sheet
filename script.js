@@ -47,8 +47,20 @@ const emailLoginButton = document.querySelector("#emailLoginButton");
 const authAccount = document.querySelector("#authAccount");
 const authEmailLabel = document.querySelector("#authEmailLabel");
 const logoutButton = document.querySelector("#logoutButton");
+const memberDirectoryList = document.querySelector("#memberDirectoryList");
 const memberPanel = document.querySelector("#memberPanel");
 const memberStatus = document.querySelector("#memberStatus");
+const memberProfileForm = document.querySelector("#memberProfileForm");
+const memberProfileImage = document.querySelector("#memberProfileImage");
+const memberProfileInitial = document.querySelector("#memberProfileInitial");
+const memberProfileNameInput = document.querySelector("#memberProfileNameInput");
+const memberProfileEmailInput = document.querySelector("#memberProfileEmailInput");
+const memberProfileRegionInput = document.querySelector("#memberProfileRegionInput");
+const memberProfilePositionInput = document.querySelector("#memberProfilePositionInput");
+const memberProfileGenreInput = document.querySelector("#memberProfileGenreInput");
+const memberProfilePictureInput = document.querySelector("#memberProfilePictureInput");
+const memberProfileMemoInput = document.querySelector("#memberProfileMemoInput");
+const memberProfileSaveButton = document.querySelector("#memberProfileSaveButton");
 const memberGroupForm = document.querySelector("#memberGroupForm");
 const memberGroupNameInput = document.querySelector("#memberGroupNameInput");
 const memberGroupList = document.querySelector("#memberGroupList");
@@ -131,6 +143,8 @@ let authSession = {
 let authInFlight = false;
 let emailAuthInFlight = false;
 let authNotice = "";
+let memberDirectory = [];
+let memberProfile = null;
 let memberGroups = [];
 let memberMessages = [];
 let memberNotice = "";
@@ -356,6 +370,27 @@ memberMessageList?.addEventListener("click", (event) => {
 memberMemoForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   saveMemberMemo();
+});
+
+memberProfileForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveMemberProfile();
+});
+
+memberProfilePictureInput?.addEventListener("input", () => {
+  renderMemberProfilePreview({
+    name: memberProfileNameInput?.value || "",
+    pictureUrl: memberProfilePictureInput.value.trim(),
+  });
+});
+
+memberProfileNameInput?.addEventListener("input", () => {
+  if (!memberProfilePictureInput?.value.trim()) {
+    renderMemberProfilePreview({
+      name: memberProfileNameInput.value,
+      pictureUrl: "",
+    });
+  }
 });
 
 cueForm?.addEventListener("submit", (event) => {
@@ -756,6 +791,7 @@ async function bootstrap() {
   render();
   updateTapTempoState();
   updateAuthUi();
+  await loadMemberDirectory();
   updateMemberUi();
   await initializeAuth();
   await Promise.all([
@@ -2146,7 +2182,28 @@ async function reloadAuthenticatedWorkspace() {
     initializeStorage(),
     initializePracticeTracker(),
     loadMemberWorkspace(),
+    loadMemberDirectory(),
   ]);
+}
+
+async function loadMemberDirectory() {
+  if (!memberDirectoryList) {
+    return;
+  }
+
+  try {
+    const result = await fetchMemberJson("directory");
+
+    if (!result.ok) {
+      throw new Error(result.payload.message || "회원 목록을 불러오지 못했습니다.");
+    }
+
+    memberDirectory = normalizeMemberDirectory(result.payload.members);
+  } catch {
+    memberDirectory = [];
+  }
+
+  renderMemberDirectory();
 }
 
 async function loadMemberWorkspace() {
@@ -2160,18 +2217,21 @@ async function loadMemberWorkspace() {
   updateMemberUi();
 
   try {
-    const [groupsResult, messagesResult, memoResult] = await Promise.all([
+    const [profileResult, groupsResult, messagesResult, memoResult] = await Promise.all([
+      fetchMemberJson("profile"),
       fetchMemberJson("groups"),
       fetchMemberJson("messages"),
       fetchMemberJson("memo"),
     ]);
 
-    for (const result of [groupsResult, messagesResult, memoResult]) {
+    for (const result of [profileResult, groupsResult, messagesResult, memoResult]) {
       if (!result.ok) {
         throw new Error(result.payload.message || "회원 정보를 불러오지 못했습니다.");
       }
     }
 
+    memberProfile = normalizeMemberProfile(profileResult.payload.profile);
+    syncMemberProfileForm();
     memberGroups = normalizeMemberGroups(groupsResult.payload.groups);
     memberMessages = normalizeMemberMessages(messagesResult.payload.messages);
 
@@ -2189,6 +2249,7 @@ async function loadMemberWorkspace() {
 }
 
 function resetMemberWorkspace() {
+  memberProfile = null;
   memberGroups = [];
   memberMessages = [];
   memberNotice = "";
@@ -2199,7 +2260,65 @@ function resetMemberWorkspace() {
     memberMemoInput.value = "";
   }
 
+  syncMemberProfileForm();
+
   updateMemberUi();
+}
+
+async function saveMemberProfile() {
+  if (!authSession.authenticated || memberActionInFlight) {
+    return;
+  }
+
+  const name = String(memberProfileNameInput?.value || "").trim();
+  const pictureUrl = String(memberProfilePictureInput?.value || "").trim();
+
+  if (!name) {
+    memberNotice = "이름을 입력해 주세요.";
+    updateMemberUi();
+    memberProfileNameInput?.focus();
+    return;
+  }
+
+  if (pictureUrl && !isValidProfileUrl(pictureUrl)) {
+    memberNotice = "프로필사진 URL은 http 또는 https 주소로 입력해 주세요.";
+    updateMemberUi();
+    memberProfilePictureInput?.focus();
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "프로필을 저장하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchMemberJson("profile", {
+      method: "PUT",
+      body: {
+        name,
+        region: memberProfileRegionInput?.value || "",
+        position: memberProfilePositionInput?.value || "",
+        genre: memberProfileGenreInput?.value || "",
+        pictureUrl,
+        memo: memberProfileMemoInput?.value || "",
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "프로필을 저장하지 못했습니다.";
+      return;
+    }
+
+    memberProfile = normalizeMemberProfile(result.payload.profile);
+    syncMemberProfileForm();
+    await loadMemberDirectory();
+    memberNotice = "프로필을 저장했습니다.";
+  } catch {
+    memberNotice = "프로필을 저장하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
 }
 
 async function createMemberGroup() {
@@ -2412,6 +2531,46 @@ function normalizeMemberMessages(value) {
       createdAt: message?.createdAt || null,
     }))
     .filter((message) => message.id && message.status === "pending");
+}
+
+function normalizeMemberProfile(value) {
+  return {
+    email: normalizeEmail(value?.email),
+    name: String(value?.name || "").trim(),
+    pictureUrl: String(value?.pictureUrl || "").trim(),
+    region: String(value?.region || "").trim(),
+    position: String(value?.position || "").trim(),
+    genre: String(value?.genre || "").trim(),
+    memo: String(value?.memo || "").trim(),
+  };
+}
+
+function normalizeMemberDirectory(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((member) => ({
+      id: String(member?.id || ""),
+      name: String(member?.name || "").trim() || "이름 없는 회원",
+      pictureUrl: String(member?.pictureUrl || "").trim(),
+      region: String(member?.region || "").trim(),
+      position: String(member?.position || "").trim(),
+      genre: String(member?.genre || "").trim(),
+      memo: String(member?.memo || "").trim(),
+    }))
+    .filter((member) => member.id);
+}
+
+function isValidProfileUrl(value) {
+  try {
+    const parsed = new URL(String(value || "").trim());
+
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }
 
 async function handleGoogleCredentialResponse(googleResponse) {
@@ -3430,6 +3589,7 @@ function updateMemberUi() {
   }
 
   renderMemberMessages(isLoggedIn, isBusy);
+  setMemberProfileDisabled(!isLoggedIn || isBusy);
 
   if (memberMemoInput) {
     memberMemoInput.disabled = !isLoggedIn || isBusy;
@@ -3437,6 +3597,125 @@ function updateMemberUi() {
   if (memberMemoSaveButton) {
     memberMemoSaveButton.disabled = !isLoggedIn || isBusy;
   }
+}
+
+function renderMemberDirectory() {
+  if (!memberDirectoryList) {
+    return;
+  }
+
+  if (!memberDirectory.length) {
+    return;
+  }
+
+  memberDirectoryList.replaceChildren(...memberDirectory.map(createDirectoryItem));
+}
+
+function createDirectoryItem(member) {
+  const item = document.createElement("article");
+  const main = document.createElement("div");
+  const title = document.createElement("strong");
+  const meta = document.createElement("p");
+  const memo = document.createElement("small");
+  const avatar = createMemberAvatar(member);
+  const metaText = [member.position, member.region, member.genre].filter(Boolean).join(" · ");
+
+  item.className = "directory-item";
+  title.textContent = member.name;
+  meta.textContent = metaText || "프로필 준비 중";
+  memo.textContent = member.memo || "소개가 아직 없습니다.";
+
+  main.append(title, meta, memo);
+  item.append(avatar, main);
+  return item;
+}
+
+function createMemberAvatar(member) {
+  if (member.pictureUrl) {
+    const image = document.createElement("img");
+
+    image.className = "directory-avatar directory-avatar-image";
+    image.src = member.pictureUrl;
+    image.alt = `${member.name} 프로필사진`;
+    image.loading = "lazy";
+    image.referrerPolicy = "no-referrer";
+    return image;
+  }
+
+  const avatar = document.createElement("span");
+
+  avatar.className = "directory-avatar";
+  avatar.textContent = getProfileInitial(member.name);
+  return avatar;
+}
+
+function syncMemberProfileForm() {
+  const profile = memberProfile || {};
+  const name = profile.name || "";
+  const pictureUrl = profile.pictureUrl || "";
+
+  if (memberProfileNameInput) {
+    memberProfileNameInput.value = name;
+  }
+  if (memberProfileEmailInput) {
+    memberProfileEmailInput.value = profile.email || authSession.email || "";
+  }
+  if (memberProfileRegionInput) {
+    memberProfileRegionInput.value = profile.region || "";
+  }
+  if (memberProfilePositionInput) {
+    memberProfilePositionInput.value = profile.position || "";
+  }
+  if (memberProfileGenreInput) {
+    memberProfileGenreInput.value = profile.genre || "";
+  }
+  if (memberProfilePictureInput) {
+    memberProfilePictureInput.value = pictureUrl;
+  }
+  if (memberProfileMemoInput) {
+    memberProfileMemoInput.value = profile.memo || "";
+  }
+
+  renderMemberProfilePreview({ name, pictureUrl });
+}
+
+function renderMemberProfilePreview(profile) {
+  const name = profile?.name || authSession.email || "M";
+  const pictureUrl = profile?.pictureUrl || "";
+
+  if (memberProfileInitial) {
+    memberProfileInitial.textContent = getProfileInitial(name);
+    memberProfileInitial.hidden = Boolean(pictureUrl);
+  }
+  if (memberProfileImage) {
+    memberProfileImage.hidden = !pictureUrl;
+    memberProfileImage.src = pictureUrl || "";
+  }
+}
+
+function setMemberProfileDisabled(disabled) {
+  for (const input of [
+    memberProfileNameInput,
+    memberProfileRegionInput,
+    memberProfilePositionInput,
+    memberProfileGenreInput,
+    memberProfilePictureInput,
+    memberProfileMemoInput,
+  ]) {
+    if (input) {
+      input.disabled = disabled;
+    }
+  }
+
+  if (memberProfileSaveButton) {
+    memberProfileSaveButton.disabled = disabled;
+  }
+}
+
+function getProfileInitial(value) {
+  const text = String(value || "").trim();
+
+  return (text[0] || "M").toUpperCase();
 }
 
 function renderMemberGroups(isLoggedIn) {

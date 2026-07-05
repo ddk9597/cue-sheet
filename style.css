@@ -418,6 +418,46 @@ textarea {
   border-top: 1px solid rgba(53, 68, 58, 0.1);
 }
 
+.member-profile-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.member-profile-preview {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid rgba(53, 68, 58, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.member-profile-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-profile-preview .directory-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.member-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.member-profile-intro,
+.member-profile-fields .primary-button {
+  grid-column: 1 / -1;
+}
+
 .member-inline-form,
 .member-memo-form {
   display: grid;
@@ -711,6 +751,14 @@ textarea {
   line-height: 1.55;
 }
 
+.directory-item small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
 .band-card span,
 .main-post-list span {
   color: var(--accent-deep);
@@ -742,6 +790,13 @@ textarea {
   background: rgba(182, 93, 53, 0.12);
   color: var(--accent-deep);
   font-weight: 900;
+}
+
+.directory-avatar-image {
+  display: block;
+  object-fit: cover;
+  overflow: hidden;
+  padding: 0;
 }
 
 .main-post-list {
@@ -840,6 +895,11 @@ textarea {
   .directory-list,
   .show-list,
   .account-section {
+    grid-template-columns: 1fr;
+  }
+
+  .member-profile-form,
+  .member-profile-fields {
     grid-template-columns: 1fr;
   }
 

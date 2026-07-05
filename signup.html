@@ -237,6 +237,16 @@
       grid-column: span 3;
     }
 
+    .profile-field.is-region,
+    .profile-field.is-position,
+    .profile-field.is-genre {
+      grid-column: span 2;
+    }
+
+    .profile-field.is-picture {
+      grid-column: 1 / -1;
+    }
+
     .profile-field.is-memo {
       grid-column: 1 / -1;
     }
@@ -583,6 +593,10 @@
 
       .profile-field.is-name,
       .profile-field.is-birth,
+      .profile-field.is-region,
+      .profile-field.is-position,
+      .profile-field.is-genre,
+      .profile-field.is-picture,
       .profile-field.is-memo {
         grid-column: 1 / -1;
       }
@@ -802,9 +816,26 @@
               <span>생년월일</span>
               <input id="birthInput" name="birthDate" type="date" autocomplete="bday">
             </label>
+            <label class="field profile-field is-region" for="regionInput">
+              <span>지역</span>
+              <input id="regionInput" name="region" type="text" maxlength="40" placeholder="예: 서울">
+            </label>
+            <label class="field profile-field is-position" for="positionInput">
+              <span>포지션</span>
+              <input id="positionInput" name="position" type="text" maxlength="40" placeholder="예: 보컬, 기타">
+            </label>
+            <label class="field profile-field is-genre" for="genreInput">
+              <span>선호 장르</span>
+              <input id="genreInput" name="genre" type="text" maxlength="80" placeholder="예: 인디록, 시티팝">
+            </label>
+            <label class="field profile-field is-picture" for="pictureUrlInput">
+              <span>프로필사진 URL</span>
+              <input id="pictureUrlInput" name="pictureUrl" type="url" inputmode="url" maxlength="500" placeholder="https://example.com/profile.jpg">
+              <p class="field-note">이미지 파일 업로드 전까지는 공개 이미지 URL을 사용합니다.</p>
+            </label>
             <label class="field profile-field is-memo" for="memoInput">
-              <span>메모</span>
-              <input id="memoInput" name="memo" type="text" maxlength="80" placeholder="팀명, 역할 등">
+              <span>프로필 소개</span>
+              <input id="memoInput" name="memo" type="text" maxlength="120" placeholder="팀명, 활동 가능 시간, 짧은 소개">
             </label>
           </div>
         </section>
@@ -952,6 +983,10 @@
     const emailVerificationStatus = document.querySelector("#emailVerificationStatus");
     const nameInput = document.querySelector("#nameInput");
     const birthInput = document.querySelector("#birthInput");
+    const regionInput = document.querySelector("#regionInput");
+    const positionInput = document.querySelector("#positionInput");
+    const genreInput = document.querySelector("#genreInput");
+    const pictureUrlInput = document.querySelector("#pictureUrlInput");
     const memoInput = document.querySelector("#memoInput");
     const phoneInput = document.querySelector("#phoneInput");
     const passwordInput = document.querySelector("#passwordInput");
@@ -999,7 +1034,7 @@
       clearSavedSection("profile");
     });
 
-    for (const input of [nameInput, birthInput, memoInput]) {
+    for (const input of [nameInput, birthInput, regionInput, positionInput, genreInput, pictureUrlInput, memoInput]) {
       input.addEventListener("input", () => {
         clearSavedSection("profile");
       });
@@ -1141,6 +1176,10 @@
     function collectProfile() {
       const email = normalizeEmail(emailInput.value);
       const name = nameInput.value.trim();
+      const region = regionInput.value.trim();
+      const position = positionInput.value.trim();
+      const genre = genreInput.value.trim();
+      const pictureUrl = pictureUrlInput.value.trim();
 
       if (!isValidEmail(email)) {
         setStatus("아이디로 사용할 이메일 주소를 확인해 주세요.", true);
@@ -1160,10 +1199,20 @@
         return false;
       }
 
+      if (pictureUrl && !isValidProfileUrl(pictureUrl)) {
+        setStatus("프로필사진 URL은 http 또는 https 주소로 입력해 주세요.", true);
+        pictureUrlInput.focus();
+        return false;
+      }
+
       return {
         email,
         name,
         birthDate: birthInput.value,
+        region,
+        position,
+        genre,
+        pictureUrl,
         memo: memoInput.value.trim(),
         savedAt: new Date().toISOString(),
       };
@@ -1283,6 +1332,10 @@
             email: profile.email,
             name: profile.name,
             birthDate: profile.birthDate,
+            region: profile.region,
+            position: profile.position,
+            genre: profile.genre,
+            pictureUrl: profile.pictureUrl,
             memo: profile.memo,
             phone: phone.phone,
             password,
@@ -1356,6 +1409,10 @@
         emailInput.value = signupState.profile.email || "";
         nameInput.value = signupState.profile.name || "";
         birthInput.value = signupState.profile.birthDate || "";
+        regionInput.value = signupState.profile.region || "";
+        positionInput.value = signupState.profile.position || "";
+        genreInput.value = signupState.profile.genre || "";
+        pictureUrlInput.value = signupState.profile.pictureUrl || "";
         memoInput.value = signupState.profile.memo || "";
       }
 
@@ -1413,6 +1470,7 @@
         createSummaryItem(`개인정보 동의: ${signupState.consent ? "저장됨" : "미저장"}`),
         createSummaryItem(`이메일 인증: ${verified ? "완료" : "미완료"}`),
         createSummaryItem(`개인정보: ${signupState.profile?.email || "미저장"}`),
+        createSummaryItem(`프로필: ${formatProfileSummary(signupState.profile)}`),
         createSummaryItem(`휴대폰번호: ${signupState.phone?.displayPhone || "미저장"}`),
         createSummaryItem(`비밀번호: ${signupState.password ? "저장됨" : "미저장"}`),
       );
@@ -1447,6 +1505,26 @@
         signupState.emailVerification?.verified
           && signupState.emailVerification.email === normalizeEmail(email),
       );
+    }
+
+    function isValidProfileUrl(value) {
+      try {
+        const parsed = new URL(String(value || "").trim());
+
+        return ["http:", "https:"].includes(parsed.protocol);
+      } catch {
+        return false;
+      }
+    }
+
+    function formatProfileSummary(profile) {
+      if (!profile) {
+        return "미저장";
+      }
+
+      return [profile.region, profile.position, profile.genre]
+        .filter(Boolean)
+        .join(" · ") || "추가 정보 없음";
     }
 
     function setEmailVerificationBusy(isBusy) {

@@ -9,6 +9,8 @@ const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_MEMO_LENGTH = 5000;
 const ROUTE_METHODS = {
+  directory: ["GET"],
+  profile: ["GET", "PUT"],
   groups: ["GET", "POST"],
   invites: ["POST"],
   messages: ["GET"],
@@ -45,6 +47,12 @@ module.exports = async (request, response) => {
 
   try {
     await ensureSchema(sql);
+
+    if (route === "directory") {
+      await handleGetDirectory(sql, response);
+      return;
+    }
+
     const sessionUser = await getSessionUser(sql, request);
 
     if (!sessionUser) {
@@ -57,6 +65,18 @@ module.exports = async (request, response) => {
 
     if (route === "groups" && request.method === "GET") {
       await handleGetGroups(sql, response, sessionUser);
+      return;
+    }
+
+    if (route === "profile" && request.method === "GET") {
+      await handleGetProfile(sql, response, sessionUser);
+      return;
+    }
+
+    if (route === "profile" && request.method === "PUT") {
+      const payload = await readJsonBody(request);
+
+      await handleSaveProfile(sql, response, sessionUser, payload);
       return;
     }
 
@@ -156,6 +176,69 @@ async function handleGetGroups(sql, response, sessionUser) {
 
   sendJson(response, 200, {
     groups: rows.map(normalizeGroupRow),
+  });
+}
+
+async function handleGetDirectory(sql, response) {
+  const rows = await sql.query(
+    [
+      "SELECT id, name, picture_url, region, \"position\", genre, memo, last_login_at",
+      "FROM app_users",
+      "WHERE name <> '' OR region <> '' OR \"position\" <> '' OR genre <> '' OR picture_url <> ''",
+      "ORDER BY last_login_at DESC, id DESC",
+      "LIMIT 12",
+    ].join(" "),
+  );
+
+  sendJson(response, 200, {
+    members: rows.map(normalizeDirectoryRow),
+  });
+}
+
+async function handleGetProfile(sql, response, sessionUser) {
+  const rows = await sql.query(
+    [
+      "SELECT email, name, picture_url, region, \"position\", genre, memo",
+      "FROM app_users",
+      "WHERE id = $1",
+      "LIMIT 1",
+    ].join(" "),
+    [sessionUser.id],
+  );
+
+  sendJson(response, 200, {
+    profile: normalizeProfileRow(rows[0], sessionUser),
+  });
+}
+
+async function handleSaveProfile(sql, response, sessionUser, payload) {
+  const name = normalizeProfileText(payload.name, 80);
+  const region = normalizeProfileText(payload.region, 40);
+  const position = normalizeProfileText(payload.position, 40);
+  const genre = normalizeProfileText(payload.genre, 80);
+  const memo = normalizeProfileText(payload.memo, 120);
+  const pictureUrl = normalizeProfileUrl(payload.pictureUrl);
+
+  if (!name) {
+    throwHttpError(400, "invalid_profile_name", "이름을 입력해 주세요.");
+  }
+
+  if (String(payload.pictureUrl || "").trim() && !pictureUrl) {
+    throwHttpError(400, "invalid_picture_url", "프로필사진 URL을 확인해 주세요.");
+  }
+
+  const rows = await sql.query(
+    [
+      "UPDATE app_users",
+      "SET name = $2, region = $3, \"position\" = $4, genre = $5, memo = $6, picture_url = $7",
+      "WHERE id = $1",
+      "RETURNING email, name, picture_url, region, \"position\", genre, memo",
+    ].join(" "),
+    [sessionUser.id, name, region, position, genre, memo, pictureUrl],
+  );
+
+  sendJson(response, 200, {
+    profile: normalizeProfileRow(rows[0], sessionUser),
   });
 }
 
@@ -400,6 +483,26 @@ function normalizeMemoContent(value) {
   return String(value || "").slice(0, MAX_MEMO_LENGTH);
 }
 
+function normalizeProfileText(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function normalizeProfileUrl(value) {
+  const url = String(value || "").trim().slice(0, 500);
+
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 function normalizePositiveId(value) {
   const id = String(value || "").trim();
 
@@ -426,6 +529,35 @@ function normalizeInviteRow(row) {
     status: ["pending", "accepted", "rejected"].includes(row?.status) ? row.status : "pending",
     createdAt: row?.created_at ?? null,
     respondedAt: row?.responded_at ?? null,
+  };
+}
+
+function normalizeProfileRow(row, sessionUser) {
+  return {
+    email: normalizeEmail(row?.email || sessionUser?.email),
+    name: String(row?.name || "").trim(),
+    pictureUrl: String(row?.picture_url || "").trim(),
+    region: String(row?.region || "").trim(),
+    position: String(row?.position || "").trim(),
+    genre: String(row?.genre || "").trim(),
+    memo: String(row?.memo || "").trim(),
+  };
+}
+
+function normalizeDirectoryRow(row) {
+  const name = String(row?.name || "").trim();
+  const position = String(row?.position || "").trim();
+  const region = String(row?.region || "").trim();
+  const genre = String(row?.genre || "").trim();
+
+  return {
+    id: String(row?.id || ""),
+    name: name || "이름 없는 회원",
+    pictureUrl: String(row?.picture_url || "").trim(),
+    region,
+    position,
+    genre,
+    memo: String(row?.memo || "").trim(),
   };
 }
 
