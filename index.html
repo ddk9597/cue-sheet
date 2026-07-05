@@ -238,6 +238,13 @@
         </div>
         <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
         <div class="member-grid">
+          <section class="member-block member-dashboard-block" aria-labelledby="memberDashboardTitle">
+            <div class="member-block-header">
+              <strong id="memberDashboardTitle">회원 홈</strong>
+            </div>
+            <ul id="memberDashboardList" class="member-dashboard-list" aria-live="polite"></ul>
+          </section>
+
           <section class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
             <div class="member-block-header">
               <strong id="memberProfileTitle">내 프로필</strong>
@@ -317,6 +324,92 @@
               <strong id="memberMessagesTitle">메시지함</strong>
             </div>
             <ul id="memberMessageList" class="member-list"></ul>
+          </section>
+
+          <section id="memberGroupDetail" class="member-block member-group-detail-block" aria-labelledby="memberGroupDetailTitle">
+            <div class="member-block-header">
+              <strong id="memberGroupDetailTitle">그룹 상세</strong>
+              <span id="memberGroupDetailRole" class="member-pill">member</span>
+            </div>
+            <p id="memberGroupDetailStatus" class="save-status">그룹을 선택하면 상세 정보를 확인합니다.</p>
+
+            <div class="member-subgrid">
+              <section aria-labelledby="memberGroupMembersTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupMembersTitle">멤버</strong>
+                </div>
+                <ul id="memberGroupMemberList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupCuesTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupCuesTitle">그룹 큐시트</strong>
+                </div>
+                <form id="memberGroupCueForm" class="member-inline-form" autocomplete="off">
+                  <label class="field" for="memberGroupCueTitleInput">
+                    <span>큐시트 제목</span>
+                    <input id="memberGroupCueTitleInput" name="groupCueTitle" type="text" maxlength="100" placeholder="예: 7월 공연 세트">
+                  </label>
+                  <button class="primary-button" type="submit">현재 목록 저장</button>
+                </form>
+                <ul id="memberGroupCueList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupNoticeTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupNoticeTitle">그룹 공지</strong>
+                </div>
+                <form id="memberGroupNoticeForm" class="member-stack-form" autocomplete="off">
+                  <label class="field" for="memberGroupNoticeTitleInput">
+                    <span>공지 제목</span>
+                    <input id="memberGroupNoticeTitleInput" name="groupNoticeTitle" type="text" maxlength="120" placeholder="예: 다음 합주 준비물">
+                  </label>
+                  <label class="field" for="memberGroupNoticeBodyInput">
+                    <span>공지 내용</span>
+                    <textarea id="memberGroupNoticeBodyInput" name="groupNoticeBody" maxlength="1000" rows="4" placeholder="멤버에게 전달할 내용을 입력하세요."></textarea>
+                  </label>
+                  <button class="primary-button" type="submit">공지 보내기</button>
+                </form>
+                <ul id="memberGroupNoticeList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupPerformancesTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupPerformancesTitle">공연</strong>
+                </div>
+                <form id="memberPerformanceForm" class="member-stack-form" autocomplete="off">
+                  <label class="field" for="memberPerformanceTitleInput">
+                    <span>공연명</span>
+                    <input id="memberPerformanceTitleInput" name="performanceTitle" type="text" maxlength="120" placeholder="예: Summer Set Night">
+                  </label>
+                  <label class="field" for="memberPerformanceDateInput">
+                    <span>공연 날짜</span>
+                    <input id="memberPerformanceDateInput" name="performanceDate" type="date">
+                  </label>
+                  <label class="field" for="memberPerformanceLocationInput">
+                    <span>장소</span>
+                    <input id="memberPerformanceLocationInput" name="performanceLocation" type="text" maxlength="120" placeholder="예: 홍대 클럽 A">
+                  </label>
+                  <label class="field" for="memberPerformanceMemoInput">
+                    <span>메모</span>
+                    <input id="memberPerformanceMemoInput" name="performanceMemo" type="text" maxlength="1000" placeholder="공연 준비 메모">
+                  </label>
+                  <button class="primary-button" type="submit">공연 추가</button>
+                </form>
+                <form id="memberPerformanceCueForm" class="member-inline-form" autocomplete="off">
+                  <label class="field" for="memberPerformanceSelect">
+                    <span>공연</span>
+                    <select id="memberPerformanceSelect" name="performanceId"></select>
+                  </label>
+                  <label class="field" for="memberPerformanceCueSelect">
+                    <span>연결할 그룹 큐시트</span>
+                    <select id="memberPerformanceCueSelect" name="groupCueId"></select>
+                  </label>
+                  <button class="primary-button" type="submit">공연에 연결</button>
+                </form>
+                <ul id="memberPerformanceList" class="member-list"></ul>
+              </section>
+            </div>
           </section>
 
           <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">

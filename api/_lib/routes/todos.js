@@ -1,4 +1,5 @@
 const { TODO_DOCUMENT_ROW_ID, ensureSchema, getSql } = require("../db");
+const { getSessionUser } = require("../auth");
 const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 const { validateSavePassword } = require("../save-password");
 const { normalizeTodoHtml } = require("../todo");
@@ -21,8 +22,25 @@ module.exports = async (request, response) => {
 
   try {
     await ensureSchema(sql);
+    const sessionUser = await getSessionUser(sql, request);
 
     if (request.method === "GET") {
+      if (sessionUser) {
+        const rows = await sql.query(
+          "SELECT html, updated_at FROM user_todo_document_state WHERE user_id = $1 LIMIT 1",
+          [sessionUser.id],
+        );
+        const row = rows[0];
+
+        sendJson(response, 200, {
+          html: normalizeTodoHtml(row?.html),
+          updatedAt: row?.updated_at ?? null,
+          authenticated: true,
+          userScoped: true,
+        });
+        return;
+      }
+
       const rows = await sql.query(
         "SELECT html, updated_at FROM todo_document_state WHERE id = $1 LIMIT 1",
         [TODO_DOCUMENT_ROW_ID],
@@ -37,6 +55,29 @@ module.exports = async (request, response) => {
     }
 
     const payload = await readJsonBody(request);
+
+    if (sessionUser) {
+      const html = normalizeTodoHtml(payload.html);
+      const rows = await sql.query(
+        [
+          "INSERT INTO user_todo_document_state (user_id, html, updated_at)",
+          "VALUES ($1, $2, NOW())",
+          "ON CONFLICT (user_id)",
+          "DO UPDATE SET html = EXCLUDED.html, updated_at = NOW()",
+          "RETURNING updated_at",
+        ].join(" "),
+        [sessionUser.id, html],
+      );
+
+      sendJson(response, 200, {
+        html,
+        updatedAt: rows[0]?.updated_at ?? null,
+        authenticated: true,
+        userScoped: true,
+      });
+      return;
+    }
+
     const passwordResult = await validateSavePassword(sql, request, payload.password);
 
     if (!passwordResult.ok) {

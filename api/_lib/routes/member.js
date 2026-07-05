@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const {
   getSessionUser,
   isValidEmail,
@@ -10,10 +11,15 @@ const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_MEMO_LENGTH = 5000;
 const ROUTE_METHODS = {
   directory: ["GET"],
+  me: ["GET"],
+  dashboard: ["GET"],
   profile: ["GET", "PUT"],
   groups: ["GET", "POST"],
   invites: ["POST"],
+  "invites/accept": ["POST"],
+  "invites/reject": ["POST"],
   messages: ["GET"],
+  "messages/read": ["POST"],
   "messages/accept": ["POST"],
   memo: ["GET", "PUT"],
 };
@@ -68,6 +74,16 @@ module.exports = async (request, response) => {
       return;
     }
 
+    if (route === "me") {
+      await handleGetMe(sql, response, sessionUser);
+      return;
+    }
+
+    if (route === "dashboard") {
+      await handleGetDashboard(sql, response, sessionUser);
+      return;
+    }
+
     if (route === "profile" && request.method === "GET") {
       await handleGetProfile(sql, response, sessionUser);
       return;
@@ -99,10 +115,31 @@ module.exports = async (request, response) => {
       return;
     }
 
+    if (route === "messages/read") {
+      const payload = await readJsonBody(request);
+
+      await handleReadMessage(sql, response, sessionUser, payload);
+      return;
+    }
+
     if (route === "messages/accept") {
       const payload = await readJsonBody(request);
 
       await handleAcceptMessage(sql, response, sessionUser, payload);
+      return;
+    }
+
+    if (route === "invites/accept") {
+      const payload = await readJsonBody(request);
+
+      await handleAcceptMessage(sql, response, sessionUser, payload);
+      return;
+    }
+
+    if (route === "invites/reject") {
+      const payload = await readJsonBody(request);
+
+      await handleRejectInvite(sql, response, sessionUser, payload);
       return;
     }
 
@@ -165,10 +202,12 @@ function stripRoutePrefix(route, prefix) {
 async function handleGetGroups(sql, response, sessionUser) {
   const rows = await sql.query(
     [
-      "SELECT g.id, g.name, gm.role, g.created_at, g.updated_at",
+      "SELECT g.id, g.name, gm.role, g.created_at, g.updated_at, COUNT(all_members.user_id)::int AS member_count",
       "FROM group_members gm",
       "JOIN groups g ON g.id = gm.group_id",
+      "LEFT JOIN group_members all_members ON all_members.group_id = g.id",
       "WHERE gm.user_id = $1",
+      "GROUP BY g.id, gm.role",
       "ORDER BY g.updated_at DESC, g.created_at DESC",
     ].join(" "),
     [sessionUser.id],
@@ -192,6 +231,99 @@ async function handleGetDirectory(sql, response) {
 
   sendJson(response, 200, {
     members: rows.map(normalizeDirectoryRow),
+  });
+}
+
+async function handleGetMe(sql, response, sessionUser) {
+  const rows = await sql.query(
+    [
+      "SELECT email, name, picture_url, region, \"position\", genre, memo",
+      "FROM app_users",
+      "WHERE id = $1",
+      "LIMIT 1",
+    ].join(" "),
+    [sessionUser.id],
+  );
+
+  sendJson(response, 200, {
+    user: {
+      id: String(sessionUser.id),
+      email: normalizeEmail(sessionUser.email),
+    },
+    profile: normalizeProfileRow(rows[0], sessionUser),
+  });
+}
+
+async function handleGetDashboard(sql, response, sessionUser) {
+  const [
+    cueRows,
+    practiceRows,
+    todoRows,
+    groupRows,
+    unreadInviteRows,
+    unreadMessageRows,
+  ] = await Promise.all([
+    sql.query(
+      [
+        "SELECT COALESCE(jsonb_array_length(items), 0) AS cue_count",
+        "FROM user_cue_sheet_state",
+        "WHERE user_id = $1",
+        "LIMIT 1",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+    sql.query(
+      [
+        "SELECT logs",
+        "FROM user_practice_calendar_state",
+        "WHERE user_id = $1",
+        "LIMIT 1",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+    sql.query(
+      [
+        "SELECT html",
+        "FROM user_todo_document_state",
+        "WHERE user_id = $1",
+        "LIMIT 1",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+    sql.query(
+      "SELECT COUNT(*)::int AS group_count FROM group_members WHERE user_id = $1",
+      [sessionUser.id],
+    ),
+    sql.query(
+      [
+        "SELECT COUNT(*)::int AS unread_count",
+        "FROM group_invites",
+        "WHERE invitee_user_id = $1 AND status = 'pending' AND read_at IS NULL",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+    sql.query(
+      [
+        "SELECT COUNT(*)::int AS unread_count",
+        "FROM group_messages",
+        "WHERE user_id = $1 AND is_read = FALSE",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+  ]);
+  const practiceSummary = summarizePracticeLogs(practiceRows[0]?.logs);
+  const unreadMessages = Number(unreadInviteRows[0]?.unread_count || 0)
+    + Number(unreadMessageRows[0]?.unread_count || 0);
+
+  sendJson(response, 200, {
+    dashboard: {
+      cueCount: Number(cueRows[0]?.cue_count || 0),
+      practiceDayCount: practiceSummary.dayCount,
+      practiceTotalMinutes: practiceSummary.totalMinutes,
+      todoCount: countTodoItems(todoRows[0]?.html),
+      unreadMessageCount: unreadMessages,
+      groupCount: Number(groupRows[0]?.group_count || 0),
+    },
   });
 }
 
@@ -343,13 +475,14 @@ async function handleCreateInvite(sql, response, sessionUser, payload) {
   }
 
   try {
+    const token = crypto.randomBytes(24).toString("base64url");
     const rows = await sql.query(
       [
-        "INSERT INTO group_invites (group_id, inviter_user_id, invitee_user_id)",
-        "VALUES ($1, $2, $3)",
+        "INSERT INTO group_invites (group_id, inviter_user_id, invitee_user_id, invitee_email, token)",
+        "VALUES ($1, $2, $3, $4, $5)",
         "RETURNING id, group_id, status, created_at",
       ].join(" "),
-      [groupId, sessionUser.id, invitee.id],
+      [groupId, sessionUser.id, invitee.id, invitee.email, token],
     );
 
     sendJson(response, 201, {
@@ -369,25 +502,89 @@ async function handleCreateInvite(sql, response, sessionUser, payload) {
 }
 
 async function handleGetMessages(sql, response, sessionUser) {
-  const rows = await sql.query(
-    [
-      "SELECT",
-      "i.id, i.group_id, i.status, i.created_at, i.responded_at,",
-      "g.name AS group_name,",
-      "u.email AS inviter_email,",
-      "u.name AS inviter_name",
-      "FROM group_invites i",
-      "JOIN groups g ON g.id = i.group_id",
-      "JOIN app_users u ON u.id = i.inviter_user_id",
-      "WHERE i.invitee_user_id = $1 AND i.status = 'pending'",
-      "ORDER BY i.created_at DESC",
-    ].join(" "),
-    [sessionUser.id],
-  );
+  const [inviteRows, noticeRows] = await Promise.all([
+    sql.query(
+      [
+        "SELECT",
+        "i.id, i.group_id, i.status, i.created_at, i.responded_at, i.read_at,",
+        "g.name AS group_name,",
+        "u.email AS inviter_email,",
+        "u.name AS inviter_name",
+        "FROM group_invites i",
+        "JOIN groups g ON g.id = i.group_id",
+        "JOIN app_users u ON u.id = i.inviter_user_id",
+        "WHERE i.invitee_user_id = $1",
+        "ORDER BY i.created_at DESC",
+        "LIMIT 30",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+    sql.query(
+      [
+        "SELECT",
+        "m.id, m.group_id, m.type, m.title, m.body, m.is_read, m.created_at,",
+        "g.name AS group_name",
+        "FROM group_messages m",
+        "JOIN groups g ON g.id = m.group_id",
+        "WHERE m.user_id = $1",
+        "ORDER BY m.created_at DESC",
+        "LIMIT 30",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+  ]);
+  const messages = [
+    ...inviteRows.map(normalizeInviteRow),
+    ...noticeRows.map(normalizeGroupMessageRow),
+  ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 
   sendJson(response, 200, {
-    messages: rows.map(normalizeInviteRow),
+    messages: messages.slice(0, 40),
   });
+}
+
+async function handleReadMessage(sql, response, sessionUser, payload) {
+  const messageId = normalizePositiveId(payload.messageId || payload.inviteId);
+  const messageType = String(payload.type || payload.messageType || "invite");
+
+  if (!messageId) {
+    throwHttpError(400, "invalid_message_id", "메시지를 확인해 주세요.");
+  }
+
+  if (messageType === "group_message") {
+    const rows = await sql.query(
+      [
+        "UPDATE group_messages",
+        "SET is_read = TRUE",
+        "WHERE id = $1 AND user_id = $2",
+        "RETURNING id",
+      ].join(" "),
+      [messageId, sessionUser.id],
+    );
+
+    if (!rows[0]) {
+      await throwMissingOrForbiddenMessage(sql, "group_message", messageId);
+    }
+
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
+  const rows = await sql.query(
+    [
+      "UPDATE group_invites",
+      "SET read_at = COALESCE(read_at, NOW())",
+      "WHERE id = $1 AND invitee_user_id = $2",
+      "RETURNING id",
+    ].join(" "),
+    [messageId, sessionUser.id],
+  );
+
+  if (!rows[0]) {
+    await throwMissingOrForbiddenMessage(sql, "invite", messageId);
+  }
+
+  sendJson(response, 200, { ok: true });
 }
 
 async function handleAcceptMessage(sql, response, sessionUser, payload) {
@@ -415,7 +612,7 @@ async function handleAcceptMessage(sql, response, sessionUser, payload) {
       ),
       updated_invite AS (
         UPDATE group_invites
-        SET status = 'accepted', responded_at = NOW()
+        SET status = 'accepted', responded_at = NOW(), accepted_at = NOW(), read_at = COALESCE(read_at, NOW())
         WHERE id IN (SELECT id FROM target_invite)
         RETURNING id, group_id, status, created_at, responded_at
       )
@@ -436,7 +633,33 @@ async function handleAcceptMessage(sql, response, sessionUser, payload) {
   ]);
 
   if (!rows[0]) {
-    throwHttpError(403, "invite_not_acceptable", "수락할 수 있는 초대가 아닙니다.");
+    await throwMissingOrForbiddenInvite(sql, inviteId, "invite_not_acceptable", "수락할 수 있는 초대가 아닙니다.");
+  }
+
+  sendJson(response, 200, {
+    invite: normalizeInviteRow(rows[0]),
+  });
+}
+
+async function handleRejectInvite(sql, response, sessionUser, payload) {
+  const inviteId = normalizePositiveId(payload.inviteId || payload.messageId);
+
+  if (!inviteId) {
+    throwHttpError(400, "invalid_invite_id", "초대 메시지를 확인해 주세요.");
+  }
+
+  const rows = await sql.query(
+    [
+      "UPDATE group_invites",
+      "SET status = 'rejected', responded_at = NOW(), rejected_at = NOW(), read_at = COALESCE(read_at, NOW())",
+      "WHERE id = $1 AND invitee_user_id = $2 AND status = 'pending'",
+      "RETURNING id, group_id, status, created_at, responded_at",
+    ].join(" "),
+    [inviteId, sessionUser.id],
+  );
+
+  if (!rows[0]) {
+    await throwMissingOrForbiddenInvite(sql, inviteId, "invite_not_rejectable", "거절할 수 있는 초대가 아닙니다.");
   }
 
   sendJson(response, 200, {
@@ -514,6 +737,7 @@ function normalizeGroupRow(row) {
     id: String(row?.id || ""),
     name: String(row?.name || ""),
     role: row?.role === "owner" ? "owner" : "member",
+    memberCount: Number(row?.member_count || 0),
     createdAt: row?.created_at ?? null,
     updatedAt: row?.updated_at ?? null,
   };
@@ -522,13 +746,33 @@ function normalizeGroupRow(row) {
 function normalizeInviteRow(row) {
   return {
     id: String(row?.id || ""),
+    type: "invite",
     groupId: String(row?.group_id || ""),
     groupName: String(row?.group_name || ""),
+    title: `${String(row?.group_name || "그룹").trim() || "그룹"} 초대`,
+    body: "",
     inviterEmail: normalizeEmail(row?.inviter_email),
     inviterName: String(row?.inviter_name || "").trim(),
     status: ["pending", "accepted", "rejected"].includes(row?.status) ? row.status : "pending",
+    isRead: Boolean(row?.read_at),
     createdAt: row?.created_at ?? null,
     respondedAt: row?.responded_at ?? null,
+  };
+}
+
+function normalizeGroupMessageRow(row) {
+  return {
+    id: String(row?.id || ""),
+    type: "group_message",
+    messageType: ["notice", "cue_request"].includes(row?.type) ? row.type : "notice",
+    groupId: String(row?.group_id || ""),
+    groupName: String(row?.group_name || ""),
+    title: String(row?.title || "").trim() || "그룹 알림",
+    body: String(row?.body || "").trim(),
+    status: "notice",
+    isRead: Boolean(row?.is_read),
+    createdAt: row?.created_at ?? null,
+    respondedAt: null,
   };
 }
 
@@ -559,6 +803,89 @@ function normalizeDirectoryRow(row) {
     genre,
     memo: String(row?.memo || "").trim(),
   };
+}
+
+function summarizePracticeLogs(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      dayCount: 0,
+      totalMinutes: 0,
+    };
+  }
+
+  let dayCount = 0;
+  let totalMinutes = 0;
+
+  for (const entries of Object.values(value)) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      continue;
+    }
+
+    dayCount += 1;
+
+    for (const entry of entries) {
+      const minutes = Number(entry?.minutes);
+
+      if (Number.isFinite(minutes) && minutes > 0) {
+        totalMinutes += Math.floor(minutes);
+      }
+    }
+  }
+
+  return {
+    dayCount,
+    totalMinutes,
+  };
+}
+
+function countTodoItems(html) {
+  const text = String(html || "");
+  const checkRows = text.match(/class=(?:"[^"]*\btodo-check-row\b[^"]*"|'[^']*\btodo-check-row\b[^']*')/g);
+
+  if (checkRows?.length) {
+    return checkRows.length;
+  }
+
+  return text.trim() ? 1 : 0;
+}
+
+async function throwMissingOrForbiddenMessage(sql, type, messageId) {
+  if (type === "group_message") {
+    const rows = await sql.query(
+      "SELECT 1 FROM group_messages WHERE id = $1 LIMIT 1",
+      [messageId],
+    );
+
+    throwHttpError(
+      rows[0] ? 403 : 404,
+      rows[0] ? "message_not_readable" : "message_not_found",
+      rows[0] ? "읽음 처리할 수 있는 메시지가 아닙니다." : "메시지를 찾을 수 없습니다.",
+    );
+  }
+
+  const rows = await sql.query(
+    "SELECT 1 FROM group_invites WHERE id = $1 LIMIT 1",
+    [messageId],
+  );
+
+  throwHttpError(
+    rows[0] ? 403 : 404,
+    rows[0] ? "message_not_readable" : "message_not_found",
+    rows[0] ? "읽음 처리할 수 있는 메시지가 아닙니다." : "메시지를 찾을 수 없습니다.",
+  );
+}
+
+async function throwMissingOrForbiddenInvite(sql, inviteId, errorCode, message) {
+  const rows = await sql.query(
+    "SELECT 1 FROM group_invites WHERE id = $1 LIMIT 1",
+    [inviteId],
+  );
+
+  throwHttpError(
+    rows[0] ? 403 : 404,
+    rows[0] ? errorCode : "invite_not_found",
+    rows[0] ? message : "초대 메시지를 찾을 수 없습니다.",
+  );
 }
 
 function throwHttpError(statusCode, errorCode, message) {

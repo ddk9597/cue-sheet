@@ -120,11 +120,14 @@ async function ensureSchemaLocked(sql) {
       "CREATE TABLE IF NOT EXISTS groups (",
       "id BIGSERIAL PRIMARY KEY,",
       "name TEXT NOT NULL DEFAULT '',",
+      "description TEXT NOT NULL DEFAULT '',",
       "owner_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
     ].join(" "));
+
+    await sql.query("ALTER TABLE groups ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''");
 
     await sql.query([
       "CREATE INDEX IF NOT EXISTS groups_owner_user_id_idx",
@@ -136,10 +139,13 @@ async function ensureSchemaLocked(sql) {
       "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
       "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
       "role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),",
+      "status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active')),",
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "PRIMARY KEY (group_id, user_id)",
       ")",
     ].join(" "));
+
+    await sql.query("ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active'))");
 
     await sql.query([
       "CREATE INDEX IF NOT EXISTS group_members_user_id_idx",
@@ -152,11 +158,22 @@ async function ensureSchemaLocked(sql) {
       "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
       "inviter_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
       "invitee_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "invitee_email TEXT NOT NULL DEFAULT '',",
+      "token TEXT NOT NULL DEFAULT '',",
       "status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),",
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
-      "responded_at TIMESTAMPTZ",
+      "responded_at TIMESTAMPTZ,",
+      "accepted_at TIMESTAMPTZ,",
+      "rejected_at TIMESTAMPTZ,",
+      "read_at TIMESTAMPTZ",
       ")",
     ].join(" "));
+
+    await sql.query("ALTER TABLE group_invites ADD COLUMN IF NOT EXISTS invitee_email TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE group_invites ADD COLUMN IF NOT EXISTS token TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE group_invites ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ");
+    await sql.query("ALTER TABLE group_invites ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ");
+    await sql.query("ALTER TABLE group_invites ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
 
     await sql.query([
       "CREATE UNIQUE INDEX IF NOT EXISTS group_invites_pending_unique_idx",
@@ -167,6 +184,84 @@ async function ensureSchemaLocked(sql) {
     await sql.query([
       "CREATE INDEX IF NOT EXISTS group_invites_invitee_user_id_idx",
       "ON group_invites (invitee_user_id, status, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS group_messages (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
+      "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "type TEXT NOT NULL DEFAULT 'notice' CHECK (type IN ('notice', 'cue_request')),",
+      "title TEXT NOT NULL DEFAULT '',",
+      "body TEXT NOT NULL DEFAULT '',",
+      "related_invite_id BIGINT REFERENCES group_invites(id) ON DELETE SET NULL,",
+      "related_cue_id BIGINT,",
+      "is_read BOOLEAN NOT NULL DEFAULT FALSE,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS group_messages_user_id_idx",
+      "ON group_messages (user_id, is_read, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS group_messages_group_id_idx",
+      "ON group_messages (group_id, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS group_cues (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
+      "title TEXT NOT NULL DEFAULT '',",
+      "cue_data JSONB NOT NULL DEFAULT '[]'::jsonb,",
+      "created_by BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "updated_by BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS group_cues_group_id_idx",
+      "ON group_cues (group_id, updated_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS performances (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,",
+      "title TEXT NOT NULL DEFAULT '',",
+      "performance_date TEXT NOT NULL DEFAULT '',",
+      "location TEXT NOT NULL DEFAULT '',",
+      "memo TEXT NOT NULL DEFAULT '',",
+      "created_by BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS performances_group_id_idx",
+      "ON performances (group_id, performance_date, updated_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS performance_cues (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "performance_id BIGINT NOT NULL REFERENCES performances(id) ON DELETE CASCADE,",
+      "group_cue_id BIGINT NOT NULL REFERENCES group_cues(id) ON DELETE CASCADE,",
+      "sort_order INTEGER NOT NULL DEFAULT 0,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "UNIQUE (performance_id, group_cue_id)",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS performance_cues_performance_id_idx",
+      "ON performance_cues (performance_id, sort_order, id)",
     ].join(" "));
 
     await sql.query([
@@ -181,6 +276,14 @@ async function ensureSchemaLocked(sql) {
       "CREATE TABLE IF NOT EXISTS user_practice_calendar_state (",
       "user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,",
       "logs JSONB NOT NULL DEFAULT '{}'::jsonb,",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS user_todo_document_state (",
+      "user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,",
+      "html TEXT NOT NULL DEFAULT '',",
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
     ].join(" "));

@@ -5,6 +5,8 @@ const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
 const AUTH_LOGIN_ENDPOINT = "/api/auth/login";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
 const MEMBER_API_ENDPOINT = "/api/member";
+const GROUPS_API_ENDPOINT = "/api/groups";
+const PERFORMANCES_API_ENDPOINT = "/api/performances";
 const TODO_AUTH_ENDPOINT = "/api/todo-auth";
 const TODOS_API_ENDPOINT = "/api/todos";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
@@ -61,6 +63,7 @@ const memberProfileGenreInput = document.querySelector("#memberProfileGenreInput
 const memberProfilePictureInput = document.querySelector("#memberProfilePictureInput");
 const memberProfileMemoInput = document.querySelector("#memberProfileMemoInput");
 const memberProfileSaveButton = document.querySelector("#memberProfileSaveButton");
+const memberDashboardList = document.querySelector("#memberDashboardList");
 const memberGroupForm = document.querySelector("#memberGroupForm");
 const memberGroupNameInput = document.querySelector("#memberGroupNameInput");
 const memberGroupList = document.querySelector("#memberGroupList");
@@ -69,6 +72,27 @@ const memberInviteGroupSelect = document.querySelector("#memberInviteGroupSelect
 const memberInviteEmailInput = document.querySelector("#memberInviteEmailInput");
 const memberInviteButton = document.querySelector("#memberInviteButton");
 const memberMessageList = document.querySelector("#memberMessageList");
+const memberGroupDetail = document.querySelector("#memberGroupDetail");
+const memberGroupDetailTitle = document.querySelector("#memberGroupDetailTitle");
+const memberGroupDetailRole = document.querySelector("#memberGroupDetailRole");
+const memberGroupDetailStatus = document.querySelector("#memberGroupDetailStatus");
+const memberGroupMemberList = document.querySelector("#memberGroupMemberList");
+const memberGroupCueForm = document.querySelector("#memberGroupCueForm");
+const memberGroupCueTitleInput = document.querySelector("#memberGroupCueTitleInput");
+const memberGroupCueList = document.querySelector("#memberGroupCueList");
+const memberGroupNoticeForm = document.querySelector("#memberGroupNoticeForm");
+const memberGroupNoticeTitleInput = document.querySelector("#memberGroupNoticeTitleInput");
+const memberGroupNoticeBodyInput = document.querySelector("#memberGroupNoticeBodyInput");
+const memberGroupNoticeList = document.querySelector("#memberGroupNoticeList");
+const memberPerformanceForm = document.querySelector("#memberPerformanceForm");
+const memberPerformanceTitleInput = document.querySelector("#memberPerformanceTitleInput");
+const memberPerformanceDateInput = document.querySelector("#memberPerformanceDateInput");
+const memberPerformanceLocationInput = document.querySelector("#memberPerformanceLocationInput");
+const memberPerformanceMemoInput = document.querySelector("#memberPerformanceMemoInput");
+const memberPerformanceCueForm = document.querySelector("#memberPerformanceCueForm");
+const memberPerformanceSelect = document.querySelector("#memberPerformanceSelect");
+const memberPerformanceCueSelect = document.querySelector("#memberPerformanceCueSelect");
+const memberPerformanceList = document.querySelector("#memberPerformanceList");
 const memberMemoForm = document.querySelector("#memberMemoForm");
 const memberMemoInput = document.querySelector("#memberMemoInput");
 const memberMemoSaveButton = document.querySelector("#memberMemoSaveButton");
@@ -145,11 +169,20 @@ let emailAuthInFlight = false;
 let authNotice = "";
 let memberDirectory = [];
 let memberProfile = null;
+let memberDashboard = null;
 let memberGroups = [];
 let memberMessages = [];
+let selectedMemberGroupId = "";
+let memberGroupDetailData = null;
+let memberGroupMembers = [];
+let memberGroupCues = [];
+let memberGroupMessages = [];
+let memberGroupPerformances = [];
+let memberPerformanceCueLinks = {};
 let memberNotice = "";
 let memberWorkspaceInFlight = false;
 let memberActionInFlight = false;
+let memberGroupDetailInFlight = false;
 let googleButtonRenderedForClientId = "";
 let googleButtonRenderRetry = 0;
 let cueInteractDragState = null;
@@ -183,6 +216,7 @@ let todoSaveInFlight = false;
 let todoPendingSave = false;
 let todoLastSavedHtml = "";
 let todoNeedsInitialDbSave = false;
+let todoUserScoped = false;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -359,12 +393,28 @@ memberInviteForm?.addEventListener("submit", (event) => {
 
 memberMessageList?.addEventListener("click", (event) => {
   const acceptButton = event.target.closest("[data-member-invite-accept]");
+  const rejectButton = event.target.closest("[data-member-invite-reject]");
+  const readButton = event.target.closest("[data-member-message-read]");
+  const groupLink = event.target.closest("[data-member-message-group]");
 
-  if (!acceptButton) {
+  if (acceptButton) {
+    acceptMemberInvite(acceptButton.dataset.memberInviteAccept);
     return;
   }
 
-  acceptMemberInvite(acceptButton.dataset.memberInviteAccept);
+  if (rejectButton) {
+    rejectMemberInvite(rejectButton.dataset.memberInviteReject);
+    return;
+  }
+
+  if (readButton) {
+    markMemberMessageRead(readButton.dataset.memberMessageRead, readButton.dataset.memberMessageType);
+    return;
+  }
+
+  if (groupLink) {
+    loadMemberGroupDetail(groupLink.dataset.memberMessageGroup);
+  }
 });
 
 memberMemoForm?.addEventListener("submit", (event) => {
@@ -391,6 +441,50 @@ memberProfileNameInput?.addEventListener("input", () => {
       pictureUrl: "",
     });
   }
+});
+
+memberGroupList?.addEventListener("click", (event) => {
+  const detailButton = event.target.closest("[data-member-group-detail]");
+
+  if (!detailButton) {
+    return;
+  }
+
+  loadMemberGroupDetail(detailButton.dataset.memberGroupDetail);
+});
+
+memberGroupCueForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveCurrentCuesToMemberGroup();
+});
+
+memberGroupCueList?.addEventListener("click", (event) => {
+  const loadButton = event.target.closest("[data-member-group-cue-load]");
+  const deleteButton = event.target.closest("[data-member-group-cue-delete]");
+
+  if (loadButton) {
+    loadMemberGroupCue(loadButton.dataset.memberGroupCueLoad);
+    return;
+  }
+
+  if (deleteButton) {
+    deleteMemberGroupCue(deleteButton.dataset.memberGroupCueDelete);
+  }
+});
+
+memberGroupNoticeForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendMemberGroupNotice();
+});
+
+memberPerformanceForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  createMemberPerformance();
+});
+
+memberPerformanceCueForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  attachMemberPerformanceCue();
 });
 
 cueForm?.addEventListener("submit", (event) => {
@@ -1006,16 +1100,22 @@ async function loadTodoDocument() {
 
     const remoteHtml = typeof payload.html === "string" ? payload.html : "";
     const nextHtml = remoteHtml || localHtml || TODO_DEFAULT_HTML.trim();
+    todoUserScoped = Boolean(payload.userScoped || payload.authenticated);
 
     todoEditor.innerHTML = nextHtml;
     todoLastSavedHtml = remoteHtml;
-    todoNeedsInitialDbSave = !remoteHtml && Boolean(localHtml);
+    todoNeedsInitialDbSave = !todoUserScoped && !remoteHtml && Boolean(localHtml);
+    todoEditUnlocked = todoUserScoped;
+    todoEditPassword = todoUserScoped ? "" : todoEditPassword;
     normalizeTodoCheckboxes();
     syncTodoEditAccess({ updateStatus: false });
-    updateTodoStatus(todoNeedsInitialDbSave
-      ? "기존 로컬 할 일을 불러왔습니다. 비밀번호 입력 후 DB에 저장됩니다."
-      : "비밀번호 입력 후 편집할 수 있습니다.");
+    updateTodoStatus(todoUserScoped
+      ? "로그인 계정 기준으로 자동 저장됩니다."
+      : todoNeedsInitialDbSave
+        ? "기존 로컬 할 일을 불러왔습니다. 비밀번호 입력 후 DB에 저장됩니다."
+        : "비밀번호 입력 후 편집할 수 있습니다.");
   } catch {
+    todoUserScoped = false;
     todoEditor.innerHTML = localHtml || TODO_DEFAULT_HTML.trim();
     todoLastSavedHtml = "";
     todoNeedsInitialDbSave = false;
@@ -1098,7 +1198,9 @@ async function unlockTodoEditor() {
 }
 
 function requireTodoEditAccess() {
-  if (todoEditUnlocked) {
+  if (todoEditUnlocked || todoUserScoped || authSession.authenticated) {
+    todoEditUnlocked = true;
+    syncTodoEditAccess({ updateStatus: false });
     return true;
   }
 
@@ -1108,7 +1210,7 @@ function requireTodoEditAccess() {
 }
 
 function syncTodoEditAccess({ updateStatus = true } = {}) {
-  const locked = !todoEditUnlocked;
+  const locked = !(todoEditUnlocked || todoUserScoped || authSession.authenticated);
 
   if (todoEditor) {
     todoEditor.classList.toggle("is-locked", locked);
@@ -1390,7 +1492,7 @@ async function saveTodoDocument() {
     return;
   }
 
-  if (!todoEditUnlocked) {
+  if (!todoEditUnlocked && !todoUserScoped && !authSession.authenticated) {
     return;
   }
 
@@ -1403,7 +1505,7 @@ async function saveTodoDocument() {
     return;
   }
 
-  if (!todoEditPassword) {
+  if (!todoUserScoped && !authSession.authenticated && !todoEditPassword) {
     todoEditUnlocked = false;
     syncTodoEditAccess({ updateStatus: false });
     updateTodoStatus("비밀번호 입력 후 저장할 수 있습니다.");
@@ -1427,7 +1529,7 @@ async function saveTodoDocument() {
       },
       body: JSON.stringify({
         html,
-        password: todoEditPassword,
+        password: todoUserScoped || authSession.authenticated ? "" : todoEditPassword,
       }),
     });
     const payload = await safeReadJson(response);
@@ -1444,6 +1546,7 @@ async function saveTodoDocument() {
     }
 
     todoLastSavedHtml = typeof payload.html === "string" ? payload.html : html;
+    todoUserScoped = Boolean(payload.userScoped || payload.authenticated || todoUserScoped);
     todoNeedsInitialDbSave = false;
     clearLegacyTodoDocument();
     updateTodoStatus("DB 저장됨");
@@ -2181,6 +2284,7 @@ async function reloadAuthenticatedWorkspace() {
   await Promise.all([
     initializeStorage(),
     initializePracticeTracker(),
+    loadTodoDocument(),
     loadMemberWorkspace(),
     loadMemberDirectory(),
   ]);
@@ -2217,29 +2321,37 @@ async function loadMemberWorkspace() {
   updateMemberUi();
 
   try {
-    const [profileResult, groupsResult, messagesResult, memoResult] = await Promise.all([
+    const [profileResult, dashboardResult, groupsResult, messagesResult, memoResult] = await Promise.all([
       fetchMemberJson("profile"),
+      fetchMemberJson("dashboard"),
       fetchMemberJson("groups"),
       fetchMemberJson("messages"),
       fetchMemberJson("memo"),
     ]);
 
-    for (const result of [profileResult, groupsResult, messagesResult, memoResult]) {
+    for (const result of [profileResult, dashboardResult, groupsResult, messagesResult, memoResult]) {
       if (!result.ok) {
         throw new Error(result.payload.message || "회원 정보를 불러오지 못했습니다.");
       }
     }
 
     memberProfile = normalizeMemberProfile(profileResult.payload.profile);
+    memberDashboard = normalizeMemberDashboard(dashboardResult.payload.dashboard);
     syncMemberProfileForm();
     memberGroups = normalizeMemberGroups(groupsResult.payload.groups);
     memberMessages = normalizeMemberMessages(messagesResult.payload.messages);
+    syncSelectedMemberGroup();
 
     if (memberMemoInput) {
       memberMemoInput.value = String(memoResult.payload.content || "");
     }
 
     memberNotice = "";
+    if (selectedMemberGroupId) {
+      await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    } else {
+      resetMemberGroupDetail();
+    }
   } catch (error) {
     memberNotice = error.message || "회원 정보를 불러오지 못했습니다.";
   } finally {
@@ -2250,11 +2362,15 @@ async function loadMemberWorkspace() {
 
 function resetMemberWorkspace() {
   memberProfile = null;
+  memberDashboard = null;
   memberGroups = [];
   memberMessages = [];
+  selectedMemberGroupId = "";
+  resetMemberGroupDetail();
   memberNotice = "";
   memberWorkspaceInFlight = false;
   memberActionInFlight = false;
+  memberGroupDetailInFlight = false;
 
   if (memberMemoInput) {
     memberMemoInput.value = "";
@@ -2263,6 +2379,32 @@ function resetMemberWorkspace() {
   syncMemberProfileForm();
 
   updateMemberUi();
+}
+
+function syncSelectedMemberGroup() {
+  if (!memberGroups.length) {
+    selectedMemberGroupId = "";
+    return;
+  }
+
+  if (memberGroups.some((group) => group.id === selectedMemberGroupId)) {
+    return;
+  }
+
+  selectedMemberGroupId = memberGroups[0].id;
+}
+
+function resetMemberGroupDetail(options = {}) {
+  if (!options.keepSelection) {
+    selectedMemberGroupId = "";
+  }
+
+  memberGroupDetailData = null;
+  memberGroupMembers = [];
+  memberGroupCues = [];
+  memberGroupMessages = [];
+  memberGroupPerformances = [];
+  memberPerformanceCueLinks = {};
 }
 
 async function saveMemberProfile() {
@@ -2443,6 +2585,403 @@ async function acceptMemberInvite(inviteId) {
   }
 }
 
+async function rejectMemberInvite(inviteId) {
+  if (!authSession.authenticated || memberActionInFlight || !inviteId) {
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "초대를 거절하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchMemberJson("invites/reject", {
+      method: "POST",
+      body: { inviteId },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "초대를 거절하지 못했습니다.";
+      return;
+    }
+
+    await loadMemberWorkspace();
+    memberNotice = "초대를 거절했습니다.";
+  } catch {
+    memberNotice = "초대를 거절하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function markMemberMessageRead(messageId, type = "invite") {
+  if (!authSession.authenticated || memberActionInFlight || !messageId) {
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "메시지를 읽음 처리하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchMemberJson("messages/read", {
+      method: "POST",
+      body: {
+        messageId,
+        type,
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "읽음 처리하지 못했습니다.";
+      return;
+    }
+
+    await loadMemberWorkspace();
+    memberNotice = "메시지를 읽음 처리했습니다.";
+  } catch {
+    memberNotice = "읽음 처리하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function loadMemberGroupDetail(groupId, options = {}) {
+  if (!authSession.authenticated || !groupId) {
+    resetMemberGroupDetail();
+    updateMemberUi();
+    return;
+  }
+
+  selectedMemberGroupId = String(groupId);
+  memberGroupDetailInFlight = true;
+  if (!options.silent) {
+    memberNotice = "그룹 상세를 불러오는 중입니다.";
+  }
+  updateMemberUi();
+
+  try {
+    const [groupResult, membersResult, cuesResult, messagesResult, performancesResult] = await Promise.all([
+      fetchGroupJson(selectedMemberGroupId),
+      fetchGroupJson(`${selectedMemberGroupId}/members`),
+      fetchGroupJson(`${selectedMemberGroupId}/cues`),
+      fetchGroupJson(`${selectedMemberGroupId}/messages`),
+      fetchPerformanceJson(`group/${selectedMemberGroupId}`),
+    ]);
+
+    for (const result of [groupResult, membersResult, cuesResult, messagesResult, performancesResult]) {
+      if (!result.ok) {
+        throw new Error(result.payload.message || "그룹 상세를 불러오지 못했습니다.");
+      }
+    }
+
+    memberGroupDetailData = normalizeMemberGroupDetail(groupResult.payload.group);
+    memberGroupMembers = normalizeMemberGroupMembers(membersResult.payload.members);
+    memberGroupCues = normalizeMemberGroupCues(cuesResult.payload.cues);
+    memberGroupMessages = normalizeMemberGroupMessages(messagesResult.payload.messages);
+    memberGroupPerformances = normalizeMemberPerformances(performancesResult.payload.performances);
+    memberPerformanceCueLinks = await loadMemberPerformanceCueLinks(memberGroupPerformances);
+
+    if (!options.silent) {
+      memberNotice = "그룹 상세를 불러왔습니다.";
+    }
+  } catch (error) {
+    resetMemberGroupDetail({ keepSelection: true });
+    memberNotice = error.message || "그룹 상세를 불러오지 못했습니다.";
+  } finally {
+    memberGroupDetailInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function saveCurrentCuesToMemberGroup() {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId) {
+    return;
+  }
+
+  const title = String(memberGroupCueTitleInput?.value || "").trim();
+
+  if (!title) {
+    memberNotice = "그룹 큐시트 제목을 입력해 주세요.";
+    updateMemberUi();
+    memberGroupCueTitleInput?.focus();
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "현재 목록을 그룹 큐시트로 저장하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchGroupJson(`${selectedMemberGroupId}/cues`, {
+      method: "POST",
+      body: {
+        title,
+        items: cues,
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "그룹 큐시트로 저장하지 못했습니다.";
+      return;
+    }
+
+    if (memberGroupCueTitleInput) {
+      memberGroupCueTitleInput.value = "";
+    }
+
+    await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    memberNotice = "그룹 큐시트로 저장했습니다.";
+  } catch {
+    memberNotice = "그룹 큐시트로 저장하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function loadMemberGroupCue(cueId) {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId || !cueId) {
+    return;
+  }
+
+  if (isCueWorkspacePage && hasPendingChanges()) {
+    const confirmed = window.confirm("현재 편집 중인 변경사항이 있습니다. 그룹 큐시트를 불러올까요?");
+
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "그룹 큐시트를 불러오는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchGroupJson(`${selectedMemberGroupId}/cues/${cueId}`);
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "그룹 큐시트를 불러오지 못했습니다.";
+      return;
+    }
+
+    const nextCues = normalizeCueCollection(result.payload.cue?.items);
+
+    stopMetronome();
+    cues = cloneCues(nextCues);
+    render();
+    memberNotice = "그룹 큐시트를 현재 목록으로 불러왔습니다.";
+  } catch {
+    memberNotice = "그룹 큐시트를 불러오지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function deleteMemberGroupCue(cueId) {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId || !cueId) {
+    return;
+  }
+
+  const confirmed = window.confirm("그룹 큐시트를 삭제할까요? owner만 삭제할 수 있습니다.");
+
+  if (!confirmed) {
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "그룹 큐시트를 삭제하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchGroupJson(`${selectedMemberGroupId}/cues/${cueId}`, {
+      method: "DELETE",
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "그룹 큐시트를 삭제하지 못했습니다.";
+      return;
+    }
+
+    await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    memberNotice = "그룹 큐시트를 삭제했습니다.";
+  } catch {
+    memberNotice = "그룹 큐시트를 삭제하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function sendMemberGroupNotice() {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId) {
+    return;
+  }
+
+  const title = String(memberGroupNoticeTitleInput?.value || "").trim();
+  const body = String(memberGroupNoticeBodyInput?.value || "").trim();
+
+  if (!title) {
+    memberNotice = "공지 제목을 입력해 주세요.";
+    updateMemberUi();
+    memberGroupNoticeTitleInput?.focus();
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "그룹 공지를 보내는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchGroupJson(`${selectedMemberGroupId}/messages`, {
+      method: "POST",
+      body: {
+        title,
+        body,
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "그룹 공지를 보내지 못했습니다.";
+      return;
+    }
+
+    if (memberGroupNoticeTitleInput) {
+      memberGroupNoticeTitleInput.value = "";
+    }
+    if (memberGroupNoticeBodyInput) {
+      memberGroupNoticeBodyInput.value = "";
+    }
+
+    await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    await loadMemberWorkspace();
+    memberNotice = "그룹 공지를 보냈습니다.";
+  } catch {
+    memberNotice = "그룹 공지를 보내지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function createMemberPerformance() {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId) {
+    return;
+  }
+
+  const title = String(memberPerformanceTitleInput?.value || "").trim();
+
+  if (!title) {
+    memberNotice = "공연명을 입력해 주세요.";
+    updateMemberUi();
+    memberPerformanceTitleInput?.focus();
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "공연을 추가하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchPerformanceJson("create", {
+      method: "POST",
+      body: {
+        groupId: selectedMemberGroupId,
+        title,
+        performanceDate: memberPerformanceDateInput?.value || "",
+        location: memberPerformanceLocationInput?.value || "",
+        memo: memberPerformanceMemoInput?.value || "",
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "공연을 추가하지 못했습니다.";
+      return;
+    }
+
+    memberPerformanceForm?.reset();
+    await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    memberNotice = "공연을 추가했습니다.";
+  } catch {
+    memberNotice = "공연을 추가하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function attachMemberPerformanceCue() {
+  if (!authSession.authenticated || memberActionInFlight || !selectedMemberGroupId) {
+    return;
+  }
+
+  const performanceId = String(memberPerformanceSelect?.value || "").trim();
+  const groupCueId = String(memberPerformanceCueSelect?.value || "").trim();
+
+  if (!performanceId) {
+    memberNotice = "큐시트를 연결할 공연을 선택해 주세요.";
+    updateMemberUi();
+    return;
+  }
+
+  if (!groupCueId) {
+    memberNotice = "공연에 연결할 그룹 큐시트를 선택해 주세요.";
+    updateMemberUi();
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "공연에 큐시트를 연결하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    const result = await fetchPerformanceJson(`${performanceId}/cues`, {
+      method: "POST",
+      body: {
+        groupCueId,
+      },
+    });
+
+    if (!result.ok) {
+      memberNotice = result.payload.message || "공연에 큐시트를 연결하지 못했습니다.";
+      return;
+    }
+
+    await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
+    memberNotice = "공연에 큐시트를 연결했습니다.";
+  } catch {
+    memberNotice = "공연에 큐시트를 연결하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function loadMemberPerformanceCueLinks(performances) {
+  if (!performances.length) {
+    return {};
+  }
+
+  const entries = await Promise.all(performances.map(async (performance) => {
+    try {
+      const result = await fetchPerformanceJson(`${performance.id}/cues`);
+
+      if (!result.ok) {
+        return [performance.id, []];
+      }
+
+      return [performance.id, normalizeMemberPerformanceCueLinks(result.payload.cues)];
+    } catch {
+      return [performance.id, []];
+    }
+  }));
+
+  return Object.fromEntries(entries);
+}
+
 async function saveMemberMemo() {
   if (!authSession.authenticated || memberActionInFlight) {
     return;
@@ -2502,6 +3041,38 @@ async function fetchMemberJson(path, { method = "GET", body } = {}) {
   };
 }
 
+async function fetchGroupJson(path, { method = "GET", body } = {}) {
+  return fetchJsonFromEndpoint(`${GROUPS_API_ENDPOINT}/${path}`, { method, body });
+}
+
+async function fetchPerformanceJson(path, { method = "GET", body } = {}) {
+  return fetchJsonFromEndpoint(`${PERFORMANCES_API_ENDPOINT}/${path}`, { method, body });
+}
+
+async function fetchJsonFromEndpoint(url, { method = "GET", body } = {}) {
+  const headers = {
+    Accept: "application/json",
+  };
+  const options = {
+    method,
+    headers,
+  };
+
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, options);
+  const payload = await safeReadJson(response);
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    payload,
+  };
+}
+
 function normalizeMemberGroups(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -2512,8 +3083,21 @@ function normalizeMemberGroups(value) {
       id: String(group?.id || ""),
       name: String(group?.name || "").trim(),
       role: group?.role === "owner" ? "owner" : "member",
+      memberCount: Number(group?.memberCount || 0),
+      updatedAt: group?.updatedAt || null,
     }))
     .filter((group) => group.id && group.name);
+}
+
+function normalizeMemberDashboard(value) {
+  return {
+    cueCount: Number(value?.cueCount || 0),
+    practiceDayCount: Number(value?.practiceDayCount || 0),
+    practiceTotalMinutes: Number(value?.practiceTotalMinutes || 0),
+    todoCount: Number(value?.todoCount || 0),
+    unreadMessageCount: Number(value?.unreadMessageCount || 0),
+    groupCount: Number(value?.groupCount || 0),
+  };
 }
 
 function normalizeMemberMessages(value) {
@@ -2524,13 +3108,115 @@ function normalizeMemberMessages(value) {
   return value
     .map((message) => ({
       id: String(message?.id || ""),
+      type: message?.type === "group_message" ? "group_message" : "invite",
+      messageType: String(message?.messageType || ""),
+      groupId: String(message?.groupId || ""),
       groupName: String(message?.groupName || "").trim(),
+      title: String(message?.title || "").trim(),
+      body: String(message?.body || "").trim(),
       inviterEmail: normalizeEmail(message?.inviterEmail),
       inviterName: String(message?.inviterName || "").trim(),
-      status: message?.status === "pending" ? "pending" : String(message?.status || ""),
+      status: ["pending", "accepted", "rejected", "notice"].includes(message?.status)
+        ? message.status
+        : String(message?.status || ""),
+      isRead: Boolean(message?.isRead),
       createdAt: message?.createdAt || null,
     }))
-    .filter((message) => message.id && message.status === "pending");
+    .filter((message) => message.id);
+}
+
+function normalizeMemberGroupDetail(value) {
+  return {
+    id: String(value?.id || ""),
+    name: String(value?.name || "").trim(),
+    description: String(value?.description || "").trim(),
+    role: value?.role === "owner" ? "owner" : "member",
+    memberCount: Number(value?.memberCount || 0),
+    updatedAt: value?.updatedAt || null,
+  };
+}
+
+function normalizeMemberGroupMembers(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((member) => ({
+      id: String(member?.id || ""),
+      email: normalizeEmail(member?.email),
+      name: String(member?.name || "").trim(),
+      region: String(member?.region || "").trim(),
+      position: String(member?.position || "").trim(),
+      genre: String(member?.genre || "").trim(),
+      pictureUrl: String(member?.pictureUrl || "").trim(),
+      role: member?.role === "owner" ? "owner" : "member",
+    }))
+    .filter((member) => member.id);
+}
+
+function normalizeMemberGroupCues(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((cue) => ({
+      id: String(cue?.id || ""),
+      title: String(cue?.title || "").trim(),
+      itemCount: Number(cue?.itemCount || 0),
+      durationSeconds: Number(cue?.durationSeconds || 0),
+      updatedAt: cue?.updatedAt || null,
+    }))
+    .filter((cue) => cue.id && cue.title);
+}
+
+function normalizeMemberGroupMessages(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((message) => ({
+      id: String(message?.id || ""),
+      title: String(message?.title || "").trim(),
+      body: String(message?.body || "").trim(),
+      isRead: Boolean(message?.isRead),
+      createdAt: message?.createdAt || null,
+    }))
+    .filter((message) => message.id);
+}
+
+function normalizeMemberPerformances(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((performance) => ({
+      id: String(performance?.id || ""),
+      title: String(performance?.title || "").trim(),
+      performanceDate: String(performance?.performanceDate || "").trim(),
+      location: String(performance?.location || "").trim(),
+      memo: String(performance?.memo || "").trim(),
+      updatedAt: performance?.updatedAt || null,
+    }))
+    .filter((performance) => performance.id && performance.title);
+}
+
+function normalizeMemberPerformanceCueLinks(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((cue) => ({
+      id: String(cue?.id || ""),
+      groupCueId: String(cue?.groupCueId || ""),
+      title: String(cue?.title || "").trim(),
+      sortOrder: Number(cue?.sortOrder || 0),
+    }))
+    .filter((cue) => cue.id && cue.groupCueId);
 }
 
 function normalizeMemberProfile(value) {
@@ -2715,12 +3401,18 @@ async function logoutAuthSession() {
     savedCues = [];
     cues = [];
     practiceLogs = {};
+    todoUserScoped = false;
+    todoEditUnlocked = false;
+    todoEditPassword = "";
+    todoLastSavedHtml = "";
+    todoNeedsInitialDbSave = false;
     render();
     renderPracticeCalendar();
     resetMemberWorkspace();
     await Promise.all([
       initializePracticeTracker(),
       initializeStorage(),
+      loadTodoDocument(),
     ]);
   } catch {
     authNotice = "로그아웃 요청을 완료하지 못했습니다.";
@@ -3575,6 +4267,7 @@ function updateMemberUi() {
     memberGroupForm.querySelector("button").disabled = !isLoggedIn || isBusy;
   }
 
+  renderMemberDashboard(isLoggedIn);
   renderMemberGroups(isLoggedIn);
   renderMemberInviteSelect(ownerGroups);
 
@@ -3589,6 +4282,7 @@ function updateMemberUi() {
   }
 
   renderMemberMessages(isLoggedIn, isBusy);
+  renderMemberGroupDetail(isLoggedIn, isBusy || memberGroupDetailInFlight);
   setMemberProfileDisabled(!isLoggedIn || isBusy);
 
   if (memberMemoInput) {
@@ -3596,6 +4290,45 @@ function updateMemberUi() {
   }
   if (memberMemoSaveButton) {
     memberMemoSaveButton.disabled = !isLoggedIn || isBusy;
+  }
+}
+
+function renderMemberDashboard(isLoggedIn) {
+  if (!memberDashboardList) {
+    return;
+  }
+
+  memberDashboardList.replaceChildren();
+
+  if (!isLoggedIn) {
+    memberDashboardList.appendChild(createMemberEmptyItem("로그인 후 회원 홈을 확인할 수 있습니다."));
+    return;
+  }
+
+  const dashboard = memberDashboard || normalizeMemberDashboard();
+  const userLabel = [
+    memberProfile?.name || "",
+    authSession.email,
+  ].filter(Boolean).join(" · ");
+  const items = [
+    ["로그인 사용자", userLabel || "계정 확인 중"],
+    ["내 큐시트", `${dashboard.cueCount}개`],
+    ["연습 기록", `${dashboard.practiceDayCount}일 · ${formatMinutesLabel(dashboard.practiceTotalMinutes)}`],
+    ["내 할 일", `${dashboard.todoCount}개`],
+    ["안읽은 메시지", `${dashboard.unreadMessageCount}개`],
+    ["내 그룹", `${dashboard.groupCount}개`],
+  ];
+
+  for (const [label, value] of items) {
+    const item = document.createElement("li");
+    const title = document.createElement("span");
+    const count = document.createElement("strong");
+
+    item.className = "member-dashboard-item";
+    title.textContent = label;
+    count.textContent = value;
+    item.append(title, count);
+    memberDashboardList.appendChild(item);
   }
 }
 
@@ -3739,16 +4472,30 @@ function renderMemberGroups(isLoggedIn) {
     const item = document.createElement("li");
     const main = document.createElement("div");
     const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const actions = document.createElement("div");
     const role = document.createElement("span");
+    const detailButton = document.createElement("button");
 
     item.className = "member-list-item";
+    item.classList.toggle("is-selected", group.id === selectedMemberGroupId);
     main.className = "member-list-main";
     title.textContent = group.name;
+    meta.textContent = [
+      group.memberCount ? `멤버 ${group.memberCount}명` : "",
+      formatMemberDate(group.updatedAt),
+    ].filter(Boolean).join(" · ");
+    actions.className = "member-list-actions";
     role.className = "member-pill";
     role.textContent = group.role === "owner" ? "owner" : "member";
+    detailButton.className = "ghost-button member-small-button";
+    detailButton.type = "button";
+    detailButton.textContent = "상세";
+    detailButton.dataset.memberGroupDetail = group.id;
 
-    main.append(title);
-    item.append(main, role);
+    main.append(title, meta);
+    actions.append(role, detailButton);
+    item.append(main, actions);
     memberGroupList.appendChild(item);
   }
 }
@@ -3800,25 +4547,334 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     const main = document.createElement("div");
     const title = document.createElement("strong");
     const meta = document.createElement("span");
+    const body = document.createElement("span");
+    const actions = document.createElement("div");
+    const groupButton = document.createElement("button");
+    const readButton = document.createElement("button");
     const acceptButton = document.createElement("button");
+    const rejectButton = document.createElement("button");
     const inviter = message.inviterName || message.inviterEmail;
+    const isInvite = message.type === "invite";
+    const typeLabel = isInvite ? "초대" : "공지";
+    const statusLabel = {
+      pending: "대기",
+      accepted: "수락됨",
+      rejected: "거절됨",
+      notice: "공지",
+    }[message.status] || "알림";
 
     item.className = "member-list-item";
+    item.classList.toggle("is-unread", !message.isRead);
     main.className = "member-list-main";
-    title.textContent = `${message.groupName} 초대`;
+    actions.className = "member-list-actions";
+    title.textContent = message.title || (isInvite ? `${message.groupName} 초대` : "그룹 알림");
     meta.textContent = [
-      inviter ? `보낸 사람 ${inviter}` : "",
+      typeLabel,
+      message.groupName,
+      isInvite && inviter ? `보낸 사람 ${inviter}` : "",
+      statusLabel,
       formatMemberDate(message.createdAt),
     ].filter(Boolean).join(" · ");
+    body.textContent = message.body || "";
+    body.hidden = !message.body;
+    groupButton.className = "ghost-button member-small-button";
+    groupButton.type = "button";
+    groupButton.textContent = "그룹";
+    groupButton.disabled = isBusy || !message.groupId;
+    groupButton.dataset.memberMessageGroup = message.groupId;
+    readButton.className = "ghost-button member-small-button";
+    readButton.type = "button";
+    readButton.textContent = message.isRead ? "읽음" : "읽음 처리";
+    readButton.disabled = isBusy || message.isRead;
+    readButton.dataset.memberMessageRead = message.id;
+    readButton.dataset.memberMessageType = message.type;
     acceptButton.className = "primary-button member-small-button";
     acceptButton.type = "button";
     acceptButton.textContent = "수락";
-    acceptButton.disabled = isBusy;
+    acceptButton.disabled = isBusy || message.status !== "pending";
     acceptButton.dataset.memberInviteAccept = message.id;
+    rejectButton.className = "ghost-button member-small-button";
+    rejectButton.type = "button";
+    rejectButton.textContent = "거절";
+    rejectButton.disabled = isBusy || message.status !== "pending";
+    rejectButton.dataset.memberInviteReject = message.id;
+
+    main.append(title, meta, body);
+    actions.append(groupButton, readButton);
+    if (isInvite) {
+      actions.append(acceptButton, rejectButton);
+    }
+    item.append(main, actions);
+    memberMessageList.appendChild(item);
+  }
+}
+
+function renderMemberGroupDetail(isLoggedIn, isBusy) {
+  if (!memberGroupDetail) {
+    return;
+  }
+
+  const hasGroup = isLoggedIn && memberGroupDetailData?.id;
+  const isOwner = memberGroupDetailData?.role === "owner";
+
+  memberGroupDetail.classList.toggle("is-empty", !hasGroup);
+
+  if (memberGroupDetailTitle) {
+    memberGroupDetailTitle.textContent = hasGroup ? memberGroupDetailData.name : "그룹 상세";
+  }
+  if (memberGroupDetailRole) {
+    memberGroupDetailRole.textContent = hasGroup ? memberGroupDetailData.role : "member";
+    memberGroupDetailRole.hidden = !hasGroup;
+  }
+  if (memberGroupDetailStatus) {
+    memberGroupDetailStatus.textContent = !isLoggedIn
+      ? "로그인 후 그룹 상세를 확인할 수 있습니다."
+      : memberGroupDetailInFlight
+        ? "그룹 상세를 불러오는 중입니다."
+        : hasGroup
+          ? [
+            memberGroupDetailData.description,
+            memberGroupDetailData.memberCount ? `멤버 ${memberGroupDetailData.memberCount}명` : "",
+          ].filter(Boolean).join(" · ") || "그룹 큐시트와 공지를 관리합니다."
+          : "그룹을 선택하면 상세 정보를 확인합니다.";
+  }
+
+  setFormDisabled(memberGroupCueForm, !hasGroup || isBusy || !isOwner);
+  setFormDisabled(memberGroupNoticeForm, !hasGroup || isBusy || !isOwner);
+  setFormDisabled(memberPerformanceForm, !hasGroup || isBusy || !isOwner);
+  setFormDisabled(memberPerformanceCueForm, !hasGroup || isBusy || !isOwner || !memberGroupPerformances.length || !memberGroupCues.length);
+  renderMemberGroupMembers(hasGroup);
+  renderMemberGroupCues(hasGroup, isBusy, isOwner);
+  renderMemberGroupMessages(hasGroup);
+  renderMemberPerformanceCueSelects(hasGroup);
+  renderMemberPerformances(hasGroup);
+}
+
+function renderMemberGroupMembers(hasGroup) {
+  if (!memberGroupMemberList) {
+    return;
+  }
+
+  memberGroupMemberList.replaceChildren();
+
+  if (!hasGroup) {
+    memberGroupMemberList.appendChild(createMemberEmptyItem("선택된 그룹이 없습니다."));
+    return;
+  }
+
+  if (!memberGroupMembers.length) {
+    memberGroupMemberList.appendChild(createMemberEmptyItem("멤버가 없습니다."));
+    return;
+  }
+
+  for (const member of memberGroupMembers) {
+    const item = document.createElement("li");
+    const main = document.createElement("div");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const role = document.createElement("span");
+
+    item.className = "member-list-item";
+    main.className = "member-list-main";
+    title.textContent = member.name || member.email || "이름 없는 회원";
+    meta.textContent = [member.position, member.region, member.genre].filter(Boolean).join(" · ") || member.email;
+    role.className = "member-pill";
+    role.textContent = member.role;
 
     main.append(title, meta);
-    item.append(main, acceptButton);
-    memberMessageList.appendChild(item);
+    item.append(main, role);
+    memberGroupMemberList.appendChild(item);
+  }
+}
+
+function renderMemberGroupCues(hasGroup, isBusy, isOwner) {
+  if (!memberGroupCueList) {
+    return;
+  }
+
+  memberGroupCueList.replaceChildren();
+
+  if (!hasGroup) {
+    memberGroupCueList.appendChild(createMemberEmptyItem("선택된 그룹이 없습니다."));
+    return;
+  }
+
+  if (!memberGroupCues.length) {
+    memberGroupCueList.appendChild(createMemberEmptyItem("저장된 그룹 큐시트가 없습니다."));
+    return;
+  }
+
+  for (const cue of memberGroupCues) {
+    const item = document.createElement("li");
+    const main = document.createElement("div");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const actions = document.createElement("div");
+    const loadButton = document.createElement("button");
+    const deleteButton = document.createElement("button");
+
+    item.className = "member-list-item";
+    main.className = "member-list-main";
+    actions.className = "member-list-actions";
+    title.textContent = cue.title;
+    meta.textContent = [
+      `${cue.itemCount}개 항목`,
+      formatDuration(cue.durationSeconds),
+      formatMemberDate(cue.updatedAt),
+    ].filter(Boolean).join(" · ");
+    loadButton.className = "primary-button member-small-button";
+    loadButton.type = "button";
+    loadButton.textContent = "불러오기";
+    loadButton.disabled = isBusy;
+    loadButton.dataset.memberGroupCueLoad = cue.id;
+    deleteButton.className = "ghost-button member-small-button";
+    deleteButton.type = "button";
+    deleteButton.textContent = "삭제";
+    deleteButton.disabled = isBusy || !isOwner;
+    deleteButton.dataset.memberGroupCueDelete = cue.id;
+
+    main.append(title, meta);
+    actions.append(loadButton, deleteButton);
+    item.append(main, actions);
+    memberGroupCueList.appendChild(item);
+  }
+}
+
+function renderMemberGroupMessages(hasGroup) {
+  if (!memberGroupNoticeList) {
+    return;
+  }
+
+  memberGroupNoticeList.replaceChildren();
+
+  if (!hasGroup) {
+    memberGroupNoticeList.appendChild(createMemberEmptyItem("선택된 그룹이 없습니다."));
+    return;
+  }
+
+  if (!memberGroupMessages.length) {
+    memberGroupNoticeList.appendChild(createMemberEmptyItem("그룹 공지가 없습니다."));
+    return;
+  }
+
+  for (const message of memberGroupMessages) {
+    const item = document.createElement("li");
+    const main = document.createElement("div");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const body = document.createElement("span");
+
+    item.className = "member-list-item";
+    item.classList.toggle("is-unread", !message.isRead);
+    main.className = "member-list-main";
+    title.textContent = message.title;
+    meta.textContent = [
+      message.isRead ? "읽음" : "안읽음",
+      formatMemberDate(message.createdAt),
+    ].filter(Boolean).join(" · ");
+    body.textContent = message.body || "";
+    body.hidden = !message.body;
+
+    main.append(title, meta, body);
+    item.append(main);
+    memberGroupNoticeList.appendChild(item);
+  }
+}
+
+function renderMemberPerformances(hasGroup) {
+  if (!memberPerformanceList) {
+    return;
+  }
+
+  memberPerformanceList.replaceChildren();
+
+  if (!hasGroup) {
+    memberPerformanceList.appendChild(createMemberEmptyItem("선택된 그룹이 없습니다."));
+    return;
+  }
+
+  if (!memberGroupPerformances.length) {
+    memberPerformanceList.appendChild(createMemberEmptyItem("등록된 공연이 없습니다."));
+    return;
+  }
+
+  for (const performance of memberGroupPerformances) {
+    const item = document.createElement("li");
+    const main = document.createElement("div");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const memo = document.createElement("span");
+    const cueLinks = document.createElement("span");
+    const linkedCues = memberPerformanceCueLinks[performance.id] || [];
+
+    item.className = "member-list-item";
+    main.className = "member-list-main";
+    title.textContent = performance.title;
+    meta.textContent = [
+      performance.performanceDate,
+      performance.location,
+    ].filter(Boolean).join(" · ") || "날짜와 장소 미정";
+    memo.textContent = performance.memo || "";
+    memo.hidden = !performance.memo;
+    cueLinks.textContent = linkedCues.length
+      ? `연결 큐시트: ${linkedCues.map((cue) => cue.title || `#${cue.groupCueId}`).join(", ")}`
+      : "연결된 큐시트 없음";
+
+    main.append(title, meta, memo, cueLinks);
+    item.append(main);
+    memberPerformanceList.appendChild(item);
+  }
+}
+
+function renderMemberPerformanceCueSelects(hasGroup) {
+  if (!memberPerformanceSelect || !memberPerformanceCueSelect) {
+    return;
+  }
+
+  memberPerformanceSelect.replaceChildren();
+  memberPerformanceCueSelect.replaceChildren();
+
+  if (!hasGroup || !memberGroupPerformances.length) {
+    const option = document.createElement("option");
+
+    option.value = "";
+    option.textContent = "공연 없음";
+    memberPerformanceSelect.appendChild(option);
+  } else {
+    for (const performance of memberGroupPerformances) {
+      const option = document.createElement("option");
+
+      option.value = performance.id;
+      option.textContent = performance.title;
+      memberPerformanceSelect.appendChild(option);
+    }
+  }
+
+  if (!hasGroup || !memberGroupCues.length) {
+    const option = document.createElement("option");
+
+    option.value = "";
+    option.textContent = "그룹 큐시트 없음";
+    memberPerformanceCueSelect.appendChild(option);
+    return;
+  }
+
+  for (const cue of memberGroupCues) {
+    const option = document.createElement("option");
+
+    option.value = cue.id;
+    option.textContent = cue.title;
+    memberPerformanceCueSelect.appendChild(option);
+  }
+}
+
+function setFormDisabled(form, disabled) {
+  if (!form) {
+    return;
+  }
+
+  for (const control of form.querySelectorAll("input, textarea, select, button")) {
+    control.disabled = disabled;
   }
 }
 

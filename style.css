@@ -411,11 +411,60 @@ textarea {
   gap: 14px;
 }
 
+.member-dashboard-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-dashboard-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid rgba(53, 68, 58, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.member-dashboard-item span {
+  color: var(--text-subtle);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.member-dashboard-item strong {
+  color: var(--text-main);
+  font-size: 1.02rem;
+  overflow-wrap: anywhere;
+}
+
 .member-block {
   display: grid;
   gap: 12px;
   padding-top: 14px;
   border-top: 1px solid rgba(53, 68, 58, 0.1);
+}
+
+.member-group-detail-block {
+  gap: 14px;
+}
+
+.member-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.member-subgrid > section {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
 }
 
 .member-profile-form {
@@ -459,6 +508,7 @@ textarea {
 }
 
 .member-inline-form,
+.member-stack-form,
 .member-memo-form {
   display: grid;
   gap: 10px;
@@ -478,6 +528,7 @@ textarea {
 }
 
 .member-inline-form .primary-button,
+.member-stack-form .primary-button,
 .member-memo-form .primary-button {
   min-height: 48px;
   justify-content: center;
@@ -507,10 +558,26 @@ textarea {
   align-items: center;
 }
 
+.member-list-item.is-selected {
+  border-color: rgba(182, 93, 53, 0.34);
+  background: rgba(182, 93, 53, 0.08);
+}
+
+.member-list-item.is-unread {
+  border-color: rgba(182, 93, 53, 0.3);
+}
+
 .member-list-main {
   min-width: 0;
   display: grid;
   gap: 4px;
+}
+
+.member-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .member-list-main strong,
@@ -893,13 +960,15 @@ textarea {
   .intro-grid,
   .band-list,
   .directory-list,
+  .member-dashboard-list,
   .show-list,
   .account-section {
     grid-template-columns: 1fr;
   }
 
   .member-profile-form,
-  .member-profile-fields {
+  .member-profile-fields,
+  .member-subgrid {
     grid-template-columns: 1fr;
   }
 

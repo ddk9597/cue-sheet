@@ -5,7 +5,9 @@ const albumImageHandler = require("./album-image");
 const audienceCuesHandler = require("./audience-cues");
 const authHandler = require("./auth");
 const cuesHandler = require("./cues");
+const groupsHandler = require("./groups");
 const memberHandler = require("./member");
+const performancesHandler = require("./performances");
 const practiceHandler = require("./practice");
 const todoAuthHandler = require("./todo-auth");
 const todosHandler = require("./todos");
@@ -16,7 +18,9 @@ const ROUTES = new Map([
   ["audience-cues", audienceCuesHandler],
   ["auth", authHandler],
   ["cues", cuesHandler],
+  ["groups", groupsHandler],
   ["member", memberHandler],
+  ["performances", performancesHandler],
   ["practice", practiceHandler],
   ["todo-auth", todoAuthHandler],
   ["todos", todosHandler],
