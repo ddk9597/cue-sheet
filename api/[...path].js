@@ -64,7 +64,7 @@ function patchRequestQuery(request) {
     .split("/")
     .filter(Boolean);
 
-  if (pathSegments.length && query.path === undefined) {
+  if (pathSegments.length && query.path === undefined && query["...path"] === undefined) {
     query.path = pathSegments;
   }
 

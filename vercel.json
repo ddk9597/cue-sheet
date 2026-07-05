@@ -3,6 +3,10 @@
   "regions": ["sin1"],
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "/api/[...path]?path=:path"
+    },
+    {
       "source": "/audience",
       "destination": "/audience.html"
     }

@@ -10,6 +10,7 @@ const TODOS_API_ENDPOINT = "/api/todos";
 const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
 const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
 const TODO_STORAGE_KEY = "cue-sheet-todo-document";
+const PENDING_TAP_BPM_STORAGE_KEY = "cue-sheet-pending-tap-bpm";
 const ACOUSTIC_TUNING_FIELD = "acousticTuning";
 const ELECTRIC_TUNING_FIELD = "electricTuning";
 const BASS_TUNING_FIELD = "bassTuning";
@@ -437,6 +438,17 @@ tapTempoApplyButton.addEventListener("click", () => {
     return;
   }
 
+  if (!isCueWorkspacePage) {
+    try {
+      window.sessionStorage.setItem(PENDING_TAP_BPM_STORAGE_KEY, measuredTapBpm);
+    } catch {
+      // Ignore session storage failures and still move to the editor.
+    }
+
+    window.location.href = "./cues.html#cue-editor";
+    return;
+  }
+
   openCueEntryOverlay({
     resetForm: false,
     type: CUE_TYPE_SONG,
@@ -723,7 +735,7 @@ setupCueInteractDrag();
 setupTodoInteractDrag();
 
 window.addEventListener("beforeunload", (event) => {
-  if (!hasPendingChanges()) {
+  if (!isCueWorkspacePage || !hasPendingChanges()) {
     return;
   }
 
@@ -748,6 +760,7 @@ async function bootstrap() {
     initializePracticeTracker(),
     initializeStorage(),
   ]);
+  restorePendingTapBpm();
 }
 
 async function initializeAuth() {
@@ -2491,7 +2504,7 @@ async function logoutAuthSession() {
     return;
   }
 
-  if (hasPendingChanges()) {
+  if (isCueWorkspacePage && hasPendingChanges()) {
     const confirmed = window.confirm("저장되지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?");
 
     if (!confirmed) {
@@ -3171,7 +3184,7 @@ function hasPendingChanges() {
 }
 
 function updateActionState(saved = false) {
-  if (storageMode !== STORAGE_MODE_LOADING && !authSession.authenticated) {
+  if (storageMode !== STORAGE_MODE_LOADING && !authSession.authenticated && isCueWorkspacePage) {
     persistLocalCues(cues);
   }
 
@@ -3189,6 +3202,27 @@ function updateActionState(saved = false) {
   );
 
   saveButton.textContent = isPersonalStorage ? "내 목록 저장하기" : "목록 저장하기";
+
+  if (!isCueWorkspacePage) {
+    saveButton.disabled = true;
+    clearAllButton.disabled = true;
+    saveStatus.classList.remove("is-dirty", "is-error");
+
+    if (storageMode === STORAGE_MODE_LOADING) {
+      saveStatus.textContent = "저장된 큐시트를 불러오는 중입니다.";
+      return;
+    }
+
+    if (!databaseConfigured) {
+      saveStatus.textContent = "DB 연결이 아직 설정되지 않았습니다.";
+      return;
+    }
+
+    saveStatus.textContent = cues.length
+      ? "현재 저장된 큐시트를 표시합니다. 생성과 편집은 목록 페이지에서 진행합니다."
+      : "저장된 큐시트가 없습니다. 목록 페이지에서 새로 만들 수 있습니다.";
+    return;
+  }
 
   if (storageMode === STORAGE_MODE_LOADING) {
     saveStatus.textContent = "저장 상태와 DB 연결을 확인하는 중입니다.";
@@ -3241,6 +3275,37 @@ function updateActionState(saved = false) {
   }
 
   saveStatus.textContent = storageWarningMessage || "DB 연결에 문제가 있어 브라우저 캐시만 사용 중입니다.";
+}
+
+function restorePendingTapBpm() {
+  if (!isCueWorkspacePage) {
+    return;
+  }
+
+  let pendingBpm = "";
+
+  try {
+    pendingBpm = normalizeBpm(window.sessionStorage.getItem(PENDING_TAP_BPM_STORAGE_KEY));
+    window.sessionStorage.removeItem(PENDING_TAP_BPM_STORAGE_KEY);
+  } catch {
+    pendingBpm = "";
+  }
+
+  if (!pendingBpm) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    openCueEntryOverlay({
+      resetForm: false,
+      type: CUE_TYPE_SONG,
+      restoreTarget: openCueEntryButton,
+    });
+
+    bpmInput.value = pendingBpm;
+    bpmInput.focus();
+    bpmInput.select();
+  });
 }
 
 function renderGoogleSignInButton() {

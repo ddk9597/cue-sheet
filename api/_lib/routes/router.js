@@ -23,7 +23,8 @@ const ROUTES = new Map([
 ]);
 
 async function routeApiRequest(request, response) {
-  const routeName = getApiRouteName(request);
+  const routeSegments = getApiRouteSegments(request);
+  const routeName = routeSegments[0] || "";
   const handler = ROUTES.get(routeName);
 
   if (!handler) {
@@ -34,18 +35,22 @@ async function routeApiRequest(request, response) {
     return;
   }
 
+  if (request.query && request.query.path === undefined) {
+    request.query.path = routeSegments;
+  }
+
   await handler(request, response);
 }
 
-function getApiRouteName(request) {
-  const queryPath = request.query?.path;
+function getApiRouteSegments(request) {
+  const queryPath = request.query?.path ?? request.query?.["...path"];
 
   if (Array.isArray(queryPath)) {
-    return String(queryPath[0] || "").trim();
+    return queryPath.flatMap(splitRoutePath);
   }
 
   if (typeof queryPath === "string" && queryPath) {
-    return queryPath.split("/")[0];
+    return splitRoutePath(queryPath);
   }
 
   const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
@@ -53,7 +58,14 @@ function getApiRouteName(request) {
   return url.pathname
     .replace(/^\/api\/?/, "")
     .split("/")
-    .filter(Boolean)[0] || "";
+    .filter(Boolean);
+}
+
+function splitRoutePath(value) {
+  return String(value || "")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
 }
 
 module.exports = {
