@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 작업 공간</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div data-site-header data-current="workspace"></div>
+  <script src="./site-header.js"></script>
+  <main class="page main-page workspace-page">
+    <section class="main-section account-section" aria-label="계정과 내 작업 공간">
+      <section class="panel auth-panel" aria-label="계정">
+        <div class="auth-header">
+          <div>
+            <p class="panel-label">Account</p>
+            <strong id="authTitle" class="auth-title">이메일 로그인</strong>
+          </div>
+        </div>
+        <p id="authStatus" class="save-status" aria-live="polite">
+          가입한 이메일과 비밀번호로 로그인합니다.
+        </p>
+        <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
+          <label class="field" for="emailAuthInput">
+            <span>이메일</span>
+            <input
+              id="emailAuthInput"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="name@example.com"
+            >
+          </label>
+          <label class="field" for="emailPasswordInput">
+            <span>비밀번호</span>
+            <input
+              id="emailPasswordInput"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="비밀번호"
+            >
+          </label>
+          <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
+          <a class="ghost-button" href="./signup.html">회원가입</a>
+        </form>
+        <div id="googleSignInButton" class="google-sign-in"></div>
+        <div id="authAccount" class="auth-account" hidden>
+          <span id="authEmailLabel" class="auth-email"></span>
+          <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
+        </div>
+      </section>
+
+      <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
+        <div class="member-header">
+          <div>
+            <p class="panel-label">Member</p>
+            <strong id="memberTitle" class="member-title">내 작업 공간</strong>
+          </div>
+        </div>
+        <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+        <div class="member-grid">
+          <section class="member-block member-dashboard-block" aria-labelledby="memberDashboardTitle">
+            <div class="member-block-header">
+              <strong id="memberDashboardTitle">회원 홈</strong>
+            </div>
+            <ul id="memberDashboardList" class="member-dashboard-list" aria-live="polite"></ul>
+          </section>
+
+          <section class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
+            <div class="member-block-header">
+              <strong id="memberProfileTitle">내 프로필</strong>
+            </div>
+            <form id="memberProfileForm" class="member-profile-form" autocomplete="off">
+              <div class="member-profile-preview">
+                <img id="memberProfileImage" alt="" hidden>
+                <span id="memberProfileInitial" class="directory-avatar">M</span>
+              </div>
+              <div class="member-profile-fields">
+                <label class="field" for="memberProfileNameInput">
+                  <span>이름</span>
+                  <input id="memberProfileNameInput" name="profileName" type="text" maxlength="80" placeholder="홍길동">
+                </label>
+                <label class="field" for="memberProfileEmailInput">
+                  <span>이메일</span>
+                  <input id="memberProfileEmailInput" name="profileEmail" type="email" disabled>
+                </label>
+                <label class="field" for="memberProfileRegionInput">
+                  <span>지역</span>
+                  <input id="memberProfileRegionInput" name="profileRegion" type="text" maxlength="40" placeholder="서울">
+                </label>
+                <label class="field" for="memberProfilePositionInput">
+                  <span>포지션</span>
+                  <input id="memberProfilePositionInput" name="profilePosition" type="text" maxlength="40" placeholder="보컬, 기타">
+                </label>
+                <label class="field" for="memberProfileGenreInput">
+                  <span>장르</span>
+                  <input id="memberProfileGenreInput" name="profileGenre" type="text" maxlength="80" placeholder="인디록, 시티팝">
+                </label>
+                <label class="field" for="memberProfilePictureInput">
+                  <span>프로필사진 URL</span>
+                  <input id="memberProfilePictureInput" name="profilePicture" type="url" maxlength="500" placeholder="https://example.com/profile.jpg">
+                </label>
+                <label class="field member-profile-intro" for="memberProfileMemoInput">
+                  <span>소개</span>
+                  <input id="memberProfileMemoInput" name="profileMemo" type="text" maxlength="120" placeholder="활동 가능 시간, 선호 팀 분위기 등">
+                </label>
+                <button id="memberProfileSaveButton" class="primary-button" type="submit">프로필 저장</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="member-block" aria-labelledby="memberGroupsTitle">
+            <div class="member-block-header">
+              <strong id="memberGroupsTitle">내 그룹</strong>
+            </div>
+            <form id="memberGroupForm" class="member-inline-form" autocomplete="off">
+              <label class="field" for="memberGroupNameInput">
+                <span>그룹 이름</span>
+                <input id="memberGroupNameInput" name="groupName" type="text" maxlength="80" placeholder="예: 7월 공연팀">
+              </label>
+              <button class="primary-button" type="submit">그룹 만들기</button>
+            </form>
+            <ul id="memberGroupList" class="member-list"></ul>
+          </section>
+
+          <section class="member-block" aria-labelledby="memberInviteTitle">
+            <div class="member-block-header">
+              <strong id="memberInviteTitle">그룹 초대</strong>
+            </div>
+            <form id="memberInviteForm" class="member-inline-form" autocomplete="off">
+              <label class="field" for="memberInviteGroupSelect">
+                <span>초대할 그룹</span>
+                <select id="memberInviteGroupSelect" name="inviteGroup"></select>
+              </label>
+              <label class="field" for="memberInviteEmailInput">
+                <span>초대 이메일</span>
+                <input id="memberInviteEmailInput" name="inviteEmail" type="email" autocomplete="email" placeholder="name@example.com">
+              </label>
+              <button id="memberInviteButton" class="primary-button" type="submit">초대 보내기</button>
+            </form>
+          </section>
+
+          <section class="member-block" aria-labelledby="memberMessagesTitle">
+            <div class="member-block-header">
+              <strong id="memberMessagesTitle">메시지함</strong>
+            </div>
+            <ul id="memberMessageList" class="member-list"></ul>
+          </section>
+
+          <section id="memberGroupDetail" class="member-block member-group-detail-block" aria-labelledby="memberGroupDetailTitle">
+            <div class="member-block-header">
+              <strong id="memberGroupDetailTitle">그룹 상세</strong>
+              <span id="memberGroupDetailRole" class="member-pill">member</span>
+            </div>
+            <p id="memberGroupDetailStatus" class="save-status">그룹을 선택하면 상세 정보를 확인합니다.</p>
+
+            <div class="member-subgrid">
+              <section aria-labelledby="memberGroupMembersTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupMembersTitle">멤버</strong>
+                </div>
+                <ul id="memberGroupMemberList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupCuesTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupCuesTitle">그룹 큐시트</strong>
+                </div>
+                <form id="memberGroupCueForm" class="member-inline-form" autocomplete="off">
+                  <label class="field" for="memberGroupCueTitleInput">
+                    <span>큐시트 제목</span>
+                    <input id="memberGroupCueTitleInput" name="groupCueTitle" type="text" maxlength="100" placeholder="예: 7월 공연 세트">
+                  </label>
+                  <button class="primary-button" type="submit">현재 목록 저장</button>
+                </form>
+                <ul id="memberGroupCueList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupNoticeTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupNoticeTitle">그룹 공지</strong>
+                </div>
+                <form id="memberGroupNoticeForm" class="member-stack-form" autocomplete="off">
+                  <label class="field" for="memberGroupNoticeTitleInput">
+                    <span>공지 제목</span>
+                    <input id="memberGroupNoticeTitleInput" name="groupNoticeTitle" type="text" maxlength="120" placeholder="예: 다음 합주 준비물">
+                  </label>
+                  <label class="field" for="memberGroupNoticeBodyInput">
+                    <span>공지 내용</span>
+                    <textarea id="memberGroupNoticeBodyInput" name="groupNoticeBody" maxlength="1000" rows="4" placeholder="멤버에게 전달할 내용을 입력하세요."></textarea>
+                  </label>
+                  <button class="primary-button" type="submit">공지 보내기</button>
+                </form>
+                <ul id="memberGroupNoticeList" class="member-list"></ul>
+              </section>
+
+              <section aria-labelledby="memberGroupPerformancesTitle">
+                <div class="member-block-header">
+                  <strong id="memberGroupPerformancesTitle">공연</strong>
+                </div>
+                <form id="memberPerformanceForm" class="member-stack-form" autocomplete="off">
+                  <label class="field" for="memberPerformanceTitleInput">
+                    <span>공연명</span>
+                    <input id="memberPerformanceTitleInput" name="performanceTitle" type="text" maxlength="120" placeholder="예: Summer Set Night">
+                  </label>
+                  <label class="field" for="memberPerformanceDateInput">
+                    <span>공연 날짜</span>
+                    <input id="memberPerformanceDateInput" name="performanceDate" type="date">
+                  </label>
+                  <label class="field" for="memberPerformanceLocationInput">
+                    <span>장소</span>
+                    <input id="memberPerformanceLocationInput" name="performanceLocation" type="text" maxlength="120" placeholder="예: 홍대 클럽 A">
+                  </label>
+                  <label class="field" for="memberPerformanceMemoInput">
+                    <span>메모</span>
+                    <input id="memberPerformanceMemoInput" name="performanceMemo" type="text" maxlength="1000" placeholder="공연 준비 메모">
+                  </label>
+                  <button class="primary-button" type="submit">공연 추가</button>
+                </form>
+                <form id="memberPerformanceCueForm" class="member-inline-form" autocomplete="off">
+                  <label class="field" for="memberPerformanceSelect">
+                    <span>공연</span>
+                    <select id="memberPerformanceSelect" name="performanceId"></select>
+                  </label>
+                  <label class="field" for="memberPerformanceCueSelect">
+                    <span>연결할 그룹 큐시트</span>
+                    <select id="memberPerformanceCueSelect" name="groupCueId"></select>
+                  </label>
+                  <button class="primary-button" type="submit">공연에 연결</button>
+                </form>
+                <ul id="memberPerformanceList" class="member-list"></ul>
+              </section>
+            </div>
+          </section>
+
+          <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
+            <div class="member-block-header">
+              <strong id="memberMemoTitle">내 메모</strong>
+            </div>
+            <form id="memberMemoForm" class="member-memo-form">
+              <label class="field" for="memberMemoInput">
+                <span>메모</span>
+                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
+              </label>
+              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    </section>
+
+    <div class="main-utility-surface" aria-label="큐시트 상태와 BPM 도구">
+      <div class="cue-status-line">
+        <strong>현재 큐시트 길이</strong>
+        <span id="totalDuration" class="total-duration">00:00:00</span>
+        <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
+      </div>
+      <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
+        <div class="tap-meter-main">
+          <div>
+            <p class="panel-label">BPM 클릭 측정기</p>
+            <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
+          </div>
+          <p id="tapTempoStatus" class="save-status" aria-live="polite">
+            박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
+          </p>
+        </div>
+        <div class="tap-meter-actions">
+          <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
+          <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
+          <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="practiceModal" class="modal" aria-labelledby="practiceModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Practice</p>
+          <strong id="practiceModalTitle" class="modal-title">연습 캘린더</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body">
+        <section id="practice-calendar" class="panel practice-panel" aria-label="연습 캘린더">
+          <div class="practice-panel-header">
+            <div>
+              <p class="panel-label">연습 캘린더</p>
+              <strong id="practiceMonthLabel" class="practice-month-label">0000년 00월</strong>
+              <p id="practiceMonthSummary" class="save-status">이번 달 누적 연습시간을 계산하는 중입니다.</p>
+            </div>
+            <div class="practice-month-actions">
+              <button id="practicePrevMonthButton" class="ghost-button" type="button">이전 달</button>
+              <button id="practiceTodayButton" class="ghost-button" type="button">이번 달</button>
+              <button id="practiceNextMonthButton" class="ghost-button" type="button">다음 달</button>
+            </div>
+          </div>
+          <div class="practice-panel-body">
+            <div class="practice-calendar-area">
+              <div class="practice-mobile-summary" aria-live="polite">
+                <div class="practice-mobile-summary-copy">
+                  <p class="panel-label">선택 날짜</p>
+                  <strong id="practiceMobileDateLabel" class="practice-mobile-date">0000년 00월 00일</strong>
+                  <p id="practiceMobileTotal" class="save-status">연습 기록을 확인합니다.</p>
+                </div>
+                <button id="practiceJumpToFormButton" class="ghost-button" type="button">기록 입력</button>
+              </div>
+              <div class="practice-weekdays" aria-hidden="true">
+                <span>일</span>
+                <span>월</span>
+                <span>화</span>
+                <span>수</span>
+                <span>목</span>
+                <span>금</span>
+                <span>토</span>
+              </div>
+              <div id="practiceCalendar" class="practice-calendar" role="grid" aria-label="연습시간 달력"></div>
+            </div>
+
+            <div class="practice-sidebar">
+              <section id="practice-entry-card" class="practice-card" aria-label="연습시간 입력">
+                <div class="practice-card-header">
+                  <div>
+                    <p class="panel-label">연습시간 입력</p>
+                    <strong id="practiceDayLabel" class="practice-day-label">0000년 00월 00일</strong>
+                  </div>
+                  <p id="practiceDaySummary" class="save-status">선택한 날짜의 연습시간을 확인합니다.</p>
+                </div>
+                <form id="practiceForm" class="practice-form">
+                  <label class="field">
+                    <span>날짜</span>
+                    <input id="practiceDateInput" name="practiceDate" type="date" required>
+                  </label>
+                  <label class="field">
+                    <span>연습시간</span>
+                    <input
+                      id="practiceDurationInput"
+                      name="practiceDuration"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="HH:MM"
+                      required
+                    >
+                  </label>
+                  <label class="field practice-note-field">
+                    <span>메모</span>
+                    <input
+                      id="practiceNoteInput"
+                      name="practiceNote"
+                      type="text"
+                      maxlength="80"
+                      placeholder="예: 합주, 개인 연습, 세트 점검"
+                    >
+                  </label>
+                  <div class="practice-form-actions">
+                    <button id="practiceUseCueDurationButton" class="ghost-button" type="button">현재 큐시트 길이</button>
+                    <button class="primary-button" type="submit">연습시간 기록</button>
+                  </div>
+                </form>
+              </section>
+
+              <section id="practice-session-card" class="practice-card" aria-label="선택 날짜 기록">
+                <div class="practice-card-header">
+                  <div>
+                    <p class="panel-label">선택 날짜 기록</p>
+                    <strong class="practice-day-label">연습 세션</strong>
+                  </div>
+                </div>
+                <ul id="practiceSessionList" class="practice-session-list"></ul>
+                <p id="practiceEmptyState" class="empty-state">기록된 연습시간이 없습니다.</p>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="todoModal" class="modal modal-wide" aria-labelledby="todoModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Tasks</p>
+          <strong id="todoModalTitle" class="modal-title">할 일 목록</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body">
+        <section class="panel todo-panel" aria-label="할 일 목록 편집">
+          <div class="todo-panel-header">
+            <div>
+              <p class="panel-label">자유 편집</p>
+              <strong class="todo-panel-title">해야 할 일을 편하게 정리하세요</strong>
+              <p id="todoStatus" class="save-status" aria-live="polite">자동 저장됩니다.</p>
+            </div>
+          </div>
+          <form id="todoLockForm" class="todo-lock-form" autocomplete="off">
+            <label class="field todo-lock-field" for="todoPasswordInput">
+              <span>편집 비밀번호</span>
+              <input
+                id="todoPasswordInput"
+                name="todoPassword"
+                type="password"
+                inputmode="numeric"
+                autocomplete="current-password"
+                placeholder="비밀번호"
+              >
+            </label>
+            <button id="todoUnlockButton" class="primary-button" type="submit">편집 시작</button>
+          </form>
+          <div class="todo-toolbar" role="toolbar" aria-label="할 일 편집 도구">
+            <button class="ghost-button" type="button" data-todo-command="heading">제목</button>
+            <button class="ghost-button" type="button" data-todo-command="check">체크</button>
+            <button class="ghost-button" type="button" data-todo-command="bullet">글머리</button>
+            <button class="ghost-button" type="button" data-todo-command="divider">구분선</button>
+            <button class="ghost-button" type="button" data-todo-command="clear">초기화</button>
+          </div>
+          <div
+            id="todoEditor"
+            class="todo-editor"
+            contenteditable="true"
+            spellcheck="false"
+            role="textbox"
+            aria-multiline="true"
+            aria-label="할 일 목록"
+            data-placeholder="할 일을 자유롭게 입력하세요."
+          ></div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="./auth-nav.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>

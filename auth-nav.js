@@ -3,7 +3,7 @@
   const SIGNUP_LABEL = "회원가입";
   const MYPAGE_LABEL = "마이페이지";
   const DEFAULT_SIGNUP_HREF = "./signup.html";
-  const DEFAULT_MYPAGE_HREF = "./index.html#memberPanel";
+  const DEFAULT_MYPAGE_HREF = "./workspace.html#memberPanel";
 
   window.CueSheetAuthNav = {
     refresh: updateAuthNavigation,

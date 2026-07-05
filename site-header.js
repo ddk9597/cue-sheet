@@ -23,6 +23,11 @@
       href: "./cues.html#cue-editor",
     },
     {
+      id: "workspace",
+      label: "내 작업 공간",
+      href: "./workspace.html#memberPanel",
+    },
+    {
       id: "audience",
       label: "관객용 목록",
       href: "./audience.html",
@@ -41,7 +46,7 @@
         <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
         <nav class="site-nav" aria-label="상단 메뉴">
           ${navLinks.join("\n          ")}
-          <a href="./signup.html" data-auth-nav-link data-signup-href="./signup.html" data-mypage-href="./index.html#memberPanel">회원가입</a>
+          <a href="./signup.html" data-auth-nav-link data-signup-href="./signup.html" data-mypage-href="./workspace.html#memberPanel">회원가입</a>
         </nav>
       </div>
     </header>
