@@ -905,21 +905,21 @@ textarea {
 }
 
 .login-page {
-  width: min(1040px, calc(100% - 32px));
-  min-height: calc(100dvh - 86px);
+  width: min(1120px, calc(100% - 32px));
+  min-height: calc(100dvh - 92px);
   margin: 0 auto;
-  padding: 18px 0 34px;
+  padding: clamp(24px, 5vw, 56px) 0 34px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  gap: 16px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 0.96fr) minmax(340px, 440px);
+  gap: 18px;
+  align-items: center;
 }
 
 .login-hero {
   grid-area: auto;
   display: grid;
-  align-items: end;
-  min-height: min(58dvh, 560px);
+  align-items: center;
+  min-height: clamp(320px, 54dvh, 560px);
 }
 
 .login-hero-copy {
@@ -928,9 +928,42 @@ textarea {
   max-width: 680px;
 }
 
+.login-hero .home-title {
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+}
+
+.login-hero .hero-copy {
+  max-width: 38rem;
+}
+
 .login-panel {
-  align-self: stretch;
-  align-content: center;
+  grid-area: auto;
+  align-self: center;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  padding: clamp(20px, 3vw, 30px);
+  border-radius: 22px;
+}
+
+.login-panel > * {
+  margin-inline: 0;
+}
+
+.login-panel > :first-child {
+  margin-top: 0;
+}
+
+.login-panel > :last-child {
+  margin-bottom: 0;
+}
+
+.login-panel .auth-header {
+  padding-bottom: 2px;
+}
+
+.login-panel .save-status {
+  min-height: 1.4em;
 }
 
 .login-panel .email-auth-form,
@@ -938,8 +971,22 @@ textarea {
   grid-template-columns: 1fr;
 }
 
+.login-panel .email-auth-form {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .login-panel .auth-account {
   align-content: center;
+}
+
+.login-panel .google-sign-in {
+  padding: 14px 0 0;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .main-section {
@@ -1002,6 +1049,12 @@ textarea {
   gap: 10px;
   min-height: 150px;
   padding: 16px;
+}
+
+.band-card-empty {
+  grid-column: 1 / -1;
+  min-height: 112px;
+  align-content: center;
 }
 
 .intro-card strong,
@@ -1202,10 +1255,16 @@ textarea {
 
   .login-page {
     grid-template-columns: 1fr;
+    align-items: start;
+    padding-top: 24px;
   }
 
   .login-hero {
     min-height: auto;
+  }
+
+  .login-panel {
+    align-self: stretch;
   }
 
   .home-hero {
@@ -2435,6 +2494,15 @@ body.has-cue-touch-drag {
     font-size: 1.85rem;
     line-height: 1.12;
     word-break: keep-all;
+  }
+
+  .login-hero .home-title {
+    max-width: 100%;
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .login-hero .hero-copy {
+    max-width: 100%;
   }
 
   .home-title span {

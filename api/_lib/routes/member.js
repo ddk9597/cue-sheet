@@ -10,6 +10,7 @@ const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_MEMO_LENGTH = 5000;
 const ROUTE_METHODS = {
+  bands: ["GET"],
   directory: ["GET"],
   me: ["GET"],
   dashboard: ["GET"],
@@ -53,6 +54,11 @@ module.exports = async (request, response) => {
 
   try {
     await ensureSchema(sql);
+
+    if (route === "bands") {
+      await handleGetBands(sql, response);
+      return;
+    }
 
     if (route === "directory") {
       await handleGetDirectory(sql, response);
@@ -231,6 +237,27 @@ async function handleGetDirectory(sql, response) {
 
   sendJson(response, 200, {
     members: rows.map(normalizeDirectoryRow),
+  });
+}
+
+async function handleGetBands(sql, response) {
+  const rows = await sql.query(
+    [
+      "SELECT",
+      "g.id, g.name, g.description, g.created_at, g.updated_at,",
+      "COUNT(gm.user_id)::int AS member_count,",
+      "owner.name AS owner_name, owner.region AS owner_region, owner.genre AS owner_genre",
+      "FROM groups g",
+      "LEFT JOIN group_members gm ON gm.group_id = g.id",
+      "LEFT JOIN app_users owner ON owner.id = g.owner_user_id",
+      "GROUP BY g.id, owner.id",
+      "ORDER BY g.updated_at DESC, g.created_at DESC",
+      "LIMIT 12",
+    ].join(" "),
+  );
+
+  sendJson(response, 200, {
+    bands: rows.map(normalizeBandRow),
   });
 }
 
@@ -738,6 +765,20 @@ function normalizeGroupRow(row) {
     name: String(row?.name || ""),
     role: row?.role === "owner" ? "owner" : "member",
     memberCount: Number(row?.member_count || 0),
+    createdAt: row?.created_at ?? null,
+    updatedAt: row?.updated_at ?? null,
+  };
+}
+
+function normalizeBandRow(row) {
+  return {
+    id: String(row?.id || ""),
+    name: String(row?.name || "").trim(),
+    description: String(row?.description || "").trim(),
+    memberCount: Number(row?.member_count || 0),
+    ownerName: String(row?.owner_name || "").trim(),
+    ownerRegion: String(row?.owner_region || "").trim(),
+    ownerGenre: String(row?.owner_genre || "").trim(),
     createdAt: row?.created_at ?? null,
     updatedAt: row?.updated_at ?? null,
   };
