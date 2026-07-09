@@ -13,15 +13,15 @@
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: 14px 18px;
-  border: 1px solid rgba(53, 68, 58, 0.12);
+  border: 1px solid rgba(93, 113, 154, 0.16);
   border-radius: 20px;
-  background: rgba(255, 251, 245, 0.82);
-  box-shadow: 0 12px 28px rgba(42, 54, 44, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 28px rgba(82, 101, 133, 0.1);
   backdrop-filter: blur(14px);
 }
 
 .site-brand {
-  color: #182019;
+  color: #243044;
   font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -42,7 +42,7 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #556157;
+  color: #647086;
   font-size: 0.94rem;
   font-weight: 700;
   text-decoration: none;
@@ -52,8 +52,8 @@
 
 .site-nav a:hover,
 .site-nav a[aria-current="page"] {
-  color: #182019;
-  background: rgba(24, 32, 25, 0.06);
+  color: #243044;
+  background: rgba(86, 124, 190, 0.11);
 }
 
 .site-nav a:hover {

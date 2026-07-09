@@ -10,6 +10,68 @@
   <div data-site-header data-current="workspace"></div>
   <script src="./site-header.js"></script>
   <main class="page main-page workspace-page">
+    <section id="overview" class="hero workspace-hero" aria-labelledby="workspaceTitle">
+      <div class="workspace-hero-copy">
+        <p class="eyebrow">Member Workspace</p>
+        <h1 id="workspaceTitle" class="home-title"><span>내 작업 공간</span></h1>
+        <p class="hero-copy">
+          개인 저장 데이터와 그룹 협업 항목을 계정 기준으로 확인하고 관리합니다.
+        </p>
+      </div>
+    </section>
+
+    <section class="main-utility-surface workspace-tools-surface" aria-label="내 작업 공간 빠른 도구">
+      <div class="workspace-tools-header">
+        <div>
+          <p class="panel-label">Quick Actions</p>
+          <strong class="summary-title">자주 쓰는 도구</strong>
+        </div>
+        <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
+      </div>
+      <div class="workspace-tool-grid" aria-label="작업공간 도구">
+        <a class="home-tool-card" href="./cues.html#cue-editor">
+          <span>01</span>
+          <strong>목록 편집</strong>
+          <small>개인 큐시트를 만들고 저장합니다.</small>
+        </a>
+        <button class="home-tool-card" type="button" data-modal-target="practiceModal">
+          <span>02</span>
+          <strong>연습 기록</strong>
+          <small>날짜별 연습 시간을 기록합니다.</small>
+        </button>
+        <button class="home-tool-card" type="button" data-modal-target="todoModal">
+          <span>03</span>
+          <strong>할 일</strong>
+          <small>공연 준비 항목을 정리합니다.</small>
+        </button>
+        <a class="home-tool-card" href="./audience.html">
+          <span>04</span>
+          <strong>관객용 목록</strong>
+          <small>공유되는 큐시트 화면을 확인합니다.</small>
+        </a>
+      </div>
+      <div class="cue-status-line">
+        <strong>현재 큐시트 길이</strong>
+        <span id="totalDuration" class="total-duration">00:00:00</span>
+      </div>
+      <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
+        <div class="tap-meter-main">
+          <div>
+            <p class="panel-label">BPM 클릭 측정기</p>
+            <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
+          </div>
+          <p id="tapTempoStatus" class="save-status" aria-live="polite">
+            박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
+          </p>
+        </div>
+        <div class="tap-meter-actions">
+          <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
+          <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
+          <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
+        </div>
+      </div>
+    </section>
+
     <section class="main-section account-section" aria-label="계정과 내 작업 공간">
       <section class="panel auth-panel" aria-label="계정">
         <div class="auth-header">
@@ -111,7 +173,7 @@
             </form>
           </section>
 
-          <section class="member-block" aria-labelledby="memberGroupsTitle">
+          <section class="member-block member-groups-block" aria-labelledby="memberGroupsTitle">
             <div class="member-block-header">
               <strong id="memberGroupsTitle">내 그룹</strong>
             </div>
@@ -125,7 +187,7 @@
             <ul id="memberGroupList" class="member-list"></ul>
           </section>
 
-          <section class="member-block" aria-labelledby="memberInviteTitle">
+          <section class="member-block member-invite-block" aria-labelledby="memberInviteTitle">
             <div class="member-block-header">
               <strong id="memberInviteTitle">그룹 초대</strong>
             </div>
@@ -142,7 +204,7 @@
             </form>
           </section>
 
-          <section class="member-block" aria-labelledby="memberMessagesTitle">
+          <section class="member-block member-messages-block" aria-labelledby="memberMessagesTitle">
             <div class="member-block-header">
               <strong id="memberMessagesTitle">메시지함</strong>
             </div>
@@ -251,29 +313,6 @@
       </section>
     </section>
 
-    <div class="main-utility-surface" aria-label="큐시트 상태와 BPM 도구">
-      <div class="cue-status-line">
-        <strong>현재 큐시트 길이</strong>
-        <span id="totalDuration" class="total-duration">00:00:00</span>
-        <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
-      </div>
-      <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
-        <div class="tap-meter-main">
-          <div>
-            <p class="panel-label">BPM 클릭 측정기</p>
-            <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
-          </div>
-          <p id="tapTempoStatus" class="save-status" aria-live="polite">
-            박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
-          </p>
-        </div>
-        <div class="tap-meter-actions">
-          <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
-          <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
-          <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
-        </div>
-      </div>
-    </div>
   </main>
 
   <dialog id="practiceModal" class="modal" aria-labelledby="practiceModalTitle">

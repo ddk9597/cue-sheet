@@ -1,17 +1,19 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
 :root {
-  --page-bg: #101615;
-  --surface: #f8f2e7;
-  --surface-soft: #efe5d4;
-  --ink: #151d19;
-  --muted: #687168;
-  --line: rgba(21, 29, 25, 0.12);
-  --accent: #d76f45;
-  --sage: #6d8a77;
-  --gold: #d4a944;
-  --white: #fffaf0;
-  --shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+  --page-bg: #edf7ff;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-soft: rgba(248, 251, 255, 0.78);
+  --ink: #243044;
+  --muted: #647086;
+  --line: rgba(93, 113, 154, 0.16);
+  --accent: #78abd7;
+  --accent-deep: #4f6fae;
+  --sage: #9ddbc2;
+  --gold: #b8a8ea;
+  --rose: #eea7bf;
+  --white: #ffffff;
+  --shadow: 0 18px 42px rgba(82, 101, 133, 0.16);
 }
 
 * {
@@ -31,8 +33,7 @@ body {
   font-family: "Pretendard", Inter, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   color: var(--ink);
   background:
-    linear-gradient(180deg, rgba(16, 22, 21, 0.92) 0%, rgba(16, 22, 21, 0.55) 42%, rgba(16, 22, 21, 0.92) 100%),
-    linear-gradient(160deg, #2f4539 0%, #111816 52%, #080b0a 100%);
+    linear-gradient(135deg, #edf7ff 0%, #faf5ff 48%, #eefaf4 100%);
 }
 
 button {
@@ -48,8 +49,8 @@ button {
   justify-content: space-between;
   gap: 12px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
-  background: rgba(16, 22, 21, 0.78);
-  border-bottom: 1px solid rgba(255, 250, 240, 0.1);
+  background: rgba(255, 255, 255, 0.78);
+  border-bottom: 1px solid var(--line);
   backdrop-filter: blur(18px);
 }
 
@@ -59,7 +60,7 @@ button {
   flex: 1 1 auto;
   min-width: 0;
   gap: 10px;
-  color: var(--white);
+  color: var(--ink);
   font-size: 0.95rem;
   font-weight: 900;
   text-decoration: none;
@@ -84,18 +85,18 @@ button {
   flex: 0 0 auto;
   min-height: 38px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 250, 240, 0.22);
+  border: 1px solid rgba(93, 113, 154, 0.16);
   border-radius: 999px;
-  background: rgba(255, 250, 240, 0.08);
-  color: var(--white);
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--ink);
   font-size: 0.84rem;
   font-weight: 800;
 }
 
 .audience-topbar .save-image-button {
-  background: rgba(212, 169, 68, 0.92);
-  border-color: rgba(255, 250, 240, 0.28);
-  color: #151d19;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  border-color: rgba(79, 111, 174, 0.24);
+  color: #ffffff;
   box-shadow: none;
 }
 
@@ -111,13 +112,13 @@ button {
   align-content: end;
   gap: 18px;
   padding: 48px 2px 18px;
-  color: var(--white);
+  color: var(--ink);
 }
 
 .live-kicker,
 .section-label {
   margin: 0 0 7px;
-  color: var(--gold);
+  color: var(--accent-deep);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.18em;
@@ -133,13 +134,13 @@ button {
 .live-status {
   min-height: 1.4em;
   margin: 10px 0 0;
-  color: rgba(255, 250, 240, 0.78);
+  color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.45;
 }
 
 .live-status.is-error {
-  color: #ffcfbd;
+  color: #b54467;
 }
 
 .browser-guide {
@@ -152,10 +153,10 @@ button {
 .browser-guide-button {
   min-height: 38px;
   padding: 0 14px;
-  border: 1px solid rgba(255, 250, 240, 0.22);
+  border: 1px solid rgba(93, 113, 154, 0.16);
   border-radius: 999px;
-  background: rgba(255, 250, 240, 0.1);
-  color: var(--white);
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--ink);
   font-size: 0.86rem;
   font-weight: 900;
 }
@@ -163,7 +164,7 @@ button {
 .browser-guide-status {
   min-height: 1.35em;
   margin: 0;
-  color: rgba(255, 250, 240, 0.72);
+  color: var(--muted);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.35;
@@ -177,9 +178,9 @@ button {
 }
 
 .audience-actions .save-image-button {
-  background: rgba(212, 169, 68, 0.92);
-  border-color: rgba(255, 250, 240, 0.28);
-  color: #151d19;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  border-color: rgba(79, 111, 174, 0.24);
+  color: #ffffff;
 }
 
 .summary-stats {
@@ -192,29 +193,29 @@ button {
 .summary-stats div {
   min-height: 82px;
   padding: 14px;
-  border: 1px solid rgba(255, 250, 240, 0.16);
+  border: 1px solid var(--line);
   border-radius: 18px;
-  background: rgba(255, 250, 240, 0.1);
+  background: rgba(255, 255, 255, 0.64);
   backdrop-filter: blur(14px);
 }
 
 .summary-stats dt {
   margin: 0 0 6px;
-  color: rgba(255, 250, 240, 0.7);
+  color: var(--muted);
   font-size: 0.82rem;
   font-weight: 800;
 }
 
 .summary-stats dd {
   margin: 0;
-  color: var(--white);
+  color: var(--ink);
   font-size: 1.35rem;
   font-weight: 900;
 }
 
 .setlist-section {
   overflow: hidden;
-  border: 1px solid rgba(255, 250, 240, 0.16);
+  border: 1px solid var(--line);
   border-radius: 26px;
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -227,7 +228,7 @@ button {
   gap: 14px;
   padding: 20px 18px 14px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, #fff8eb, var(--surface));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), var(--surface-soft));
 }
 
 .setlist-header h2 {
@@ -254,7 +255,7 @@ button {
 
 .audience-part-heading {
   margin: 6px 2px -4px;
-  color: #2b3a31;
+  color: var(--accent-deep);
   font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.16em;
@@ -267,10 +268,10 @@ button {
   gap: 5px;
   min-height: 62px;
   padding: 12px 16px;
-  border: 1px solid rgba(21, 29, 25, 0.12);
+  border: 1px solid rgba(93, 113, 154, 0.16);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(21, 29, 25, 0.92), rgba(43, 58, 49, 0.86));
-  color: var(--white);
+  background: linear-gradient(135deg, rgba(232, 244, 255, 0.96), rgba(245, 240, 255, 0.96));
+  color: var(--ink);
   font-size: 0.95rem;
   font-weight: 900;
   letter-spacing: 0.18em;
@@ -284,7 +285,7 @@ button {
 }
 
 .audience-intermission-duration {
-  color: rgba(255, 250, 240, 0.78);
+  color: var(--muted);
   font-size: 0.82rem;
   letter-spacing: 0.08em;
 }
@@ -298,14 +299,14 @@ button {
   gap: 5px;
   min-height: 154px;
   padding: 5px;
-  border: 1px solid rgba(255, 250, 240, 0.16);
+  border: 1px solid rgba(93, 113, 154, 0.16);
   border-radius: 22px;
   background:
-    linear-gradient(135deg, rgba(56, 82, 67, 0.92), rgba(15, 22, 20, 0.96)),
+    linear-gradient(135deg, rgba(69, 101, 163, 0.92), rgba(92, 76, 145, 0.9)),
     var(--surface);
   background-position: center;
   background-size: cover;
-  box-shadow: 0 16px 32px rgba(15, 22, 20, 0.18);
+  box-shadow: 0 16px 32px rgba(82, 101, 133, 0.18);
 }
 
 .cue-card::before {
@@ -314,8 +315,8 @@ button {
   inset: 0;
   z-index: 0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.56)),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.34));
+    linear-gradient(180deg, rgba(24, 35, 54, 0.08), rgba(24, 35, 54, 0.56)),
+    linear-gradient(90deg, rgba(24, 35, 54, 0.76), rgba(24, 35, 54, 0.34));
 }
 
 .cue-card > * {
@@ -329,7 +330,7 @@ button {
   width: 100%;
   height: 100%;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(24, 35, 54, 0.66);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: var(--white);
   font-size: 0.86rem;
@@ -345,7 +346,7 @@ button {
   padding: 0 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(24, 35, 54, 0.14);
 }
 
 .cue-title {
@@ -356,7 +357,7 @@ button {
   font-weight: 900;
   line-height: 1.2;
   text-align: left;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 10px rgba(24, 35, 54, 0.55);
 }
 
 body.is-loading .audience-cue-list {
@@ -394,8 +395,7 @@ body.is-loading .audience-cue-list {
 @media (max-width: 699px) {
   body {
     background:
-      linear-gradient(180deg, rgba(16, 22, 21, 0.94) 0%, rgba(16, 22, 21, 0.62) 42%, rgba(16, 22, 21, 0.94) 100%),
-      linear-gradient(160deg, #2f4539 0%, #111816 52%, #080b0a 100%);
+      linear-gradient(135deg, #edf7ff 0%, #faf5ff 48%, #eefaf4 100%);
   }
 
   .audience-topbar {
