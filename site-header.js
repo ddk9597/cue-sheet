@@ -39,6 +39,7 @@
 
     return `<a href="${item.href}"${ariaCurrent}>${item.label}</a>`;
   });
+  const authAriaCurrent = currentPage === "login" ? ' aria-current="page"' : "";
 
   mount.outerHTML = `
     <header class="site-header">
@@ -46,7 +47,7 @@
         <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
         <nav class="site-nav" aria-label="상단 메뉴">
           ${navLinks.join("\n          ")}
-          <a href="./signup.html" data-auth-nav-link data-signup-href="./signup.html" data-mypage-href="./workspace.html#memberPanel">회원가입</a>
+          <a href="./login.html"${authAriaCurrent} data-auth-nav-link data-signup-href="./login.html" data-mypage-href="./workspace.html#memberPanel">로그인</a>
         </nav>
       </div>
     </header>

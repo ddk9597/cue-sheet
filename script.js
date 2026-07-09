@@ -49,6 +49,7 @@ const emailLoginButton = document.querySelector("#emailLoginButton");
 const authAccount = document.querySelector("#authAccount");
 const authEmailLabel = document.querySelector("#authEmailLabel");
 const logoutButton = document.querySelector("#logoutButton");
+const memberLoginLink = document.querySelector(".member-login-link");
 const memberDirectoryList = document.querySelector("#memberDirectoryList");
 const memberPanel = document.querySelector("#memberPanel");
 const memberStatus = document.querySelector("#memberStatus");
@@ -4916,27 +4917,52 @@ function updateAuthUi() {
   if (emailLoginButton) {
     emailLoginButton.disabled = emailAuthInFlight || authSession.authenticated;
   }
-  authAccount.hidden = !authSession.authenticated;
-  logoutButton.disabled = authInFlight || emailAuthInFlight;
+  if (authAccount) {
+    authAccount.hidden = !authSession.authenticated;
+  }
+  if (authEmailLabel) {
+    authEmailLabel.hidden = !authSession.authenticated;
+  }
+  if (logoutButton) {
+    logoutButton.hidden = !authSession.authenticated;
+    logoutButton.disabled = authInFlight || emailAuthInFlight;
+  }
+  if (memberLoginLink) {
+    memberLoginLink.hidden = authSession.authenticated;
+  }
 
   if (authSession.authenticated) {
     const maskedEmail = maskEmail(authSession.email);
 
-    authTitle.textContent = "로그인됨";
-    authEmailLabel.textContent = maskedEmail;
-    authStatus.textContent = authNotice || `${maskedEmail} 계정으로 개인 큐시트를 저장합니다.`;
+    if (authTitle) {
+      authTitle.textContent = "로그인됨";
+    }
+    if (authEmailLabel) {
+      authEmailLabel.textContent = maskedEmail;
+    }
+    if (authStatus) {
+      authStatus.textContent = authNotice || `${maskedEmail} 계정으로 개인 큐시트를 저장합니다.`;
+    }
     return;
   }
 
-  authEmailLabel.textContent = "";
-  authTitle.textContent = "이메일 로그인";
+  if (authEmailLabel) {
+    authEmailLabel.textContent = "";
+  }
+  if (authTitle) {
+    authTitle.textContent = "이메일 로그인";
+  }
 
   if (!authSession.databaseConfigured) {
-    authStatus.textContent = authSession.message || "DB 연결이 아직 설정되지 않았습니다.";
+    if (authStatus) {
+      authStatus.textContent = authSession.message || "DB 연결이 아직 설정되지 않았습니다.";
+    }
     return;
   }
 
-  authStatus.textContent = authNotice || "가입한 이메일과 비밀번호로 로그인합니다.";
+  if (authStatus) {
+    authStatus.textContent = authNotice || "가입한 이메일과 비밀번호로 로그인합니다.";
+  }
   renderGoogleSignInButton();
 }
 

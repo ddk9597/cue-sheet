@@ -790,18 +790,74 @@ textarea {
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
-  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 0.66fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
-.workspace-page .auth-panel {
-  position: sticky;
-  top: 96px;
-  align-self: start;
+.workspace-member-section {
+  align-items: stretch;
 }
 
 .workspace-page .member-panel {
   gap: 18px;
+  overflow: hidden;
+}
+
+.workspace-member-header {
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(93, 113, 154, 0.14);
+}
+
+.member-header-actions,
+.member-login-gate-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.member-session-email {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.member-login-gate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(86, 124, 190, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(232, 244, 255, 0.86), rgba(248, 242, 255, 0.78) 52%, rgba(238, 250, 246, 0.82)),
+    rgba(255, 255, 255, 0.64);
+}
+
+.member-login-gate strong {
+  display: block;
+  color: var(--text-main);
+  font-size: clamp(1.02rem, 2vw, 1.24rem);
+  line-height: 1.35;
+}
+
+.member-login-gate p {
+  margin: 6px 0 0;
+  color: var(--text-subtle);
+  line-height: 1.55;
+}
+
+.member-panel:not(.is-locked) .member-login-gate {
+  display: none;
+}
+
+.member-panel.is-locked .member-grid {
+  display: none;
 }
 
 .workspace-page .member-grid {
@@ -846,6 +902,44 @@ textarea {
 .workspace-page .member-dashboard-item {
   min-height: 88px;
   align-content: space-between;
+}
+
+.login-page {
+  width: min(1040px, calc(100% - 32px));
+  min-height: calc(100dvh - 86px);
+  margin: 0 auto;
+  padding: 18px 0 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.login-hero {
+  grid-area: auto;
+  display: grid;
+  align-items: end;
+  min-height: min(58dvh, 560px);
+}
+
+.login-hero-copy {
+  display: grid;
+  gap: 16px;
+  max-width: 680px;
+}
+
+.login-panel {
+  align-self: stretch;
+  align-content: center;
+}
+
+.login-panel .email-auth-form,
+.login-panel .auth-account {
+  grid-template-columns: 1fr;
+}
+
+.login-panel .auth-account {
+  align-content: center;
 }
 
 .main-section {
@@ -1081,13 +1175,14 @@ textarea {
 
   .member-profile-form,
   .member-profile-fields,
+  .member-login-gate,
   .member-subgrid {
     grid-template-columns: 1fr;
   }
 
-  .workspace-page .auth-panel {
-    position: relative;
-    top: auto;
+  .member-header-actions,
+  .member-login-gate-actions {
+    justify-content: flex-start;
   }
 
   .workspace-page .member-dashboard-block,
@@ -1103,6 +1198,14 @@ textarea {
   .workspace-tools-header .save-status {
     max-width: none;
     text-align: left;
+  }
+
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .login-hero {
+    min-height: auto;
   }
 
   .home-hero {

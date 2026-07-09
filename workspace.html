@@ -72,56 +72,31 @@
       </div>
     </section>
 
-    <section class="main-section account-section" aria-label="계정과 내 작업 공간">
-      <section class="panel auth-panel" aria-label="계정">
-        <div class="auth-header">
-          <div>
-            <p class="panel-label">Account</p>
-            <strong id="authTitle" class="auth-title">이메일 로그인</strong>
-          </div>
-        </div>
-        <p id="authStatus" class="save-status" aria-live="polite">
-          가입한 이메일과 비밀번호로 로그인합니다.
-        </p>
-        <form id="emailAuthForm" class="email-auth-form" autocomplete="off">
-          <label class="field" for="emailAuthInput">
-            <span>이메일</span>
-            <input
-              id="emailAuthInput"
-              name="email"
-              type="email"
-              autocomplete="email"
-              placeholder="name@example.com"
-            >
-          </label>
-          <label class="field" for="emailPasswordInput">
-            <span>비밀번호</span>
-            <input
-              id="emailPasswordInput"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="비밀번호"
-            >
-          </label>
-          <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
-          <a class="ghost-button" href="./signup.html">회원가입</a>
-        </form>
-        <div id="googleSignInButton" class="google-sign-in"></div>
-        <div id="authAccount" class="auth-account" hidden>
-          <span id="authEmailLabel" class="auth-email"></span>
-          <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
-        </div>
-      </section>
-
+    <section class="main-section account-section workspace-member-section" aria-label="내 작업 공간">
       <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
-        <div class="member-header">
+        <div class="member-header workspace-member-header">
           <div>
             <p class="panel-label">Member</p>
             <strong id="memberTitle" class="member-title">내 작업 공간</strong>
+            <span id="authEmailLabel" class="auth-email member-session-email" hidden></span>
+          </div>
+          <div class="member-header-actions">
+            <a class="ghost-button member-login-link" href="./login.html">로그인</a>
+            <button id="logoutButton" class="ghost-button" type="button" hidden>로그아웃</button>
           </div>
         </div>
         <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+        <div class="member-login-gate" aria-label="로그인 안내">
+          <div>
+            <p class="panel-label">Private Workspace</p>
+            <strong>계정으로 로그인하면 내 작업 공간이 열립니다.</strong>
+            <p>프로필, 그룹 초대, 메시지함, 메모와 연습 기록은 로그인한 계정 기준으로만 저장됩니다.</p>
+          </div>
+          <div class="member-login-gate-actions">
+            <a class="primary-button" href="./login.html">로그인하기</a>
+            <a class="ghost-button" href="./signup.html">회원가입</a>
+          </div>
+        </div>
         <div class="member-grid">
           <section class="member-block member-dashboard-block" aria-labelledby="memberDashboardTitle">
             <div class="member-block-header">
@@ -473,7 +448,6 @@
     </div>
   </dialog>
 
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <script src="./auth-nav.js"></script>
   <script src="./script.js"></script>

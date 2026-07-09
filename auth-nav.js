@@ -1,8 +1,8 @@
 (() => {
   const SESSION_ENDPOINT = "/api/auth/session";
-  const SIGNUP_LABEL = "회원가입";
+  const SIGNUP_LABEL = "로그인";
   const MYPAGE_LABEL = "마이페이지";
-  const DEFAULT_SIGNUP_HREF = "./signup.html";
+  const DEFAULT_SIGNUP_HREF = "./login.html";
   const DEFAULT_MYPAGE_HREF = "./workspace.html#memberPanel";
 
   window.CueSheetAuthNav = {

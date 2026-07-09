@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 | Cue Sheet</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div data-site-header data-current="login"></div>
+  <script src="./site-header.js"></script>
+
+  <main class="login-page">
+    <section class="hero login-hero" aria-labelledby="loginHeroTitle">
+      <div class="login-hero-copy">
+        <p class="eyebrow">Member Login</p>
+        <h1 id="loginHeroTitle" class="home-title"><span>내 작업 공간으로</span> <span>들어가기</span></h1>
+        <p class="hero-copy">
+          로그인하면 큐시트, 연습 기록, 그룹 초대, 메시지와 메모를 계정 기준으로 불러옵니다.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel auth-panel login-panel" aria-labelledby="authTitle">
+      <div class="auth-header">
+        <div>
+          <p class="panel-label">Account</p>
+          <strong id="authTitle" class="auth-title">이메일 로그인</strong>
+        </div>
+      </div>
+      <p id="authStatus" class="save-status" aria-live="polite">
+        가입한 이메일과 비밀번호로 로그인합니다.
+      </p>
+      <form id="emailAuthForm" class="email-auth-form" autocomplete="on">
+        <label class="field" for="emailAuthInput">
+          <span>이메일</span>
+          <input
+            id="emailAuthInput"
+            name="email"
+            type="email"
+            autocomplete="email"
+            placeholder="name@example.com"
+            required
+          >
+        </label>
+        <label class="field" for="emailPasswordInput">
+          <span>비밀번호</span>
+          <input
+            id="emailPasswordInput"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="비밀번호"
+            required
+          >
+        </label>
+        <button id="emailLoginButton" class="primary-button" type="submit">로그인</button>
+        <a class="ghost-button" href="./signup.html">회원가입</a>
+      </form>
+      <div id="googleSignInButton" class="google-sign-in"></div>
+      <div id="authAccount" class="auth-account" hidden>
+        <span id="authEmailLabel" class="auth-email"></span>
+        <a class="primary-button" href="./workspace.html#memberPanel">내 작업 공간</a>
+        <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./auth-nav.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>
