@@ -3,145 +3,284 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="곡 순서부터 연습 기록, 그룹 큐시트와 관객용 화면까지 공연 준비를 한 흐름으로 연결하는 Cue Sheet를 소개합니다.">
   <title>소개 | Cue Sheet</title>
   <link rel="stylesheet" href="./style.css">
-  <style>
-    body {
-      min-height: 100dvh;
-    }
-
-    .about-page {
-      width: min(1040px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 18px 0 34px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .about-hero {
-      grid-area: auto;
-      min-height: auto;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 24px;
-      align-items: center;
-      text-align: left;
-    }
-
-    .about-copy {
-      display: grid;
-      gap: 16px;
-    }
-
-    .about-title {
-      margin: 0;
-      font-size: clamp(2.1rem, 6vw, 4.8rem);
-      line-height: 1.04;
-    }
-
-    .about-text {
-      margin: 0;
-      max-width: 42rem;
-      color: rgba(255, 250, 240, 0.78);
-      font-size: 1.08rem;
-      line-height: 1.7;
-    }
-
-    .about-section-grid {
-      grid-area: auto;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .about-card {
-      display: grid;
-      gap: 10px;
-      min-height: 178px;
-    }
-
-    .about-card strong {
-      display: block;
-      font-size: 1.18rem;
-      line-height: 1.3;
-    }
-
-    .about-card p {
-      margin: 0;
-      color: var(--text-subtle);
-      line-height: 1.6;
-    }
-
-    .about-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .about-actions .ghost-button {
-      background: rgba(255, 250, 240, 0.12);
-      color: #fffaf0;
-    }
-
-    @media (max-width: 780px) {
-      .about-hero,
-      .about-section-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .about-page {
-        width: min(100% - 20px, 1040px);
-        padding-top: 28px;
-      }
-
-      .about-title {
-        font-size: clamp(2rem, 11vw, 3.2rem);
-      }
-
-      .about-actions .primary-button,
-      .about-actions .ghost-button {
-        width: 100%;
-      }
-    }
-  </style>
 </head>
-<body>
+<body class="about-body">
   <div data-site-header data-current="about"></div>
   <script src="./site-header.js"></script>
 
   <main class="about-page">
-    <section class="hero about-hero" aria-labelledby="aboutTitle">
-      <div class="about-copy">
-        <p class="eyebrow">About Cue Sheet</p>
-        <h1 id="aboutTitle" class="about-title">공연 준비를 짧고 정확하게 정리하는 페이지입니다.</h1>
-        <p class="about-text">
-          Cue Sheet는 밴드 공연의 곡 순서, BPM, 튜닝, 연습시간, 준비 할 일을 한 곳에서 관리하기 위한 웹 도구입니다.
+    <section class="about-hero" aria-labelledby="aboutTitle">
+      <div class="about-hero-copy">
+        <p class="eyebrow about-eyebrow"><span aria-hidden="true"></span>From first song to showtime</p>
+        <h1 id="aboutTitle">곡 순서부터 공연 당일까지,<br><span>밴드의 준비를 한 흐름으로.</span></h1>
+        <p class="about-lead">
+          Cue Sheet는 곡 순서·BPM·소요 시간·악기별 튜닝을 정리하고, 연습 기록과 할 일,
+          그룹 공지와 공연 큐시트까지 이어 관리하는 웹 도구입니다.
         </p>
         <div class="about-actions">
-          <a class="primary-button" href="./index.html">메인으로 가기</a>
-          <a class="ghost-button" href="./signup.html">회원가입</a>
+          <a class="primary-button" href="./cues.html#cue-editor">큐시트 만들기</a>
+          <a class="ghost-button" href="./workspace.html#memberPanel">내 작업 공간</a>
+        </div>
+        <ul class="about-hero-points" aria-label="Cue Sheet 핵심 특징">
+          <li><span aria-hidden="true">✓</span>순서와 전체 시간 확인</li>
+          <li><span aria-hidden="true">✓</span>계정별 준비 기록</li>
+          <li><span aria-hidden="true">✓</span>그룹과 관객 화면 연결</li>
+        </ul>
+      </div>
+
+      <div class="about-hero-visual" aria-label="예시 큐시트 미리보기">
+        <div class="about-preview-window">
+          <div class="about-preview-topbar">
+            <div class="about-window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <span>SET PREVIEW</span>
+            <span class="about-preview-status"><i aria-hidden="true"></i> 준비 중</span>
+          </div>
+          <div class="about-preview-heading">
+            <div>
+              <span>Saturday Live</span>
+              <strong>오늘의 큐시트</strong>
+            </div>
+            <span class="about-preview-date">07.18</span>
+          </div>
+          <div class="about-preview-list">
+            <div class="about-preview-row is-active">
+              <span class="about-preview-number">01</span>
+              <div><strong>Opening Signal</strong><small>Standard · 128 BPM</small></div>
+              <time datetime="PT4M20S">04:20</time>
+            </div>
+            <div class="about-preview-row">
+              <span class="about-preview-number">02</span>
+              <div><strong>Blue Hour</strong><small>Drop D · 112 BPM</small></div>
+              <time datetime="PT3M48S">03:48</time>
+            </div>
+            <div class="about-preview-row is-break">
+              <span class="about-preview-number">—</span>
+              <div><strong>MC · 악기 전환</strong><small>다음 곡 Half Down</small></div>
+              <time datetime="PT1M">01:00</time>
+            </div>
+            <div class="about-preview-row">
+              <span class="about-preview-number">03</span>
+              <div><strong>Last Scene</strong><small>Half Down · 96 BPM</small></div>
+              <time datetime="PT4M12S">04:12</time>
+            </div>
+          </div>
+          <div class="about-preview-summary">
+            <span>8 songs</span>
+            <strong><small>총 공연 시간</small> 42:30</strong>
+          </div>
+        </div>
+        <div class="about-floating-note" aria-hidden="true">
+          <span>Next setup</span>
+          <strong>Drop D</strong>
         </div>
       </div>
     </section>
 
-    <section class="about-section-grid" aria-label="주요 기능">
-      <article class="panel about-card">
-        <p class="panel-label">Cue</p>
-        <strong>큐시트 작성</strong>
-        <p>곡, 멘트, 쉬는 구간을 순서대로 추가하고 총 진행 시간을 확인합니다.</p>
-      </article>
-      <article class="panel about-card">
-        <p class="panel-label">Setup</p>
-        <strong>튜닝과 BPM 확인</strong>
-        <p>통기타, 일렉기타, 베이스 튜닝 흐름과 BPM을 항목별로 정리합니다.</p>
-      </article>
-      <article class="panel about-card">
-        <p class="panel-label">Practice</p>
-        <strong>연습과 할 일 관리</strong>
-        <p>연습 캘린더와 준비 목록을 함께 관리해 공연 전 체크를 줄입니다.</p>
-      </article>
+    <nav class="about-quick-nav" aria-label="소개 페이지 바로가기">
+      <a href="#whyCueSheet"><span>01</span><strong>필요한 이유</strong><small>흩어진 준비를 정리하기</small></a>
+      <a href="#features"><span>02</span><strong>핵심 기능</strong><small>공연 전 과정을 한눈에</small></a>
+      <a href="#workflow"><span>03</span><strong>사용 흐름</strong><small>Set에서 Show까지</small></a>
+      <a href="#forEveryone"><span>04</span><strong>사용자별 화면</strong><small>리더·멤버·관객</small></a>
+    </nav>
+
+    <section id="whyCueSheet" class="about-section about-story-section" aria-labelledby="whyTitle">
+      <header class="about-section-heading">
+        <p class="eyebrow">Why Cue Sheet</p>
+        <h2 id="whyTitle">공연 준비는 곡 목록 하나로 끝나지 않으니까.</h2>
+        <p>합주실에서 정한 내용이 공연 직전까지 이어지도록, 자주 놓치는 정보를 같은 흐름 안에 모았습니다.</p>
+      </header>
+      <div class="about-promise-list">
+        <article>
+          <span class="about-promise-number">01</span>
+          <div>
+            <h3>기억 대신 기록으로</h3>
+            <p>BPM, 튜닝, 멘트와 전환 시간을 곡 옆에 남겨 다음 합주에서도 바로 이어갑니다.</p>
+          </div>
+        </article>
+        <article>
+          <span class="about-promise-number">02</span>
+          <div>
+            <h3>개인 준비와 팀 준비를 연결</h3>
+            <p>내 연습 기록과 할 일을 관리하고, 완성한 목록은 그룹 큐시트와 공연에 연결합니다.</p>
+          </div>
+        </article>
+        <article>
+          <span class="about-promise-number">03</span>
+          <div>
+            <h3>무대 위 흐름까지 선명하게</h3>
+            <p>곡과 인터미션의 순서를 조정하며 총 시간을 확인하고, 공개된 순서는 관객 화면으로 보여 줍니다.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="features" class="about-section about-feature-section" aria-labelledby="featureTitle">
+      <header class="about-section-heading about-section-heading-wide">
+        <div>
+          <p class="eyebrow">Core Features</p>
+          <h2 id="featureTitle">공연 전 과정을 위한 여섯 가지 도구</h2>
+        </div>
+        <p>각 기능은 따로 쓸 수 있고, 로그인하면 계정과 그룹을 기준으로 준비 흐름을 이어갈 수 있습니다.</p>
+      </header>
+
+      <div class="about-feature-grid">
+        <article class="about-feature-card about-feature-card-wide">
+          <div class="about-feature-copy">
+            <span class="about-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 6h11M8 12h11M8 18h11M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+            </span>
+            <p class="about-feature-label">Setlist</p>
+            <h3>공연 흐름 설계</h3>
+            <p>곡과 인터미션을 순서대로 배치하고, 항목을 옮기면서 전체 공연 시간을 바로 확인합니다.</p>
+            <a class="about-card-link" href="./cues.html#cue-editor">목록 편집 열기 <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="about-mini-setlist" aria-hidden="true">
+            <div><span>01</span><strong>City Lights</strong><small>04:08</small></div>
+            <div><span>02</span><strong>Afterglow</strong><small>03:42</small></div>
+            <div class="is-muted"><span>—</span><strong>MC</strong><small>01:00</small></div>
+            <div><span>03</span><strong>Runaway</strong><small>04:26</small></div>
+          </div>
+        </article>
+
+        <article class="about-feature-card about-feature-card-setup">
+          <span class="about-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v3M5.64 5.64l2.12 2.12M3 12h3m12 0h3M5.64 18.36l2.12-2.12M12 18v3m4.24-4.76 2.12 2.12M8.5 14.5a5 5 0 1 1 7 0"/></svg>
+          </span>
+          <p class="about-feature-label">Setup</p>
+          <h3>BPM과 악기 세팅</h3>
+          <p>통기타·일렉기타·베이스 튜닝을 곡마다 기록하고 메트로놈과 TAP으로 템포를 점검합니다.</p>
+          <div class="about-setup-chips" aria-hidden="true"><span>♩ 128</span><span>GTR · Drop D</span><span>BASS · Standard</span></div>
+        </article>
+
+        <article class="about-feature-card">
+          <span class="about-feature-icon is-mint" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8 15 2 2 5-5"/></svg>
+          </span>
+          <p class="about-feature-label">Practice</p>
+          <h3>연습 기록</h3>
+          <p>날짜별 연습 시간과 메모를 남기고, 하루 합계와 월 누적 시간을 달력에서 확인합니다.</p>
+          <div class="about-calendar-preview" aria-hidden="true">
+            <span></span><span></span><span class="has-log"></span><span></span><span class="has-log"></span><span></span><span></span>
+            <span></span><span class="has-log is-long"></span><span></span><span></span><span></span><span class="has-log"></span><span></span>
+          </div>
+        </article>
+
+        <article class="about-feature-card">
+          <span class="about-feature-icon is-rose" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2"/></svg>
+          </span>
+          <p class="about-feature-label">Checklist</p>
+          <h3>공연 준비 할 일</h3>
+          <p>체크 항목과 글머리, 구분선을 자유롭게 만들고 순서를 바꿔 준비물을 정리합니다.</p>
+          <div class="about-check-preview" aria-hidden="true">
+            <span class="is-done"><i>✓</i>세트리스트 확정</span>
+            <span><i></i>여분 케이블 준비</span>
+            <span><i></i>콜타임 공유</span>
+          </div>
+        </article>
+
+        <article class="about-feature-card">
+          <span class="about-feature-icon is-lilac" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 2.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <p class="about-feature-label">Team</p>
+          <h3>그룹 작업 공간</h3>
+          <p>멤버를 초대하고 그룹 큐시트, 공지, 공연 일정과 개인 메모를 한곳에서 관리합니다.</p>
+          <div class="about-member-preview" aria-hidden="true">
+            <span>V</span><span>G</span><span>B</span><span>D</span><small>4 members</small>
+          </div>
+        </article>
+
+        <article class="about-feature-card">
+          <span class="about-feature-icon is-blue" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+          <p class="about-feature-label">Audience</p>
+          <h3>관객용 화면</h3>
+          <p>공개된 최신 공연 순서를 읽기 쉬운 화면으로 보여 주고 이미지 저장이나 링크 복사로 전달합니다.</p>
+          <a class="about-card-link" href="./audience.html">관객 화면 보기 <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <section id="workflow" class="about-section about-workflow-section" aria-labelledby="workflowTitle">
+      <header class="about-section-heading">
+        <p class="eyebrow">One Connected Flow</p>
+        <h2 id="workflowTitle">Set에서 Show까지, 네 단계면 충분합니다.</h2>
+        <p>공연 준비의 현재 위치를 놓치지 않도록 각 단계가 다음 작업으로 자연스럽게 이어집니다.</p>
+      </header>
+      <ol class="about-workflow-list">
+        <li>
+          <span class="about-step-number">01</span>
+          <div><small>Set</small><h3>큐시트를 만듭니다</h3><p>곡, BPM, 시간과 튜닝을 입력해 공연의 뼈대를 잡습니다.</p></div>
+        </li>
+        <li>
+          <span class="about-step-number">02</span>
+          <div><small>Practice</small><h3>연습과 준비를 기록합니다</h3><p>날짜별 연습량과 남은 할 일을 확인하며 완성도를 높입니다.</p></div>
+        </li>
+        <li>
+          <span class="about-step-number">03</span>
+          <div><small>Team</small><h3>그룹과 공유합니다</h3><p>멤버를 초대하고 그룹 큐시트, 공지와 공연 정보를 연결합니다.</p></div>
+        </li>
+        <li>
+          <span class="about-step-number">04</span>
+          <div><small>Show</small><h3>무대 흐름을 확인합니다</h3><p>최종 순서를 관객용 화면으로 열어 공연 당일까지 함께 봅니다.</p></div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="forEveryone" class="about-section about-audience-section" aria-labelledby="audienceTitle">
+      <header class="about-section-heading about-section-heading-wide">
+        <div>
+          <p class="eyebrow">Built for everyone</p>
+          <h2 id="audienceTitle">공연을 만드는 사람 모두에게</h2>
+        </div>
+        <p>같은 공연을 준비해도 필요한 정보는 다릅니다. 역할마다 꼭 필요한 화면에 빠르게 닿을 수 있게 구성했습니다.</p>
+      </header>
+      <div class="about-role-grid">
+        <article>
+          <span class="about-role-badge">LEADER</span>
+          <h3>밴드 리더</h3>
+          <p>세트리스트와 공연 정보를 정리하고, 그룹 멤버에게 큐시트와 공지를 전달합니다.</p>
+          <ul><li>그룹 생성·멤버 초대</li><li>그룹 큐시트·공연 연결</li><li>공지와 준비 흐름 관리</li></ul>
+        </article>
+        <article>
+          <span class="about-role-badge is-mint">MEMBER</span>
+          <h3>밴드 멤버</h3>
+          <p>내 파트에 필요한 세팅을 확인하고, 개인 연습 기록과 팀의 최신 목록을 함께 봅니다.</p>
+          <ul><li>BPM·튜닝 빠른 확인</li><li>연습 기록·개인 메모</li><li>그룹 초대와 공지 확인</li></ul>
+        </article>
+        <article>
+          <span class="about-role-badge is-rose">AUDIENCE</span>
+          <h3>공연 관객</h3>
+          <p>편집 도구 없이도 현재 공개된 곡 순서를 보기 좋은 목록으로 간편하게 확인합니다.</p>
+          <ul><li>공연 순서 한눈에 보기</li><li>곡과 파트 정보 확인</li><li>이미지 저장·링크 복사</li></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="about-final-cta" aria-labelledby="ctaTitle">
+      <div>
+        <p class="eyebrow">Ready for the next show?</p>
+        <h2 id="ctaTitle">다음 공연의 첫 곡부터 정리해 보세요.</h2>
+        <p>가입 전에도 큐시트를 만들어 볼 수 있고, 로그인하면 준비 기록과 그룹 기능을 이어서 사용할 수 있습니다.</p>
+      </div>
+      <div class="about-actions">
+        <a class="primary-button" href="./cues.html#cue-editor">목록 편집 시작</a>
+        <a class="ghost-button" href="./signup.html">회원가입</a>
+      </div>
     </section>
   </main>
+
+  <footer class="about-footer">
+    <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
+    <p>합주에서 공연까지, 필요한 흐름을 한곳에.</p>
+    <a class="text-link" href="#aboutTitle">맨 위로 <span aria-hidden="true">↑</span></a>
+  </footer>
+
   <script src="./auth-nav.js"></script>
 </body>
 </html>
