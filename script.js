@@ -9,7 +9,10 @@ const GROUPS_API_ENDPOINT = "/api/groups";
 const PERFORMANCES_API_ENDPOINT = "/api/performances";
 const TODO_AUTH_ENDPOINT = "/api/todo-auth";
 const TODOS_API_ENDPOINT = "/api/todos";
-const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
+const ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft-v2";
+const LEGACY_ANONYMOUS_STORAGE_KEY = "cue-sheet-anonymous-draft";
+const AUTH_CHANNEL_NAME = "cue-sheet-auth-session";
+const AUTH_STORAGE_EVENT_KEY = "cue-sheet-auth-session-event";
 const PRACTICE_LOG_STORAGE_KEY = "cue-sheet-practice-log";
 const TODO_STORAGE_KEY = "cue-sheet-todo-document";
 const PENDING_TAP_BPM_STORAGE_KEY = "cue-sheet-pending-tap-bpm";
@@ -158,7 +161,9 @@ const cueListPanel = document.querySelector("#cue-list-panel");
 let savedCues = [];
 let cues = [];
 let authSession = {
+  resolved: false,
   authenticated: false,
+  userId: "",
   email: "",
   databaseConfigured: false,
   googleLoginConfigured: false,
@@ -167,6 +172,13 @@ let authSession = {
 };
 let authInFlight = false;
 let emailAuthInFlight = false;
+let authRefreshInFlight = false;
+let authGeneration = 0;
+let authCoordinationReady = false;
+let authChannel = null;
+let lastAuthRefreshAt = 0;
+let authRefreshPending = false;
+let authRefreshTimer = null;
 let authNotice = "";
 let memberDirectory = [];
 let memberProfile = null;
@@ -196,6 +208,8 @@ let measuredTapBpm = "";
 let storageMode = STORAGE_MODE_LOADING;
 let databaseConfigured = false;
 let saveInFlight = false;
+let cueStorageLoadVersion = 0;
+let cueStorageDisplayLocked = false;
 let databaseSeedRequired = false;
 let storageWarningMessage = "";
 let practiceStorageMode = STORAGE_MODE_LOADING;
@@ -506,9 +520,16 @@ saveButton?.addEventListener("click", async () => {
     return;
   }
 
+  const saveIdentity = getCueStorageIdentity();
+
+  if (!saveIdentity) {
+    window.alert("로그인 상태를 확인한 뒤 다시 저장해 주세요.");
+    return;
+  }
+
   let password = "";
 
-  if (!authSession.authenticated) {
+  if (saveIdentity === "anonymous") {
     password = window.prompt("저장 비밀번호를 입력하세요.");
 
     if (password === null) {
@@ -524,19 +545,42 @@ saveButton?.addEventListener("click", async () => {
   saveInFlight = true;
   updateActionState();
 
-  const saveResult = await persistCurrentCues(cues, password);
+  if (saveIdentity !== "anonymous") {
+    const sessionCheck = await verifyCueSaveSession(saveIdentity);
+
+    if (!sessionCheck.ok) {
+      saveInFlight = false;
+      updateActionState();
+      window.alert(sessionCheck.message);
+      return;
+    }
+  }
+
+  const saveItems = cloneCues(cues);
+  const saveResult = await persistCurrentCues(saveItems, password, saveIdentity);
 
   saveInFlight = false;
 
   if (!saveResult.ok) {
     updateActionState();
     window.alert(saveResult.message || "저장에 실패했습니다.");
+
+    if (saveResult.code === "session_changed") {
+      await refreshWorkspaceAfterCueSessionChange();
+    }
     return;
   }
 
-  savedCues = cloneCues(cues);
+  if (saveIdentity !== getCueStorageIdentity()) {
+    updateActionState();
+    window.alert("저장 중 로그인 계정이 변경되어 목록을 다시 불러옵니다.");
+    await refreshWorkspaceAfterCueSessionChange();
+    return;
+  }
+
+  savedCues = cloneCues(saveItems);
   databaseSeedRequired = false;
-  updateActionState(true);
+  updateActionState(!hasPendingChanges());
 });
 
 clearAllButton?.addEventListener("click", () => {
@@ -879,6 +923,7 @@ window.addEventListener("pagehide", () => {
   stopMetronome();
 });
 
+setupAuthCoordination();
 bootstrap();
 
 async function bootstrap() {
@@ -894,11 +939,23 @@ async function bootstrap() {
     initializeStorage(),
   ]);
   restorePendingTapBpm();
+  authCoordinationReady = true;
+
+  if (authRefreshPending) {
+    scheduleAuthSessionRefresh();
+  }
 }
 
 async function initializeAuth() {
-  authSession = await loadAuthSession();
-  authNotice = "";
+  const initializationGeneration = authGeneration;
+  const initialSession = await loadAuthSession();
+
+  if (initializationGeneration === authGeneration) {
+    setAuthSession(initialSession);
+    authNotice = "";
+  } else {
+    authRefreshPending = true;
+  }
   updateAuthUi();
 
   if (authSession.authenticated) {
@@ -910,19 +967,45 @@ async function initializeAuth() {
 }
 
 async function initializeStorage() {
+  const loadVersion = ++cueStorageLoadVersion;
+  const storageIdentity = getCueStorageIdentity();
+
   storageMode = STORAGE_MODE_LOADING;
   updateAuthUi();
   updateActionState();
 
-  const localCues = loadLocalCues();
+  databaseSeedRequired = false;
+  storageWarningMessage = "";
+
+  if (!storageIdentity) {
+    setCueStorageDisplayLocked(true);
+    savedCues = [];
+    cues = [];
+    databaseConfigured = authSession.databaseConfigured;
+    storageMode = STORAGE_MODE_LOCAL;
+    storageWarningMessage = "로그인 상태를 확인하지 못해 개인 큐시트를 불러오지 않았습니다.";
+    render();
+    updateActionState();
+    return;
+  }
+
+  setCueStorageDisplayLocked(false);
+
+  const isPersonalStorage = storageIdentity !== "anonymous";
+  const localCues = isPersonalStorage ? [] : loadLocalCues();
 
   savedCues = cloneCues(localCues);
   cues = cloneCues(localCues);
-  databaseSeedRequired = false;
-  storageWarningMessage = "";
   render();
 
   const remoteResult = await loadRemoteCues();
+
+  if (
+    loadVersion !== cueStorageLoadVersion
+    || storageIdentity !== getCueStorageIdentity()
+  ) {
+    return;
+  }
 
   databaseConfigured = remoteResult.databaseConfigured;
 
@@ -934,10 +1017,20 @@ async function initializeStorage() {
     return;
   }
 
+  if (!remoteCueScopeMatches(remoteResult, storageIdentity)) {
+    storageMode = STORAGE_MODE_LOCAL;
+    storageWarningMessage = "로그인 계정과 저장 데이터 범위가 일치하지 않아 목록을 표시하지 않았습니다.";
+    savedCues = cloneCues(localCues);
+    cues = cloneCues(localCues);
+    render();
+    updateActionState();
+    return;
+  }
+
   storageMode = STORAGE_MODE_DATABASE;
   storageWarningMessage = "";
 
-  if (!remoteResult.items.length && localCues.length) {
+  if (storageIdentity === "anonymous" && !remoteResult.items.length && localCues.length) {
     cues = cloneCues(localCues);
     savedCues = [];
     databaseSeedRequired = true;
@@ -949,7 +1042,7 @@ async function initializeStorage() {
 
   savedCues = remoteCues;
   cues = cloneCues(remoteCues);
-  if (!authSession.authenticated) {
+  if (storageIdentity === "anonymous") {
     persistLocalCues(remoteCues);
   }
   render();
@@ -2267,17 +2360,16 @@ async function loadAuthSession() {
     });
     const payload = await safeReadJson(response);
 
-    return normalizeAuthSession(payload);
+    if (!response.ok) {
+      return createUnknownAuthSession(
+        payload.message || "로그인 상태를 확인하지 못했습니다.",
+        payload,
+      );
+    }
+
+    return normalizeAuthSession({ ...payload, resolved: true });
   } catch {
-    return {
-      authenticated: false,
-      email: "",
-      databaseConfigured: false,
-      googleLoginConfigured: false,
-      emailLoginConfigured: false,
-      googleClientId: "",
-      message: "로그인 상태를 확인하지 못했습니다.",
-    };
+    return createUnknownAuthSession("로그인 상태를 확인하지 못했습니다.");
   }
 }
 
@@ -2756,6 +2848,9 @@ async function loadMemberGroupCue(cueId) {
     }
   }
 
+  const requestGeneration = authGeneration;
+  const requestIdentity = getCueStorageIdentity();
+
   memberActionInFlight = true;
   memberNotice = "그룹 큐시트를 불러오는 중입니다.";
   updateMemberUi();
@@ -2764,7 +2859,20 @@ async function loadMemberGroupCue(cueId) {
     const result = await fetchGroupJson(`${selectedMemberGroupId}/cues/${cueId}`);
 
     if (!result.ok) {
-      memberNotice = result.payload.message || "그룹 큐시트를 불러오지 못했습니다.";
+      if (
+        requestGeneration === authGeneration
+        && requestIdentity === getCueStorageIdentity()
+      ) {
+        memberNotice = result.payload.message || "그룹 큐시트를 불러오지 못했습니다.";
+      }
+      return;
+    }
+
+    if (
+      requestGeneration !== authGeneration
+      || requestIdentity !== getCueStorageIdentity()
+      || !authSession.authenticated
+    ) {
       return;
     }
 
@@ -2775,7 +2883,12 @@ async function loadMemberGroupCue(cueId) {
     render();
     memberNotice = "그룹 큐시트를 현재 목록으로 불러왔습니다.";
   } catch {
-    memberNotice = "그룹 큐시트를 불러오지 못했습니다.";
+    if (
+      requestGeneration === authGeneration
+      && requestIdentity === getCueStorageIdentity()
+    ) {
+      memberNotice = "그룹 큐시트를 불러오지 못했습니다.";
+    }
   } finally {
     memberActionInFlight = false;
     updateMemberUi();
@@ -3293,14 +3406,15 @@ async function handleGoogleCredentialResponse(googleResponse) {
       return;
     }
 
-    authSession = normalizeAuthSession({
+    setAuthSession(normalizeAuthSession({
       ...payload,
       databaseConfigured: true,
       googleLoginConfigured: true,
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
-    });
+    }));
     authNotice = "로그인되었습니다.";
+    broadcastAuthSessionChange();
     await reloadAuthenticatedWorkspace();
   } catch {
     authNotice = "로그인 처리를 완료하지 못했습니다.";
@@ -3345,15 +3459,16 @@ async function loginWithEmailPassword() {
       return;
     }
 
-    authSession = normalizeAuthSession({
+    setAuthSession(normalizeAuthSession({
       ...payload,
       databaseConfigured: true,
       googleLoginConfigured: authSession.googleLoginConfigured,
       emailLoginConfigured: true,
       googleClientId: authSession.googleClientId,
-    });
+    }));
     emailPasswordInput.value = "";
     authNotice = "로그인되었습니다.";
+    broadcastAuthSessionChange();
     await reloadAuthenticatedWorkspace();
   } catch {
     authNotice = "로그인 요청을 완료하지 못했습니다.";
@@ -3381,22 +3496,46 @@ async function logoutAuthSession() {
   updateAuthUi();
 
   try {
-    await fetch(AUTH_LOGOUT_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-      },
-    });
+    let response = null;
 
-    authSession = {
+    try {
+      response = await fetch(AUTH_LOGOUT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+    } catch (networkError) {
+      const verifiedSession = await loadAuthSession();
+
+      if (!verifiedSession.resolved || verifiedSession.authenticated) {
+        throw networkError;
+      }
+    }
+
+    const payload = response ? await safeReadJson(response) : {};
+
+    if (response && !response.ok) {
+      const verifiedSession = await loadAuthSession();
+
+      if (!verifiedSession.resolved || verifiedSession.authenticated) {
+        throw new Error(payload.message || "로그아웃하지 못했습니다.");
+      }
+    }
+
+    setAuthSession({
+      resolved: true,
       authenticated: false,
+      userId: "",
       email: "",
       databaseConfigured: authSession.databaseConfigured,
       googleLoginConfigured: authSession.googleLoginConfigured,
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
-    };
+      message: "",
+    });
     authNotice = "로그아웃되었습니다.";
+    broadcastAuthSessionChange();
     window.google?.accounts?.id?.disableAutoSelect();
     clearUserScopedLocalCaches();
     savedCues = [];
@@ -3415,8 +3554,10 @@ async function logoutAuthSession() {
       initializeStorage(),
       loadTodoDocument(),
     ]);
-  } catch {
-    authNotice = "로그아웃 요청을 완료하지 못했습니다.";
+  } catch (error) {
+    authNotice = error instanceof Error && error.message
+      ? error.message
+      : "로그아웃 요청을 완료하지 못했습니다.";
   } finally {
     authInFlight = false;
     updateAuthUi();
@@ -3424,8 +3565,16 @@ async function logoutAuthSession() {
 }
 
 function normalizeAuthSession(value) {
+  const rawAuthenticated = Boolean(value?.authenticated);
+  const rawUserId = rawAuthenticated ? String(value?.userId || "").trim() : "";
+  const resolved = value?.resolved !== false && (!rawAuthenticated || Boolean(rawUserId));
+  const authenticated = resolved && rawAuthenticated;
+  const userId = authenticated ? rawUserId : "";
+
   return {
-    authenticated: Boolean(value?.authenticated),
+    resolved,
+    authenticated,
+    userId,
     email: normalizeEmail(value?.email),
     databaseConfigured: Boolean(value?.databaseConfigured),
     googleLoginConfigured: Boolean(value?.googleLoginConfigured),
@@ -3435,8 +3584,293 @@ function normalizeAuthSession(value) {
   };
 }
 
+function setAuthSession(value) {
+  const nextSession = normalizeAuthSession(value);
+  const previousFingerprint = getAuthSessionFingerprint(authSession);
+  const nextFingerprint = getAuthSessionFingerprint(nextSession);
+
+  authSession = nextSession;
+
+  if (previousFingerprint !== nextFingerprint) {
+    authGeneration += 1;
+    cueStorageLoadVersion += 1;
+  }
+
+  return previousFingerprint !== nextFingerprint;
+}
+
+function getAuthSessionFingerprint(session) {
+  return [
+    session?.resolved ? "resolved" : "unknown",
+    session?.authenticated ? "authenticated" : "anonymous",
+    String(session?.userId || ""),
+  ].join(":");
+}
+
+function createUnknownAuthSession(message, value = {}) {
+  return normalizeAuthSession({
+    ...value,
+    resolved: false,
+    authenticated: false,
+    userId: null,
+    email: "",
+    message,
+  });
+}
+
+function getCueStorageIdentity(session = authSession) {
+  if (!session?.resolved) {
+    return "";
+  }
+
+  if (!session.authenticated) {
+    return "anonymous";
+  }
+
+  const userId = String(session.userId || "").trim();
+
+  return userId ? `user:${userId}` : "";
+}
+
+function remoteCueScopeMatches(result, storageIdentity) {
+  if (storageIdentity === "anonymous") {
+    return result.authenticated === false
+      && result.userScoped === false
+      && !result.userId;
+  }
+
+  if (!storageIdentity.startsWith("user:")) {
+    return false;
+  }
+
+  return result.authenticated === true
+    && result.userScoped === true
+    && result.userId === storageIdentity.slice(5);
+}
+
+async function verifyCueSaveSession(expectedIdentity) {
+  const verificationGeneration = authGeneration;
+  const latestSession = await loadAuthSession();
+
+  if (
+    verificationGeneration !== authGeneration
+    || expectedIdentity !== getCueStorageIdentity()
+  ) {
+    return {
+      ok: false,
+      message: "저장 확인 중 로그인 상태가 변경되어 저장하지 않았습니다.",
+    };
+  }
+
+  if (!latestSession.resolved) {
+    lockCueStorageForUnknownSession(latestSession);
+    return {
+      ok: false,
+      message: latestSession.message || "로그인 상태를 확인하지 못해 저장하지 않았습니다.",
+    };
+  }
+
+  const latestIdentity = getCueStorageIdentity(latestSession);
+
+  if (latestIdentity !== expectedIdentity) {
+    await reloadWorkspaceForAuthSession(
+      latestSession,
+      "다른 로그인 계정이 확인되어 해당 계정의 목록을 다시 불러왔습니다.",
+    );
+    return {
+      ok: false,
+      message: "로그인 계정이 변경되어 이전 화면의 목록을 저장하지 않았습니다.",
+    };
+  }
+
+  setAuthSession(latestSession);
+  updateAuthUi();
+  return { ok: true, message: "" };
+}
+
+async function refreshWorkspaceAfterCueSessionChange() {
+  const refreshGeneration = authGeneration;
+  const latestSession = await loadAuthSession();
+
+  if (refreshGeneration !== authGeneration) {
+    return;
+  }
+
+  if (!latestSession.resolved) {
+    lockCueStorageForUnknownSession(latestSession);
+    return;
+  }
+
+  await reloadWorkspaceForAuthSession(
+    latestSession,
+    "로그인 상태가 변경되어 현재 계정의 목록을 다시 불러왔습니다.",
+  );
+}
+
+async function reloadWorkspaceForAuthSession(nextSession, notice) {
+  const previousIdentity = getCueStorageIdentity();
+
+  setAuthSession(nextSession);
+  authNotice = notice;
+  updateAuthUi();
+
+  if (previousIdentity !== getCueStorageIdentity() || !authSession.authenticated) {
+    resetMemberWorkspace();
+  }
+
+  await Promise.all([
+    initializeStorage(),
+    initializePracticeTracker(),
+    loadTodoDocument(),
+    loadMemberDirectory(),
+    authSession.authenticated ? loadMemberWorkspace() : Promise.resolve(),
+  ]);
+}
+
+function lockCueStorageForUnknownSession(nextSession) {
+  setAuthSession(nextSession);
+  setCueStorageDisplayLocked(true);
+  authNotice = nextSession.message || "로그인 상태를 다시 확인해 주세요.";
+  storageMode = STORAGE_MODE_LOCAL;
+  storageWarningMessage = "로그인 상태를 확인할 때까지 개인 큐시트 저장을 잠갔습니다.";
+  updateAuthUi();
+  updateActionState();
+}
+
+function setCueStorageDisplayLocked(locked) {
+  cueStorageDisplayLocked = Boolean(locked);
+
+  if (cueEditorPanel) {
+    cueEditorPanel.hidden = cueStorageDisplayLocked;
+  }
+  if (cueListPanel) {
+    cueListPanel.hidden = cueStorageDisplayLocked;
+  }
+  if (cueStorageDisplayLocked) {
+    closeCueEntryOverlay({ restoreFocus: false });
+  }
+}
+
+function setupAuthCoordination() {
+  if (typeof window.BroadcastChannel === "function") {
+    try {
+      authChannel = new window.BroadcastChannel(AUTH_CHANNEL_NAME);
+      authChannel.addEventListener("message", (event) => {
+        if (event.data?.type === "session-changed") {
+          refreshAuthSessionOnResume();
+        }
+      });
+    } catch {
+      authChannel = null;
+    }
+  }
+
+  window.addEventListener("focus", () => {
+    refreshAuthSessionOnResume();
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === AUTH_STORAGE_EVENT_KEY) {
+      refreshAuthSessionOnResume();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") {
+      refreshAuthSessionOnResume();
+    }
+  });
+}
+
+function broadcastAuthSessionChange() {
+  try {
+    authChannel?.postMessage({ type: "session-changed" });
+  } catch {
+    authChannel = null;
+  }
+
+  try {
+    window.localStorage.setItem(AUTH_STORAGE_EVENT_KEY, `${Date.now()}-${Math.random()}`);
+    window.localStorage.removeItem(AUTH_STORAGE_EVENT_KEY);
+  } catch {
+    return;
+  }
+}
+
+async function refreshAuthSessionOnResume() {
+  const now = Date.now();
+
+  if (!authCoordinationReady) {
+    authRefreshPending = true;
+    return;
+  }
+
+  if (authRefreshInFlight || authInFlight || emailAuthInFlight || saveInFlight) {
+    scheduleAuthSessionRefresh(250);
+    return;
+  }
+
+  if (now - lastAuthRefreshAt < 500) {
+    scheduleAuthSessionRefresh(500 - (now - lastAuthRefreshAt));
+    return;
+  }
+
+  authRefreshPending = false;
+  authRefreshInFlight = true;
+  lastAuthRefreshAt = now;
+  const refreshGeneration = authGeneration;
+  const previousIdentity = getCueStorageIdentity();
+
+  try {
+    const latestSession = await loadAuthSession();
+
+    if (refreshGeneration !== authGeneration) {
+      authRefreshPending = true;
+      return;
+    }
+
+    if (!latestSession.resolved) {
+      lockCueStorageForUnknownSession(latestSession);
+      return;
+    }
+
+    const latestIdentity = getCueStorageIdentity(latestSession);
+
+    if (latestIdentity !== previousIdentity) {
+      await reloadWorkspaceForAuthSession(
+        latestSession,
+        "로그인 계정이 변경되어 현재 계정의 목록을 불러왔습니다.",
+      );
+      return;
+    }
+
+    setAuthSession(latestSession);
+    updateAuthUi();
+  } finally {
+    authRefreshInFlight = false;
+
+    if (authRefreshPending) {
+      scheduleAuthSessionRefresh();
+    }
+  }
+}
+
+function scheduleAuthSessionRefresh(delay = 0) {
+  authRefreshPending = true;
+
+  if (authRefreshTimer !== null) {
+    return;
+  }
+
+  const throttleDelay = Math.max(0, 500 - (Date.now() - lastAuthRefreshAt));
+
+  authRefreshTimer = window.setTimeout(() => {
+    authRefreshTimer = null;
+    refreshAuthSessionOnResume();
+  }, Math.max(delay, throttleDelay));
+}
+
 function loadLocalCues() {
   try {
+    window.localStorage.removeItem(LEGACY_ANONYMOUS_STORAGE_KEY);
     const saved = window.localStorage.getItem(ANONYMOUS_STORAGE_KEY);
 
     if (!saved) {
@@ -3464,6 +3898,7 @@ function persistLocalCues(items) {
 function clearUserScopedLocalCaches() {
   try {
     window.localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_ANONYMOUS_STORAGE_KEY);
     window.localStorage.removeItem(PRACTICE_LOG_STORAGE_KEY);
   } catch {
     return;
@@ -3500,6 +3935,9 @@ async function loadRemoteCues() {
       ok: true,
       databaseConfigured: true,
       items: normalizeCueCollection(payload.items),
+      authenticated: payload.authenticated === true,
+      userScoped: payload.userScoped === true,
+      userId: payload.userId == null ? "" : String(payload.userId),
     };
   } catch {
     return {
@@ -3510,7 +3948,7 @@ async function loadRemoteCues() {
   }
 }
 
-async function persistRemoteCues(items, password) {
+async function persistRemoteCues(items, password, expectedUserId) {
   try {
     const response = await fetch(CUES_API_ENDPOINT, {
       method: "PUT",
@@ -3518,37 +3956,74 @@ async function persistRemoteCues(items, password) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ items, password }),
+      body: JSON.stringify({ items, password, expectedUserId }),
     });
     const payload = await safeReadJson(response);
 
     return {
       ok: response.ok,
+      code: String(payload.error || ""),
       message: payload.message || "",
+      authenticated: payload.authenticated === true,
+      userScoped: payload.userScoped === true,
+      userId: payload.userId == null ? "" : String(payload.userId),
     };
   } catch {
     return {
       ok: false,
+      code: "network_error",
       message: "저장 요청을 완료하지 못했습니다.",
     };
   }
 }
 
-async function persistCurrentCues(items, password) {
+async function persistCurrentCues(items, password, storageIdentity) {
   const nextItems = normalizeCueCollection(items);
-  const localSaved = authSession.authenticated ? true : persistLocalCues(nextItems);
+  const isAnonymousStorage = storageIdentity === "anonymous";
+  const localSaved = isAnonymousStorage ? persistLocalCues(nextItems) : true;
 
-  if (storageMode !== STORAGE_MODE_DATABASE) {
+  if (!storageIdentity || storageIdentity !== getCueStorageIdentity()) {
     return {
-      ok: localSaved,
-      message: localSaved ? "" : "브라우저 저장에 실패했습니다.",
+      ok: false,
+      code: "session_changed",
+      message: "로그인 계정이 변경되어 저장하지 않았습니다.",
     };
   }
 
-  const remoteSaved = await persistRemoteCues(nextItems, password);
+  if (storageMode !== STORAGE_MODE_DATABASE) {
+    return {
+      ok: isAnonymousStorage && localSaved,
+      code: isAnonymousStorage && localSaved ? "" : "database_unavailable",
+      message: isAnonymousStorage && localSaved
+        ? ""
+        : "개인 큐시트를 저장할 DB 연결을 확인해 주세요.",
+    };
+  }
+
+  const expectedUserId = storageIdentity.startsWith("user:")
+    ? storageIdentity.slice(5)
+    : "";
+  const remoteSaved = await persistRemoteCues(nextItems, password, expectedUserId);
+
+  if (!remoteSaved.ok) {
+    return {
+      ok: false,
+      code: remoteSaved.code,
+      message: remoteSaved.message,
+    };
+  }
+
+  if (!remoteCueScopeMatches(remoteSaved, storageIdentity)) {
+    return {
+      ok: false,
+      code: "session_changed",
+      message: "저장 응답의 로그인 계정이 달라 목록을 다시 확인합니다.",
+    };
+  }
 
   return {
-    ok: localSaved && remoteSaved.ok,
+    ok: localSaved,
+    code: "",
     message: remoteSaved.message || "",
   };
 }
@@ -4062,21 +4537,26 @@ function hasPendingChanges() {
 }
 
 function updateActionState(saved = false) {
-  if (storageMode !== STORAGE_MODE_LOADING && !authSession.authenticated && isCueWorkspacePage) {
+  const storageIdentity = getCueStorageIdentity();
+
+  if (storageMode !== STORAGE_MODE_LOADING && storageIdentity === "anonymous" && isCueWorkspacePage) {
     persistLocalCues(cues);
   }
 
   const dirty = hasPendingChanges();
   const needsAttention = dirty || databaseSeedRequired;
-  const canSaveToDatabase = storageMode === STORAGE_MODE_DATABASE;
-  const isPersonalStorage = authSession.authenticated;
+  const canSaveToDatabase = storageMode === STORAGE_MODE_DATABASE && !cueStorageDisplayLocked;
+  const isPersonalStorage = storageIdentity.startsWith("user:");
 
   if (saveButton) {
     saveButton.disabled = !canSaveToDatabase || saveInFlight || !dirty;
     saveButton.textContent = isPersonalStorage ? "내 목록 저장하기" : "목록 저장하기";
   }
   if (clearAllButton) {
-    clearAllButton.disabled = storageMode === STORAGE_MODE_LOADING || saveInFlight || cues.length === 0;
+    clearAllButton.disabled = cueStorageDisplayLocked
+      || storageMode === STORAGE_MODE_LOADING
+      || saveInFlight
+      || cues.length === 0;
   }
   if (!saveStatus) {
     return;
@@ -4159,11 +4639,15 @@ function updateActionState(saved = false) {
   }
 
   if (dirty) {
-    saveStatus.textContent = "DB 연결에 문제가 있어 현재 작업은 이 브라우저에만 남습니다.";
+    saveStatus.textContent = isPersonalStorage
+      ? "개인 저장소 연결에 문제가 있어 현재 변경사항을 저장할 수 없습니다."
+      : "DB 연결에 문제가 있어 현재 작업은 이 브라우저에만 남습니다.";
     return;
   }
 
-  saveStatus.textContent = storageWarningMessage || "DB 연결에 문제가 있어 브라우저 캐시만 사용 중입니다.";
+  saveStatus.textContent = storageWarningMessage || (isPersonalStorage
+    ? "개인 큐시트 저장소에 연결하지 못했습니다."
+    : "DB 연결에 문제가 있어 브라우저 캐시만 사용 중입니다.");
 }
 
 function restorePendingTapBpm() {

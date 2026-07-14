@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.cjs",
     "vercel:dev": "vercel dev",
     "deploy": "vercel deploy --prod"
   },

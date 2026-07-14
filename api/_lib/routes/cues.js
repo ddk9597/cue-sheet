@@ -16,13 +16,18 @@ module.exports = async (request, response) => {
     sendJson(response, 503, {
       error: "database_not_configured",
       message: "DATABASE_URL or POSTGRES_URL is required.",
+      authenticated: false,
+      userScoped: false,
+      userId: null,
     });
     return;
   }
 
+  let sessionUser = null;
+
   try {
     await ensureSchema(sql);
-    const sessionUser = await getSessionUser(sql, request);
+    sessionUser = await getSessionUser(sql, request);
 
     if (request.method === "GET") {
       if (sessionUser) {
@@ -37,6 +42,7 @@ module.exports = async (request, response) => {
           updatedAt: userRow?.updated_at ?? null,
           authenticated: true,
           userScoped: true,
+          userId: String(sessionUser.id),
         });
         return;
       }
@@ -52,6 +58,9 @@ module.exports = async (request, response) => {
         sendJson(response, 200, {
           items: legacyItems,
           updatedAt: legacyRow.updated_at ?? null,
+          authenticated: false,
+          userScoped: false,
+          userId: null,
         });
         return;
       }
@@ -61,6 +70,7 @@ module.exports = async (request, response) => {
         updatedAt: legacyRow?.updated_at ?? null,
         authenticated: false,
         userScoped: false,
+        userId: null,
       });
       return;
     }
@@ -68,7 +78,40 @@ module.exports = async (request, response) => {
     const payload = await readJsonBody(request);
 
     if (sessionUser) {
-      const items = normalizeCueList(payload.items);
+      if (typeof payload?.expectedUserId !== "string"
+        || payload.expectedUserId !== String(sessionUser.id)) {
+        sendJson(response, 409, {
+          error: "session_changed",
+          message: "로그인 계정이 변경되었습니다. 목록을 다시 불러온 뒤 저장해 주세요.",
+          authenticated: true,
+          userScoped: true,
+          userId: String(sessionUser.id),
+        });
+        return;
+      }
+    }
+
+    if (!Array.isArray(payload?.items)) {
+      sendJson(response, 400, {
+        error: "invalid_cue_items",
+        message: "저장할 큐시트 목록 형식이 올바르지 않습니다.",
+        ...getCueScope(sessionUser),
+      });
+      return;
+    }
+
+    const items = normalizeCueList(payload.items);
+
+    if (items.length !== payload.items.length) {
+      sendJson(response, 400, {
+        error: "invalid_cue_items",
+        message: "저장할 큐시트 항목에 올바르지 않은 값이 있습니다.",
+        ...getCueScope(sessionUser),
+      });
+      return;
+    }
+
+    if (sessionUser) {
       const rows = await sql.query(
         [
           "INSERT INTO user_cue_sheet_state (user_id, items, updated_at)",
@@ -85,6 +128,7 @@ module.exports = async (request, response) => {
         updatedAt: rows[0]?.updated_at ?? null,
         authenticated: true,
         userScoped: true,
+        userId: String(sessionUser.id),
       });
       return;
     }
@@ -99,11 +143,13 @@ module.exports = async (request, response) => {
         maxAttempts: passwordResult.maxAttempts,
         ip: passwordResult.ip,
         reset: passwordResult.reset,
+        authenticated: false,
+        userScoped: false,
+        userId: null,
       });
       return;
     }
 
-    const items = normalizeCueList(payload.items);
     const rows = await sql.query(
       [
         "INSERT INTO cue_sheet_state (id, items, updated_at)",
@@ -118,12 +164,16 @@ module.exports = async (request, response) => {
     sendJson(response, 200, {
       items,
       updatedAt: rows[0]?.updated_at ?? null,
+      authenticated: false,
+      userScoped: false,
+      userId: null,
     });
   } catch (error) {
     if (error instanceof SyntaxError) {
       sendJson(response, 400, {
         error: "invalid_json",
         message: "잘못된 요청 형식입니다.",
+        ...getCueScope(sessionUser),
       });
       return;
     }
@@ -132,6 +182,23 @@ module.exports = async (request, response) => {
     sendJson(response, 500, {
       error: "database_error",
       message: "Failed to load or save cues.",
+      ...getCueScope(sessionUser),
     });
   }
 };
+
+function getCueScope(sessionUser) {
+  if (sessionUser) {
+    return {
+      authenticated: true,
+      userScoped: true,
+      userId: String(sessionUser.id),
+    };
+  }
+
+  return {
+    authenticated: false,
+    userScoped: false,
+    userId: null,
+  };
+}

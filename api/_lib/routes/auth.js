@@ -23,7 +23,22 @@ const {
   isGoogleAuthConfigured,
   verifyGoogleCredential,
 } = require("../google-auth");
-const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { readJsonBody, sendJson: sendHttpJson } = require("../http");
+
+function sendJson(response, statusCode, payload) {
+  sendHttpJson(response, statusCode, {
+    userId: null,
+    ...payload,
+  });
+}
+
+function methodNotAllowed(response, allowed) {
+  response.setHeader("Allow", allowed.join(", "));
+  sendJson(response, 405, {
+    error: "method_not_allowed",
+    message: `Only ${allowed.join(", ")} are supported.`,
+  });
+}
 
 module.exports = async (request, response) => {
   const route = getAuthRoute(request);
@@ -104,6 +119,7 @@ async function handleSession(request, response) {
   if (!sql) {
     sendJson(response, 200, {
       authenticated: false,
+      userId: null,
       email: null,
       databaseConfigured: false,
       googleLoginConfigured: false,
@@ -119,6 +135,7 @@ async function handleSession(request, response) {
 
     sendJson(response, 200, {
       authenticated: Boolean(sessionUser),
+      userId: sessionUser ? String(sessionUser.id) : null,
       email: sessionUser?.email ?? null,
       databaseConfigured: true,
       googleLoginConfigured: isGoogleAuthConfigured(),
@@ -131,6 +148,7 @@ async function handleSession(request, response) {
       error: "auth_session_error",
       message: "로그인 상태를 확인하지 못했습니다.",
       authenticated: false,
+      userId: null,
       email: null,
       databaseConfigured: true,
       googleLoginConfigured: isGoogleAuthConfigured(),
@@ -174,6 +192,7 @@ async function handleGoogle(request, response) {
 
     sendJson(response, 200, {
       authenticated: true,
+      userId: String(user.id),
       email: user.email,
     });
   } catch (error) {
@@ -234,6 +253,7 @@ async function handleLogin(request, response) {
 
     sendJson(response, 200, {
       authenticated: true,
+      userId: String(user.id),
       email: user.email,
     });
   } catch (error) {
@@ -267,6 +287,7 @@ async function handleLogout(request, response) {
   const sql = getSql();
 
   if (!sql) {
+    await destroySession(null, request, response);
     sendJson(response, 200, { ok: true });
     return;
   }
@@ -276,6 +297,7 @@ async function handleLogout(request, response) {
     await destroySession(sql, request, response);
     sendJson(response, 200, { ok: true });
   } catch (error) {
+    await destroySession(null, request, response);
     console.error("logout error", error);
     sendJson(response, 500, {
       error: "logout_failed",
@@ -326,6 +348,7 @@ async function handleSignup(request, response) {
 
     sendJson(response, 200, {
       authenticated: true,
+      userId: String(user.id),
       email: user.email,
     });
   } catch (error) {
@@ -530,6 +553,7 @@ async function handleEmailVerify(request, response) {
 
     sendJson(response, 200, {
       authenticated: true,
+      userId: String(user.id),
       email: user.email,
     });
   } catch (error) {

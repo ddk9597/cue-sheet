@@ -3,6 +3,8 @@ const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
 const AUTH_LOGIN_ENDPOINT = "/api/auth/login";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
 const LOGIN_REDIRECT_HREF = "./workspace.html#memberPanel";
+const AUTH_CHANNEL_NAME = "cue-sheet-auth-session";
+const AUTH_STORAGE_EVENT_KEY = "cue-sheet-auth-session-event";
 
 const authTitle = document.querySelector("#authTitle");
 const authStatus = document.querySelector("#authStatus");
@@ -16,7 +18,9 @@ const authEmailLabel = document.querySelector("#authEmailLabel");
 const logoutButton = document.querySelector("#logoutButton");
 
 let authSession = {
+  resolved: false,
   authenticated: false,
+  userId: "",
   email: "",
   databaseConfigured: false,
   googleLoginConfigured: false,
@@ -26,6 +30,13 @@ let authSession = {
 };
 let authInFlight = false;
 let emailAuthInFlight = false;
+let authRefreshInFlight = false;
+let authGeneration = 0;
+let authCoordinationReady = false;
+let authRefreshPending = false;
+let authRefreshTimer = null;
+let authChannel = null;
+let lastAuthRefreshAt = 0;
 let authNotice = "";
 let googleButtonRenderedForClientId = "";
 let googleButtonRenderRetry = 0;
@@ -45,12 +56,25 @@ window.addEventListener("load", () => {
   renderGoogleSignInButton();
 });
 
+setupAuthCoordination();
 initializeLoginPage();
 
 async function initializeLoginPage() {
-  authSession = await loadAuthSession();
-  authNotice = "";
+  const initializationGeneration = authGeneration;
+  const initialSession = await loadAuthSession();
+
+  if (initializationGeneration === authGeneration) {
+    setAuthSession(initialSession);
+    authNotice = "";
+  } else {
+    authRefreshPending = true;
+  }
   updateAuthUi();
+  authCoordinationReady = true;
+
+  if (authRefreshPending) {
+    scheduleAuthSessionRefresh();
+  }
 }
 
 async function loadAuthSession() {
@@ -63,17 +87,16 @@ async function loadAuthSession() {
     });
     const payload = await safeReadJson(response);
 
-    return normalizeAuthSession(payload);
+    if (!response.ok) {
+      return createUnknownAuthSession(
+        payload.message || "로그인 상태를 확인하지 못했습니다.",
+        payload,
+      );
+    }
+
+    return normalizeAuthSession({ ...payload, resolved: true });
   } catch {
-    return {
-      authenticated: false,
-      email: "",
-      databaseConfigured: false,
-      googleLoginConfigured: false,
-      emailLoginConfigured: false,
-      googleClientId: "",
-      message: "로그인 상태를 확인하지 못했습니다.",
-    };
+    return createUnknownAuthSession("로그인 상태를 확인하지 못했습니다.");
   }
 }
 
@@ -112,17 +135,18 @@ async function loginWithEmailPassword() {
       return;
     }
 
-    authSession = normalizeAuthSession({
+    setAuthSession(normalizeAuthSession({
       ...payload,
       databaseConfigured: true,
       googleLoginConfigured: authSession.googleLoginConfigured,
       emailLoginConfigured: true,
       googleClientId: authSession.googleClientId,
-    });
+    }));
     if (emailPasswordInput) {
       emailPasswordInput.value = "";
     }
     authNotice = "로그인되었습니다. 내 작업 공간으로 이동합니다.";
+    broadcastAuthSessionChange();
     updateAuthUi();
     redirectToWorkspace();
   } catch {
@@ -166,14 +190,15 @@ async function handleGoogleCredentialResponse(googleResponse) {
       return;
     }
 
-    authSession = normalizeAuthSession({
+    setAuthSession(normalizeAuthSession({
       ...payload,
       databaseConfigured: true,
       googleLoginConfigured: true,
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
-    });
+    }));
     authNotice = "로그인되었습니다. 내 작업 공간으로 이동합니다.";
+    broadcastAuthSessionChange();
     updateAuthUi();
     redirectToWorkspace();
   } catch {
@@ -194,26 +219,51 @@ async function logoutAuthSession() {
   updateAuthUi();
 
   try {
-    await fetch(AUTH_LOGOUT_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-      },
-    });
+    let response = null;
 
-    authSession = {
+    try {
+      response = await fetch(AUTH_LOGOUT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+    } catch (networkError) {
+      const verifiedSession = await loadAuthSession();
+
+      if (!verifiedSession.resolved || verifiedSession.authenticated) {
+        throw networkError;
+      }
+    }
+
+    const payload = response ? await safeReadJson(response) : {};
+
+    if (response && !response.ok) {
+      const verifiedSession = await loadAuthSession();
+
+      if (!verifiedSession.resolved || verifiedSession.authenticated) {
+        throw new Error(payload.message || "로그아웃하지 못했습니다.");
+      }
+    }
+
+    setAuthSession({
+      resolved: true,
       authenticated: false,
+      userId: "",
       email: "",
       databaseConfigured: authSession.databaseConfigured,
       googleLoginConfigured: authSession.googleLoginConfigured,
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
       message: "",
-    };
+    });
     authNotice = "로그아웃되었습니다.";
+    broadcastAuthSessionChange();
     window.google?.accounts?.id?.disableAutoSelect();
-  } catch {
-    authNotice = "로그아웃 요청을 완료하지 못했습니다.";
+  } catch (error) {
+    authNotice = error instanceof Error && error.message
+      ? error.message
+      : "로그아웃 요청을 완료하지 못했습니다.";
   } finally {
     authInFlight = false;
     updateAuthUi();
@@ -330,8 +380,16 @@ function redirectToWorkspace() {
 }
 
 function normalizeAuthSession(value) {
+  const rawAuthenticated = Boolean(value?.authenticated);
+  const rawUserId = rawAuthenticated ? String(value?.userId || "").trim() : "";
+  const resolved = value?.resolved !== false && (!rawAuthenticated || Boolean(rawUserId));
+  const authenticated = resolved && rawAuthenticated;
+  const userId = authenticated ? rawUserId : "";
+
   return {
-    authenticated: Boolean(value?.authenticated),
+    resolved,
+    authenticated,
+    userId,
     email: normalizeEmail(value?.email),
     databaseConfigured: Boolean(value?.databaseConfigured),
     googleLoginConfigured: Boolean(value?.googleLoginConfigured),
@@ -339,6 +397,159 @@ function normalizeAuthSession(value) {
     googleClientId: String(value?.googleClientId || "").trim(),
     message: typeof value?.message === "string" ? value.message : "",
   };
+}
+
+function setAuthSession(value) {
+  const nextSession = normalizeAuthSession(value);
+  const previousFingerprint = getAuthSessionFingerprint(authSession);
+  const nextFingerprint = getAuthSessionFingerprint(nextSession);
+
+  authSession = nextSession;
+
+  if (previousFingerprint !== nextFingerprint) {
+    authGeneration += 1;
+  }
+}
+
+function getAuthSessionFingerprint(session) {
+  return [
+    session?.resolved ? "resolved" : "unknown",
+    session?.authenticated ? "authenticated" : "anonymous",
+    String(session?.userId || ""),
+  ].join(":");
+}
+
+function broadcastAuthSessionChange() {
+  try {
+    if (authChannel) {
+      authChannel.postMessage({ type: "session-changed" });
+    } else if (typeof window.BroadcastChannel === "function") {
+      const channel = new window.BroadcastChannel(AUTH_CHANNEL_NAME);
+
+      channel.postMessage({ type: "session-changed" });
+      channel.close();
+    }
+  } catch {
+    authChannel = null;
+  }
+
+  try {
+    window.localStorage.setItem(AUTH_STORAGE_EVENT_KEY, `${Date.now()}-${Math.random()}`);
+    window.localStorage.removeItem(AUTH_STORAGE_EVENT_KEY);
+  } catch {
+    return;
+  }
+}
+
+function setupAuthCoordination() {
+  if (typeof window.BroadcastChannel === "function") {
+    try {
+      authChannel = new window.BroadcastChannel(AUTH_CHANNEL_NAME);
+      authChannel.addEventListener("message", (event) => {
+        if (event.data?.type === "session-changed") {
+          refreshAuthSessionOnResume();
+        }
+      });
+    } catch {
+      authChannel = null;
+    }
+  }
+
+  window.addEventListener("focus", () => {
+    refreshAuthSessionOnResume();
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === AUTH_STORAGE_EVENT_KEY) {
+      refreshAuthSessionOnResume();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") {
+      refreshAuthSessionOnResume();
+    }
+  });
+}
+
+async function refreshAuthSessionOnResume() {
+  const now = Date.now();
+
+  if (!authCoordinationReady) {
+    authRefreshPending = true;
+    return;
+  }
+
+  if (authRefreshInFlight || authInFlight || emailAuthInFlight) {
+    scheduleAuthSessionRefresh(250);
+    return;
+  }
+
+  if (now - lastAuthRefreshAt < 500) {
+    scheduleAuthSessionRefresh(500 - (now - lastAuthRefreshAt));
+    return;
+  }
+
+  authRefreshPending = false;
+  authRefreshInFlight = true;
+  lastAuthRefreshAt = now;
+  const refreshGeneration = authGeneration;
+  const previousFingerprint = getAuthSessionFingerprint(authSession);
+
+  try {
+    const latestSession = await loadAuthSession();
+
+    if (
+      refreshGeneration !== authGeneration
+      || authInFlight
+      || emailAuthInFlight
+    ) {
+      authRefreshPending = true;
+      return;
+    }
+
+    setAuthSession(latestSession);
+
+    if (getAuthSessionFingerprint(authSession) !== previousFingerprint) {
+      authNotice = latestSession.resolved
+        ? latestSession.authenticated
+          ? "다른 탭에서 변경된 로그인 계정을 확인했습니다."
+          : "다른 탭에서 로그아웃된 상태를 확인했습니다."
+        : latestSession.message || "로그인 상태를 확인하지 못했습니다.";
+    }
+
+    updateAuthUi();
+  } finally {
+    authRefreshInFlight = false;
+
+    if (authRefreshPending) {
+      scheduleAuthSessionRefresh();
+    }
+  }
+}
+
+function scheduleAuthSessionRefresh(delay = 0) {
+  authRefreshPending = true;
+
+  if (authRefreshTimer !== null) {
+    return;
+  }
+
+  const throttleDelay = Math.max(0, 500 - (Date.now() - lastAuthRefreshAt));
+
+  authRefreshTimer = window.setTimeout(() => {
+    authRefreshTimer = null;
+    refreshAuthSessionOnResume();
+  }, Math.max(delay, throttleDelay));
+}
+
+function createUnknownAuthSession(message, value = {}) {
+  return normalizeAuthSession({
+    ...value,
+    resolved: false,
+    authenticated: false,
+    userId: null,
+    email: "",
+    message,
+  });
 }
 
 async function safeReadJson(response) {

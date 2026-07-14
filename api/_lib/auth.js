@@ -330,23 +330,31 @@ async function createSession(sql, request, response, userId) {
 }
 
 async function destroySession(sql, request, response) {
-  const sessionToken = readCookie(request, SESSION_COOKIE_NAME);
+  let sessionToken = "";
 
-  if (sessionToken) {
-    await sql.query(
-      "DELETE FROM user_sessions WHERE token_hash = $1",
-      [hashValue(sessionToken)],
-    );
+  try {
+    sessionToken = readCookie(request, SESSION_COOKIE_NAME);
+  } catch {
+    sessionToken = "";
   }
 
-  setCookie(response, request, SESSION_COOKIE_NAME, "", {
-    expires: new Date(0),
-    httpOnly: true,
-    maxAge: 0,
-    path: "/",
-    sameSite: "Lax",
-    secure: isSecureRequest(request),
-  });
+  try {
+    if (sessionToken && sql) {
+      await sql.query(
+        "DELETE FROM user_sessions WHERE token_hash = $1",
+        [hashValue(sessionToken)],
+      );
+    }
+  } finally {
+    setCookie(response, request, SESSION_COOKIE_NAME, "", {
+      expires: new Date(0),
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "Lax",
+      secure: isSecureRequest(request),
+    });
+  }
 }
 
 async function getSessionUser(sql, request) {
