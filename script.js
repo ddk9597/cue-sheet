@@ -65,6 +65,8 @@ const memberProfileRegionInput = document.querySelector("#memberProfileRegionInp
 const memberProfilePositionInput = document.querySelector("#memberProfilePositionInput");
 const memberProfileGenreInput = document.querySelector("#memberProfileGenreInput");
 const memberProfilePictureInput = document.querySelector("#memberProfilePictureInput");
+const memberProfilePictureButton = document.querySelector("#memberProfilePictureButton");
+const memberProfilePictureRemoveButton = document.querySelector("#memberProfilePictureRemoveButton");
 const memberProfileMemoInput = document.querySelector("#memberProfileMemoInput");
 const memberProfileSaveButton = document.querySelector("#memberProfileSaveButton");
 const memberDashboardList = document.querySelector("#memberDashboardList");
@@ -442,12 +444,11 @@ memberProfileForm?.addEventListener("submit", (event) => {
   saveMemberProfile();
 });
 
-memberProfilePictureInput?.addEventListener("input", () => {
-  renderMemberProfilePreview({
-    name: memberProfileNameInput?.value || "",
-    pictureUrl: memberProfilePictureInput.value.trim(),
-  });
+memberProfilePictureButton?.addEventListener("click", () => {
+  window.ProfileImageEditor?.open({ onSave: uploadMemberProfileImage });
 });
+
+memberProfilePictureRemoveButton?.addEventListener("click", removeMemberProfileImage);
 
 memberProfileNameInput?.addEventListener("input", () => {
   if (!memberProfilePictureInput?.value.trim()) {
@@ -2550,6 +2551,43 @@ async function saveMemberProfile() {
     memberNotice = "프로필을 저장했습니다.";
   } catch {
     memberNotice = "프로필을 저장하지 못했습니다.";
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
+}
+
+async function uploadMemberProfileImage(dataUrl) {
+  const result = await fetchMemberJson("profile-image", {
+    method: "POST",
+    body: { dataUrl },
+  });
+
+  if (!result.ok) {
+    throw new Error(result.payload.message || "프로필 사진을 업로드하지 못했습니다.");
+  }
+
+  memberProfile = normalizeMemberProfile(result.payload.profile);
+  syncMemberProfileForm();
+  await loadMemberDirectory();
+  memberNotice = "프로필 사진을 저장했습니다.";
+  updateMemberUi();
+}
+
+async function removeMemberProfileImage() {
+  if (!authSession.authenticated || memberActionInFlight || !memberProfile?.pictureUrl) return;
+  memberActionInFlight = true;
+  memberNotice = "프로필 사진을 삭제하는 중입니다.";
+  updateMemberUi();
+  try {
+    const result = await fetchMemberJson("profile-image", { method: "DELETE" });
+    if (!result.ok) throw new Error(result.payload.message);
+    memberProfile = normalizeMemberProfile(result.payload.profile);
+    syncMemberProfileForm();
+    await loadMemberDirectory();
+    memberNotice = "프로필 사진을 삭제했습니다.";
+  } catch (error) {
+    memberNotice = error.message || "프로필 사진을 삭제하지 못했습니다.";
   } finally {
     memberActionInFlight = false;
     updateMemberUi();
@@ -4928,6 +4966,8 @@ function setMemberProfileDisabled(disabled) {
   if (memberProfileSaveButton) {
     memberProfileSaveButton.disabled = disabled;
   }
+  if (memberProfilePictureButton) memberProfilePictureButton.disabled = disabled;
+  if (memberProfilePictureRemoveButton) memberProfilePictureRemoveButton.disabled = disabled || !memberProfile?.pictureUrl;
 }
 
 function getProfileInitial(value) {

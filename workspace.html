@@ -135,10 +135,12 @@
                   <span>장르</span>
                   <input id="memberProfileGenreInput" name="profileGenre" type="text" maxlength="80" placeholder="인디록, 시티팝">
                 </label>
-                <label class="field" for="memberProfilePictureInput">
-                  <span>프로필사진 URL</span>
-                  <input id="memberProfilePictureInput" name="profilePicture" type="url" maxlength="500" placeholder="https://example.com/profile.jpg">
-                </label>
+                <div class="field profile-image-trigger">
+                  <span>프로필 사진</span>
+                  <input id="memberProfilePictureInput" name="profilePicture" type="hidden">
+                  <button id="memberProfilePictureButton" class="ghost-button" type="button">사진 선택 및 편집</button>
+                  <button id="memberProfilePictureRemoveButton" class="ghost-button" type="button">사진 제거</button>
+                </div>
                 <label class="field member-profile-intro" for="memberProfileMemoInput">
                   <span>소개</span>
                   <input id="memberProfileMemoInput" name="profileMemo" type="text" maxlength="120" placeholder="활동 가능 시간, 선호 팀 분위기 등">
@@ -450,6 +452,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <script src="./auth-nav.js"></script>
+  <script src="./profile-image-editor.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>

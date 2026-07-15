@@ -828,11 +828,13 @@
               <span>선호 장르</span>
               <input id="genreInput" name="genre" type="text" maxlength="80" placeholder="예: 인디록, 시티팝">
             </label>
-            <label class="field profile-field is-picture" for="pictureUrlInput">
-              <span>프로필사진 URL</span>
-              <input id="pictureUrlInput" name="pictureUrl" type="url" inputmode="url" maxlength="500" placeholder="https://example.com/profile.jpg">
-              <p class="field-note">이미지 파일 업로드 전까지는 공개 이미지 URL을 사용합니다.</p>
-            </label>
+            <div class="field profile-field is-picture profile-image-trigger">
+              <span>프로필 사진</span>
+              <input id="pictureUrlInput" name="pictureUrl" type="hidden">
+              <button id="signupProfilePictureButton" class="ghost-button" type="button">사진 선택 및 편집</button>
+              <img id="signupProfilePicturePreview" class="signup-profile-picture-preview" alt="편집한 프로필 사진 미리보기" hidden>
+              <p class="field-note">가입이 완료되면 편집한 사진이 안전하게 업로드됩니다.</p>
+            </div>
             <label class="field profile-field is-memo" for="memoInput">
               <span>프로필 소개</span>
               <input id="memoInput" name="memo" type="text" maxlength="120" placeholder="팀명, 활동 가능 시간, 짧은 소개">
@@ -933,6 +935,7 @@
   </div>
 
   <script src="./auth-nav.js"></script>
+  <script src="./profile-image-editor.js"></script>
   <script>
     const AUTH_SESSION_ENDPOINT = "/api/auth/session";
     const AUTH_SIGNUP_ENDPOINT = "/api/auth/signup";
@@ -943,6 +946,7 @@
     const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
     let signupSubmitInFlight = false;
     let signupCompleted = false;
+    let pendingProfileImageDataUrl = "";
     const signupState = {
       consent: null,
       emailVerification: null,
@@ -987,6 +991,8 @@
     const positionInput = document.querySelector("#positionInput");
     const genreInput = document.querySelector("#genreInput");
     const pictureUrlInput = document.querySelector("#pictureUrlInput");
+    const signupProfilePictureButton = document.querySelector("#signupProfilePictureButton");
+    const signupProfilePicturePreview = document.querySelector("#signupProfilePicturePreview");
     const memoInput = document.querySelector("#memoInput");
     const phoneInput = document.querySelector("#phoneInput");
     const passwordInput = document.querySelector("#passwordInput");
@@ -1003,6 +1009,16 @@
     goHomeButton.addEventListener("click", goHome);
     sendEmailCodeButton.addEventListener("click", sendEmailCode);
     verifyEmailButton.addEventListener("click", verifyEmailCode);
+    signupProfilePictureButton.addEventListener("click", () => {
+      window.ProfileImageEditor.open({
+        onSave(dataUrl) {
+          pendingProfileImageDataUrl = dataUrl;
+          signupProfilePicturePreview.src = dataUrl;
+          signupProfilePicturePreview.hidden = false;
+          clearSavedSection("profile");
+        },
+      });
+    });
 
     for (const progressStep of document.querySelectorAll("[data-scroll-target]")) {
       progressStep.addEventListener("click", () => {
@@ -1286,6 +1302,14 @@
           return;
         }
 
+        if (pendingProfileImageDataUrl) {
+          const uploadedPictureUrl = await uploadSignupProfileImage(pendingProfileImageDataUrl);
+
+          if (!uploadedPictureUrl) return;
+          profile.pictureUrl = uploadedPictureUrl;
+          pictureUrlInput.value = uploadedPictureUrl;
+        }
+
         signupState.consent = consent;
         signupState.profile = profile;
         signupState.phone = phone;
@@ -1352,6 +1376,28 @@
       } catch {
         setStatus("가입 정보를 저장하지 못했습니다.", true);
         return false;
+      }
+    }
+
+    async function uploadSignupProfileImage(dataUrl) {
+      setStatus("가입 정보를 저장했습니다. 프로필 사진을 업로드하는 중입니다.");
+      try {
+        const response = await fetch("/api/member/profile-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ dataUrl }),
+        });
+        const payload = await safeReadJson(response);
+
+        if (!response.ok) {
+          setStatus(payload.message || "프로필 사진을 업로드하지 못했습니다.", true);
+          return "";
+        }
+        pendingProfileImageDataUrl = "";
+        return payload.profile?.pictureUrl || "";
+      } catch {
+        setStatus("프로필 사진을 업로드하지 못했습니다.", true);
+        return "";
       }
     }
 

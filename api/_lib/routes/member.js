@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const { del, put } = require("@vercel/blob");
 const {
   getSessionUser,
   isValidEmail,
@@ -15,6 +16,7 @@ const ROUTE_METHODS = {
   me: ["GET"],
   dashboard: ["GET"],
   profile: ["GET", "PUT"],
+  "profile-image": ["POST", "DELETE"],
   groups: ["GET", "POST"],
   invites: ["POST"],
   "invites/accept": ["POST"],
@@ -99,6 +101,13 @@ module.exports = async (request, response) => {
       const payload = await readJsonBody(request);
 
       await handleSaveProfile(sql, response, sessionUser, payload);
+      return;
+    }
+
+    if (route === "profile-image") {
+      const payload = request.method === "POST" ? await readJsonBody(request) : {};
+
+      await handleProfileImage(sql, response, sessionUser, payload, request.method);
       return;
     }
 
@@ -399,6 +408,71 @@ async function handleSaveProfile(sql, response, sessionUser, payload) {
   sendJson(response, 200, {
     profile: normalizeProfileRow(rows[0], sessionUser),
   });
+}
+
+async function handleProfileImage(sql, response, sessionUser, payload, method) {
+  const currentRows = await sql.query(
+    "SELECT picture_url FROM app_users WHERE id = $1 LIMIT 1",
+    [sessionUser.id],
+  );
+  const previousUrl = String(currentRows[0]?.picture_url || "");
+  let pictureUrl = "";
+
+  if (method === "POST") {
+    const match = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(payload.dataUrl || ""));
+
+    if (!match) {
+      throwHttpError(400, "invalid_profile_image", "편집된 WebP 이미지를 확인해 주세요.");
+    }
+
+    const image = Buffer.from(match[1], "base64");
+
+    if (!image.length || image.length > 1024 * 1024 || image.subarray(0, 4).toString("ascii") !== "RIFF"
+      || image.subarray(8, 12).toString("ascii") !== "WEBP") {
+      throwHttpError(400, "invalid_profile_image", "프로필 이미지는 1MB 이하의 WebP 파일이어야 합니다.");
+    }
+
+    const pathname = `profiles/${sessionUser.id}/${crypto.randomUUID()}.webp`;
+    const blob = await put(pathname, image, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "image/webp",
+    });
+
+    pictureUrl = blob.url;
+  }
+
+  const rows = await sql.query(
+    [
+      "UPDATE app_users SET picture_url = $2 WHERE id = $1",
+      "RETURNING email, name, picture_url, region, \"position\", genre, memo",
+    ].join(" "),
+    [sessionUser.id, pictureUrl],
+  );
+
+  if (isOwnedProfileBlob(previousUrl, sessionUser.id) && previousUrl !== pictureUrl) {
+    try {
+      await del(previousUrl);
+    } catch (error) {
+      console.error("old profile image delete error", error);
+    }
+  }
+
+  sendJson(response, 200, {
+    profile: normalizeProfileRow(rows[0], sessionUser),
+  });
+}
+
+function isOwnedProfileBlob(value, userId) {
+  try {
+    const url = new URL(String(value || ""));
+
+    return url.protocol === "https:"
+      && url.hostname.endsWith(".blob.vercel-storage.com")
+      && url.pathname.startsWith(`/profiles/${userId}/`);
+  } catch {
+    return false;
+  }
 }
 
 async function handleCreateGroup(sql, response, sessionUser, payload) {
