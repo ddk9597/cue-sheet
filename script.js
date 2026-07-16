@@ -56,6 +56,8 @@ const memberLoginLink = document.querySelector(".member-login-link");
 const memberDirectoryList = document.querySelector("#memberDirectoryList");
 const memberPanel = document.querySelector("#memberPanel");
 const memberStatus = document.querySelector("#memberStatus");
+const memberProfileModalStatus = document.querySelector("#memberProfileModalStatus");
+const memberGroupModalStatus = document.querySelector("#memberGroupModalStatus");
 const memberProfileForm = document.querySelector("#memberProfileForm");
 const memberProfileImage = document.querySelector("#memberProfileImage");
 const memberProfileInitial = document.querySelector("#memberProfileInitial");
@@ -129,7 +131,9 @@ const tapTempoStatus = document.querySelector("#tapTempoStatus");
 const practiceModal = document.querySelector("#practiceModal");
 const cueModal = document.querySelector("#cueModal");
 const todoModal = document.querySelector("#todoModal");
+const blockingModals = document.querySelectorAll("dialog.modal");
 const modalTriggers = document.querySelectorAll("[data-modal-target]");
+const memberModalTriggers = document.querySelectorAll("[data-member-modal-trigger]");
 const modalCloseButtons = document.querySelectorAll("[data-modal-close]");
 const todoEditor = document.querySelector("#todoEditor");
 const todoStatus = document.querySelector("#todoStatus");
@@ -198,6 +202,8 @@ let memberNotice = "";
 let memberWorkspaceInFlight = false;
 let memberActionInFlight = false;
 let memberGroupDetailInFlight = false;
+let memberGroupDetailLoadVersion = 0;
+let pendingMemberGroupFocusId = "";
 let googleButtonRenderedForClientId = "";
 let googleButtonRenderRetry = 0;
 let cueInteractDragState = null;
@@ -248,11 +254,7 @@ for (const closeButton of modalCloseButtons) {
   });
 }
 
-for (const modal of [practiceModal, cueModal, todoModal]) {
-  if (!modal) {
-    continue;
-  }
-
+for (const modal of blockingModals) {
   modal.addEventListener("click", (event) => {
     if (event.target === modal) {
       closeModal(modal);
@@ -460,13 +462,47 @@ memberProfileNameInput?.addEventListener("input", () => {
 });
 
 memberGroupList?.addEventListener("click", (event) => {
-  const detailButton = event.target.closest("[data-member-group-detail]");
+  const groupOption = event.target.closest("[data-member-group-detail]");
 
-  if (!detailButton) {
+  if (!groupOption) {
     return;
   }
 
-  loadMemberGroupDetail(detailButton.dataset.memberGroupDetail);
+  pendingMemberGroupFocusId = groupOption.dataset.memberGroupDetail;
+  groupOption.focus();
+  loadMemberGroupDetail(groupOption.dataset.memberGroupDetail);
+});
+
+memberGroupList?.addEventListener("keydown", (event) => {
+  const groupOption = event.target.closest("[data-member-group-detail]");
+  if (!groupOption) return;
+
+  const options = [...memberGroupList.querySelectorAll("[data-member-group-detail]")];
+  const currentIndex = options.indexOf(groupOption);
+  let nextOption = null;
+  let shouldSelect = false;
+
+  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+    nextOption = options[(currentIndex + 1) % options.length];
+  } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+    nextOption = options[(currentIndex - 1 + options.length) % options.length];
+  } else if (event.key === "Home") {
+    nextOption = options[0];
+  } else if (event.key === "End") {
+    nextOption = options[options.length - 1];
+  } else if (event.key === "Enter" || event.key === " ") {
+    nextOption = groupOption;
+    shouldSelect = true;
+  }
+
+  if (!nextOption) return;
+
+  event.preventDefault();
+  nextOption.focus();
+  if (shouldSelect) {
+    pendingMemberGroupFocusId = nextOption.dataset.memberGroupDetail;
+    loadMemberGroupDetail(nextOption.dataset.memberGroupDetail);
+  }
 });
 
 memberGroupCueForm?.addEventListener("submit", (event) => {
@@ -1118,6 +1154,16 @@ function openModalById(modalId, section = "") {
 
   syncModalState();
 
+  if (modal.id === "profileModal" && memberProfileModalStatus) {
+    memberProfileModalStatus.textContent = "프로필 정보를 확인하고 수정할 수 있습니다.";
+  }
+
+  if (modal.id === "groupModal" && memberGroupModalStatus) {
+    memberGroupModalStatus.textContent = memberGroupDetailInFlight
+      ? "그룹 상세를 불러오는 중입니다."
+      : "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
+  }
+
   window.requestAnimationFrame(() => {
     if (modal === cueModal) {
       focusCueModalSection(section);
@@ -1136,6 +1182,18 @@ function openModalById(modalId, section = "") {
       }
 
       focusTodoEditor();
+      return;
+    }
+
+    if (modal.id === "profileModal") {
+      memberProfileNameInput?.focus();
+      return;
+    }
+
+    if (modal.id === "groupModal") {
+      const selectedGroup = memberGroupList?.querySelector('[aria-selected="true"]');
+
+      (selectedGroup || memberGroupNameInput)?.focus();
     }
   });
 }
@@ -2473,6 +2531,8 @@ function resetMemberWorkspace() {
   memberWorkspaceInFlight = false;
   memberActionInFlight = false;
   memberGroupDetailInFlight = false;
+  memberGroupDetailLoadVersion += 1;
+  pendingMemberGroupFocusId = "";
 
   if (memberMemoInput) {
     memberMemoInput.value = "";
@@ -2789,12 +2849,19 @@ async function markMemberMessageRead(messageId, type = "invite") {
 
 async function loadMemberGroupDetail(groupId, options = {}) {
   if (!authSession.authenticated || !groupId) {
+    memberGroupDetailLoadVersion += 1;
     resetMemberGroupDetail();
     updateMemberUi();
     return;
   }
 
-  selectedMemberGroupId = String(groupId);
+  const requestedGroupId = String(groupId);
+  const loadVersion = ++memberGroupDetailLoadVersion;
+
+  selectedMemberGroupId = requestedGroupId;
+  if (memberGroupDetailData?.id && String(memberGroupDetailData.id) !== requestedGroupId) {
+    resetMemberGroupDetail({ keepSelection: true });
+  }
   memberGroupDetailInFlight = true;
   if (!options.silent) {
     memberNotice = "그룹 상세를 불러오는 중입니다.";
@@ -2803,11 +2870,11 @@ async function loadMemberGroupDetail(groupId, options = {}) {
 
   try {
     const [groupResult, membersResult, cuesResult, messagesResult, performancesResult] = await Promise.all([
-      fetchGroupJson(selectedMemberGroupId),
-      fetchGroupJson(`${selectedMemberGroupId}/members`),
-      fetchGroupJson(`${selectedMemberGroupId}/cues`),
-      fetchGroupJson(`${selectedMemberGroupId}/messages`),
-      fetchPerformanceJson(`group/${selectedMemberGroupId}`),
+      fetchGroupJson(requestedGroupId),
+      fetchGroupJson(`${requestedGroupId}/members`),
+      fetchGroupJson(`${requestedGroupId}/cues`),
+      fetchGroupJson(`${requestedGroupId}/messages`),
+      fetchPerformanceJson(`group/${requestedGroupId}`),
     ]);
 
     for (const result of [groupResult, membersResult, cuesResult, messagesResult, performancesResult]) {
@@ -2816,22 +2883,39 @@ async function loadMemberGroupDetail(groupId, options = {}) {
       }
     }
 
-    memberGroupDetailData = normalizeMemberGroupDetail(groupResult.payload.group);
-    memberGroupMembers = normalizeMemberGroupMembers(membersResult.payload.members);
-    memberGroupCues = normalizeMemberGroupCues(cuesResult.payload.cues);
-    memberGroupMessages = normalizeMemberGroupMessages(messagesResult.payload.messages);
-    memberGroupPerformances = normalizeMemberPerformances(performancesResult.payload.performances);
-    memberPerformanceCueLinks = await loadMemberPerformanceCueLinks(memberGroupPerformances);
+    const groupDetail = normalizeMemberGroupDetail(groupResult.payload.group);
+    const groupMembers = normalizeMemberGroupMembers(membersResult.payload.members);
+    const groupCues = normalizeMemberGroupCues(cuesResult.payload.cues);
+    const groupMessages = normalizeMemberGroupMessages(messagesResult.payload.messages);
+    const groupPerformances = normalizeMemberPerformances(performancesResult.payload.performances);
+    const performanceCueLinks = await loadMemberPerformanceCueLinks(groupPerformances);
+
+    if (loadVersion !== memberGroupDetailLoadVersion || selectedMemberGroupId !== requestedGroupId) {
+      return;
+    }
+
+    memberGroupDetailData = groupDetail;
+    memberGroupMembers = groupMembers;
+    memberGroupCues = groupCues;
+    memberGroupMessages = groupMessages;
+    memberGroupPerformances = groupPerformances;
+    memberPerformanceCueLinks = performanceCueLinks;
 
     if (!options.silent) {
       memberNotice = "그룹 상세를 불러왔습니다.";
     }
   } catch (error) {
+    if (loadVersion !== memberGroupDetailLoadVersion || selectedMemberGroupId !== requestedGroupId) {
+      return;
+    }
+
     resetMemberGroupDetail({ keepSelection: true });
     memberNotice = error.message || "그룹 상세를 불러오지 못했습니다.";
   } finally {
-    memberGroupDetailInFlight = false;
-    updateMemberUi();
+    if (loadVersion === memberGroupDetailLoadVersion) {
+      memberGroupDetailInFlight = false;
+      updateMemberUi();
+    }
   }
 }
 
@@ -4791,6 +4875,18 @@ function updateMemberUi() {
     memberStatus.classList.remove("is-error");
   }
 
+  if (memberProfileModalStatus) {
+    memberProfileModalStatus.textContent = !isLoggedIn
+      ? "로그인 후 프로필을 관리할 수 있습니다."
+      : memberNotice || "프로필 정보를 확인하고 수정할 수 있습니다.";
+  }
+
+  if (memberGroupModalStatus) {
+    memberGroupModalStatus.textContent = !isLoggedIn
+      ? "로그인 후 그룹 작업을 사용할 수 있습니다."
+      : memberNotice || "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
+  }
+
   if (memberGroupNameInput) {
     memberGroupNameInput.disabled = !isLoggedIn || isBusy;
   }
@@ -4815,6 +4911,10 @@ function updateMemberUi() {
   renderMemberMessages(isLoggedIn, isBusy);
   renderMemberGroupDetail(isLoggedIn, isBusy || memberGroupDetailInFlight);
   setMemberProfileDisabled(!isLoggedIn || isBusy);
+
+  for (const trigger of memberModalTriggers) {
+    trigger.disabled = !isLoggedIn || isBusy;
+  }
 
   if (memberMemoInput) {
     memberMemoInput.disabled = !isLoggedIn || isBusy;
@@ -4989,7 +5089,14 @@ function renderMemberGroups(isLoggedIn) {
     return;
   }
 
+  const focusedGroupId = document.activeElement
+    ?.closest?.("[data-member-group-detail]")
+    ?.dataset.memberGroupDetail;
+  const focusGroupId = pendingMemberGroupFocusId || focusedGroupId;
+  let focusTarget = null;
+
   memberGroupList.replaceChildren();
+  memberGroupList.setAttribute("aria-busy", String(memberGroupDetailInFlight));
 
   if (!isLoggedIn) {
     memberGroupList.appendChild(createMemberEmptyItem("로그인 후 그룹을 확인할 수 있습니다."));
@@ -5008,10 +5115,16 @@ function renderMemberGroups(isLoggedIn) {
     const meta = document.createElement("span");
     const actions = document.createElement("div");
     const role = document.createElement("span");
-    const detailButton = document.createElement("button");
 
     item.className = "member-list-item";
     item.classList.toggle("is-selected", group.id === selectedMemberGroupId);
+    item.dataset.memberGroupDetail = group.id;
+    item.setAttribute("role", "option");
+    item.setAttribute("aria-selected", String(group.id === selectedMemberGroupId));
+    item.tabIndex = group.id === selectedMemberGroupId ? 0 : -1;
+    if (group.id === focusGroupId) {
+      focusTarget = item;
+    }
     main.className = "member-list-main";
     title.textContent = group.name;
     meta.textContent = [
@@ -5021,15 +5134,21 @@ function renderMemberGroups(isLoggedIn) {
     actions.className = "member-list-actions";
     role.className = "member-pill";
     role.textContent = group.role === "owner" ? "owner" : "member";
-    detailButton.className = "ghost-button member-small-button";
-    detailButton.type = "button";
-    detailButton.textContent = "상세";
-    detailButton.dataset.memberGroupDetail = group.id;
 
     main.append(title, meta);
-    actions.append(role, detailButton);
+    actions.append(role);
     item.append(main, actions);
     memberGroupList.appendChild(item);
+  }
+
+  if (focusTarget) {
+    window.requestAnimationFrame(() => {
+      if (!focusTarget.isConnected) return;
+      focusTarget.focus();
+      if (pendingMemberGroupFocusId === focusTarget.dataset.memberGroupDetail) {
+        pendingMemberGroupFocusId = "";
+      }
+    });
   }
 }
 
