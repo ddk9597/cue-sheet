@@ -15,60 +15,77 @@
         <p class="eyebrow">Member Workspace</p>
         <h1 id="workspaceTitle" class="home-title"><span>내 작업 공간</span></h1>
         <p class="hero-copy">
-          개인 저장 데이터와 그룹 협업 항목을 계정 기준으로 확인하고 관리합니다.
+          오늘 필요한 준비부터 팀과 공유할 공연 정보까지, 한곳에서 차분하게 이어가세요.
         </p>
+        <nav class="workspace-hero-nav" aria-label="작업 공간 바로가기">
+          <a href="#workspaceSummary">내 현황</a>
+          <a href="#memberProfileBlock">프로필</a>
+          <a href="#memberGroupsBlock">그룹</a>
+          <a href="#memberGroupDetail">그룹 상세</a>
+          <a href="#memberMemoBlock">메모</a>
+        </nav>
       </div>
     </section>
 
     <section class="main-utility-surface workspace-tools-surface" aria-label="내 작업 공간 빠른 도구">
-      <div class="workspace-tools-header">
-        <div>
-          <p class="panel-label">Quick Actions</p>
-          <strong class="summary-title">자주 쓰는 도구</strong>
-        </div>
-        <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
-      </div>
-      <div class="workspace-tool-grid" aria-label="작업공간 도구">
-        <a class="home-tool-card" href="./cues.html#cue-editor">
-          <span>01</span>
-          <strong>목록 편집</strong>
-          <small>개인 큐시트를 만들고 저장합니다.</small>
-        </a>
-        <button class="home-tool-card" type="button" data-modal-target="practiceModal">
-          <span>02</span>
-          <strong>연습 기록</strong>
-          <small>날짜별 연습 시간을 기록합니다.</small>
-        </button>
-        <button class="home-tool-card" type="button" data-modal-target="todoModal">
-          <span>03</span>
-          <strong>할 일</strong>
-          <small>공연 준비 항목을 정리합니다.</small>
-        </button>
-        <a class="home-tool-card" href="./audience.html">
-          <span>04</span>
-          <strong>관객용 목록</strong>
-          <small>공유되는 큐시트 화면을 확인합니다.</small>
-        </a>
-      </div>
-      <div class="cue-status-line">
-        <strong>현재 큐시트 길이</strong>
-        <span id="totalDuration" class="total-duration">00:00:00</span>
-      </div>
-      <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
-        <div class="tap-meter-main">
-          <div>
-            <p class="panel-label">BPM 클릭 측정기</p>
-            <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
+      <div class="workspace-command-layout">
+        <div class="workspace-command-main">
+          <div class="workspace-tools-header">
+            <div>
+              <p class="panel-label">Quick Actions</p>
+              <strong class="summary-title">바로 시작하기</strong>
+            </div>
+            <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
           </div>
-          <p id="tapTempoStatus" class="save-status" aria-live="polite">
-            박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
-          </p>
+          <div class="workspace-tool-grid" aria-label="작업공간 도구">
+            <a class="home-tool-card" href="./cues.html#cue-editor">
+              <span>01</span>
+              <strong>목록 편집</strong>
+              <small>개인 큐시트를 만들고 저장합니다.</small>
+            </a>
+            <button class="home-tool-card" type="button" data-modal-target="practiceModal">
+              <span>02</span>
+              <strong>연습 기록</strong>
+              <small>날짜별 연습 시간을 기록합니다.</small>
+            </button>
+            <button class="home-tool-card" type="button" data-modal-target="todoModal">
+              <span>03</span>
+              <strong>할 일</strong>
+              <small>공연 준비 항목을 정리합니다.</small>
+            </button>
+            <a class="home-tool-card" href="./audience.html">
+              <span>04</span>
+              <strong>관객용 목록</strong>
+              <small>공유되는 큐시트 화면을 확인합니다.</small>
+            </a>
+          </div>
         </div>
-        <div class="tap-meter-actions">
-          <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
-          <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
-          <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
-        </div>
+        <aside class="workspace-session-card" aria-label="현재 큐시트 상태와 BPM 측정">
+          <div class="workspace-session-heading">
+            <p class="panel-label">Current Session</p>
+            <strong>지금 준비 중인 목록</strong>
+          </div>
+          <div class="cue-status-line">
+            <strong>현재 큐시트 길이</strong>
+            <span id="totalDuration" class="total-duration">00:00:00</span>
+          </div>
+          <div class="tap-meter-inline" role="group" aria-label="BPM 클릭 측정기">
+            <div class="tap-meter-main">
+              <div>
+                <p class="panel-label">BPM 클릭 측정기</p>
+                <strong id="tapTempoValue" class="tap-tempo-value">--</strong>
+              </div>
+              <p id="tapTempoStatus" class="save-status" aria-live="polite">
+                박자에 맞춰 TAP을 눌러 BPM을 측정합니다.
+              </p>
+            </div>
+            <div class="tap-meter-actions">
+              <button id="tapTempoButton" class="tap-button" type="button">TAP</button>
+              <button id="tapTempoApplyButton" class="ghost-button" type="button" disabled>BPM 입력</button>
+              <button id="tapTempoResetButton" class="ghost-button" type="button" disabled>초기화</button>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -76,8 +93,8 @@
       <section id="memberPanel" class="panel member-panel" aria-labelledby="memberTitle">
         <div class="member-header workspace-member-header">
           <div>
-            <p class="panel-label">Member</p>
-            <strong id="memberTitle" class="member-title">내 작업 공간</strong>
+            <p class="panel-label">Account Workspace</p>
+            <strong id="memberTitle" class="member-title">계정과 팀 관리</strong>
             <span id="authEmailLabel" class="auth-email member-session-email" hidden></span>
           </div>
           <div class="member-header-actions">
@@ -85,7 +102,14 @@
             <button id="logoutButton" class="ghost-button" type="button" hidden>로그아웃</button>
           </div>
         </div>
-        <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+        <div class="workspace-member-status-row">
+          <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
+          <nav class="workspace-member-nav" aria-label="계정 작업 바로가기">
+            <a href="#workspaceSummary">요약</a>
+            <a href="#memberProfileBlock">개인 공간</a>
+            <a href="#memberGroupsBlock">팀 공간</a>
+          </nav>
+        </div>
         <div class="member-login-gate" aria-label="로그인 안내">
           <div>
             <p class="panel-label">Private Workspace</p>
@@ -98,16 +122,26 @@
           </div>
         </div>
         <div class="member-grid">
-          <section class="member-block member-dashboard-block" aria-labelledby="memberDashboardTitle">
+          <section id="workspaceSummary" class="member-block member-dashboard-block" aria-labelledby="memberDashboardTitle">
             <div class="member-block-header">
-              <strong id="memberDashboardTitle">회원 홈</strong>
+              <div>
+                <p class="panel-label">Overview</p>
+                <strong id="memberDashboardTitle">내 현황</strong>
+              </div>
             </div>
             <ul id="memberDashboardList" class="member-dashboard-list" aria-live="polite"></ul>
           </section>
 
-          <section class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
+          <header class="workspace-section-divider workspace-personal-divider">
+            <div><span>01</span><div><strong>개인 공간</strong><p>프로필과 나만의 메모를 관리합니다.</p></div></div>
+          </header>
+
+          <section id="memberProfileBlock" class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
             <div class="member-block-header">
-              <strong id="memberProfileTitle">내 프로필</strong>
+              <div>
+                <p class="panel-label">Profile</p>
+                <strong id="memberProfileTitle">내 프로필</strong>
+              </div>
             </div>
             <form id="memberProfileForm" class="member-profile-form" autocomplete="off">
               <div class="member-profile-preview">
@@ -150,9 +184,32 @@
             </form>
           </section>
 
-          <section class="member-block member-groups-block" aria-labelledby="memberGroupsTitle">
+          <section id="memberMemoBlock" class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
             <div class="member-block-header">
-              <strong id="memberGroupsTitle">내 그룹</strong>
+              <div>
+                <p class="panel-label">Private Note</p>
+                <strong id="memberMemoTitle">내 메모</strong>
+              </div>
+            </div>
+            <form id="memberMemoForm" class="member-memo-form">
+              <label class="field" for="memberMemoInput">
+                <span>메모</span>
+                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
+              </label>
+              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
+            </form>
+          </section>
+
+          <header class="workspace-section-divider workspace-team-divider">
+            <div><span>02</span><div><strong>팀 공간</strong><p>그룹을 만들고 초대, 공지, 공연 정보를 이어서 관리합니다.</p></div></div>
+          </header>
+
+          <section id="memberGroupsBlock" class="member-block member-groups-block" aria-labelledby="memberGroupsTitle">
+            <div class="member-block-header">
+              <div>
+                <p class="panel-label">Groups</p>
+                <strong id="memberGroupsTitle">내 그룹</strong>
+              </div>
             </div>
             <form id="memberGroupForm" class="member-inline-form" autocomplete="off">
               <label class="field" for="memberGroupNameInput">
@@ -166,7 +223,10 @@
 
           <section class="member-block member-invite-block" aria-labelledby="memberInviteTitle">
             <div class="member-block-header">
-              <strong id="memberInviteTitle">그룹 초대</strong>
+              <div>
+                <p class="panel-label">Invite</p>
+                <strong id="memberInviteTitle">그룹 초대</strong>
+              </div>
             </div>
             <form id="memberInviteForm" class="member-inline-form" autocomplete="off">
               <label class="field" for="memberInviteGroupSelect">
@@ -183,14 +243,20 @@
 
           <section class="member-block member-messages-block" aria-labelledby="memberMessagesTitle">
             <div class="member-block-header">
-              <strong id="memberMessagesTitle">메시지함</strong>
+              <div>
+                <p class="panel-label">Inbox</p>
+                <strong id="memberMessagesTitle">메시지함</strong>
+              </div>
             </div>
             <ul id="memberMessageList" class="member-list"></ul>
           </section>
 
           <section id="memberGroupDetail" class="member-block member-group-detail-block" aria-labelledby="memberGroupDetailTitle">
             <div class="member-block-header">
-              <strong id="memberGroupDetailTitle">그룹 상세</strong>
+              <div>
+                <p class="panel-label">Selected Group</p>
+                <strong id="memberGroupDetailTitle">그룹 상세</strong>
+              </div>
               <span id="memberGroupDetailRole" class="member-pill">member</span>
             </div>
             <p id="memberGroupDetailStatus" class="save-status">그룹을 선택하면 상세 정보를 확인합니다.</p>
@@ -274,18 +340,6 @@
             </div>
           </section>
 
-          <section class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
-            <div class="member-block-header">
-              <strong id="memberMemoTitle">내 메모</strong>
-            </div>
-            <form id="memberMemoForm" class="member-memo-form">
-              <label class="field" for="memberMemoInput">
-                <span>메모</span>
-                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
-              </label>
-              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
-            </form>
-          </section>
         </div>
       </section>
     </section>
