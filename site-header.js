@@ -25,12 +25,17 @@
     {
       id: "workspace",
       label: "내 작업 공간",
-      href: "./workspace.html#memberPanel",
+      href: "./workspace.html",
     },
     {
       id: "audience",
       label: "관객용 목록",
       href: "./audience.html",
+    },
+    {
+      id: "mypage",
+      label: "마이페이지",
+      href: "./mypage.html",
     },
   ];
 
@@ -47,7 +52,7 @@
         <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
         <nav class="site-nav" aria-label="상단 메뉴">
           ${navLinks.join("\n          ")}
-          <a href="./login.html"${authAriaCurrent} data-auth-nav-link data-signup-href="./login.html" data-mypage-href="./workspace.html#memberPanel">로그인</a>
+          <a href="./login.html"${authAriaCurrent} data-auth-nav-link data-signup-href="./login.html">로그인</a>
         </nav>
       </div>
     </header>

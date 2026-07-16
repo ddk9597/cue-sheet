@@ -1,9 +1,7 @@
 (() => {
   const SESSION_ENDPOINT = "/api/auth/session";
   const SIGNUP_LABEL = "로그인";
-  const MYPAGE_LABEL = "마이페이지";
   const DEFAULT_SIGNUP_HREF = "./login.html";
-  const DEFAULT_MYPAGE_HREF = "./workspace.html#memberPanel";
 
   window.CueSheetAuthNav = {
     refresh: updateAuthNavigation,
@@ -22,14 +20,10 @@
     const authLinks = [...document.querySelectorAll("[data-auth-nav-link]")];
 
     for (const link of authLinks) {
-      const nextLabel = authenticated ? MYPAGE_LABEL : SIGNUP_LABEL;
-      const nextHref = authenticated
-        ? link.dataset.mypageHref || DEFAULT_MYPAGE_HREF
-        : link.dataset.signupHref || DEFAULT_SIGNUP_HREF;
-
-      link.textContent = nextLabel;
-      link.href = nextHref;
-      link.setAttribute("aria-label", nextLabel);
+      link.hidden = authenticated;
+      link.textContent = SIGNUP_LABEL;
+      link.href = link.dataset.signupHref || DEFAULT_SIGNUP_HREF;
+      link.setAttribute("aria-label", SIGNUP_LABEL);
     }
   }
 

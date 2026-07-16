@@ -968,6 +968,10 @@ async function initializeAuth() {
 }
 
 async function initializeStorage() {
+  if (!cueList && !totalDuration && !cueForm && !saveButton) {
+    return;
+  }
+
   const loadVersion = ++cueStorageLoadVersion;
   const storageIdentity = getCueStorageIdentity();
 
@@ -1051,6 +1055,10 @@ async function initializeStorage() {
 }
 
 async function initializePracticeTracker() {
+  if (!practiceCalendar && !practiceForm) {
+    return;
+  }
+
   const localLogs = loadPracticeLogs();
 
   practiceLogs = clonePracticeLogs(localLogs);
@@ -5716,6 +5724,10 @@ function syncCueOrderWithDom() {
 
 function setupTodoInteractDrag() {
   if (todoInteractInitialized) {
+    return;
+  }
+
+  if (!todoEditor) {
     return;
   }
 

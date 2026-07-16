@@ -1144,13 +1144,17 @@ textarea {
   grid-column: span 4;
 }
 
+.workspace-page:not(.mypage-page) .member-memo-block {
+  grid-column: 1 / -1;
+}
+
 .workspace-page .member-groups-block,
 .workspace-page .member-messages-block {
   grid-column: span 6;
 }
 
 .workspace-page .member-invite-block {
-  grid-column: span 6;
+  grid-column: 1 / -1;
 }
 
 .workspace-page .member-dashboard-list {
@@ -1187,6 +1191,10 @@ textarea {
   resize: vertical;
 }
 
+.workspace-page:not(.mypage-page) .member-memo-form textarea {
+  min-height: 150px;
+}
+
 .workspace-page .member-group-detail-block {
   padding: clamp(18px, 3vw, 24px);
   background: rgba(248, 249, 254, 0.76);
@@ -1204,6 +1212,76 @@ textarea {
 .workspace-page [id="memberGroupsBlock"],
 .workspace-page [id="memberGroupDetail"],
 .workspace-page [id="memberMemoBlock"] {
+  scroll-margin-top: 108px;
+}
+
+.mypage-page {
+  gap: 16px;
+}
+
+.mypage-hero {
+  min-height: 250px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(184, 168, 234, 0.24), transparent 22rem),
+    radial-gradient(circle at 68% 112%, rgba(238, 167, 191, 0.18), transparent 18rem),
+    linear-gradient(135deg, rgba(247, 244, 255, 0.98), rgba(240, 247, 255, 0.96) 58%, rgba(255, 247, 250, 0.96));
+}
+
+.mypage-member-section {
+  margin-top: 0;
+}
+
+.mypage-page .member-panel {
+  border-color: rgba(150, 130, 204, 0.18);
+}
+
+.mypage-page .member-dashboard-block {
+  background:
+    linear-gradient(135deg, rgba(246, 242, 255, 0.9), rgba(239, 247, 255, 0.8)),
+    rgba(255, 255, 255, 0.72);
+}
+
+.mypage-page .member-dashboard-item:first-child {
+  grid-column: auto;
+}
+
+.mypage-profile-divider > div > span {
+  background: rgba(184, 168, 234, 0.2);
+}
+
+.mypage-page .member-profile-block {
+  grid-column: span 8;
+}
+
+.mypage-link-block {
+  grid-column: span 4;
+  align-content: start;
+  min-height: 100%;
+  background:
+    linear-gradient(150deg, rgba(245, 242, 255, 0.82), rgba(255, 250, 252, 0.76)),
+    rgba(255, 255, 255, 0.7) !important;
+}
+
+.mypage-link-block > p {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.mypage-page-links {
+  display: grid;
+  gap: 9px;
+  margin-top: 6px;
+}
+
+.mypage-page-links .primary-button,
+.mypage-page-links .ghost-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.mypage-page [id="mypageSummary"] {
   scroll-margin-top: 108px;
 }
 
