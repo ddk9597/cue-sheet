@@ -960,6 +960,7 @@
     const signupFinalStatus = document.querySelector("#signupFinalStatus");
     const signupForm = document.querySelector("#signupForm");
     const signupCompleteModal = document.querySelector("#signupCompleteModal");
+    const signupCompleteMessage = document.querySelector("#signupCompleteMessage");
     const goHomeButton = document.querySelector("#goHomeButton");
     const saveAllButton = document.querySelector("#saveAllButton");
     const signupSummary = document.querySelector("#signupSummary");
@@ -1302,12 +1303,17 @@
           return;
         }
 
+        let profileImageUploadFailed = false;
+
         if (pendingProfileImageDataUrl) {
           const uploadedPictureUrl = await uploadSignupProfileImage(pendingProfileImageDataUrl);
 
-          if (!uploadedPictureUrl) return;
-          profile.pictureUrl = uploadedPictureUrl;
-          pictureUrlInput.value = uploadedPictureUrl;
+          if (uploadedPictureUrl) {
+            profile.pictureUrl = uploadedPictureUrl;
+            pictureUrlInput.value = uploadedPictureUrl;
+          } else {
+            profileImageUploadFailed = true;
+          }
         }
 
         signupState.consent = consent;
@@ -1322,7 +1328,9 @@
         passwordConfirmInput.value = "";
         updatePasswordRules();
         persistDraft();
-        setStatus("가입이 완료되었습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
+        setStatus(profileImageUploadFailed
+          ? "가입은 완료되었지만 프로필 사진은 저장하지 못했습니다. 마이페이지에서 다시 등록해 주세요."
+          : "가입이 완료되었습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
         renderState();
         const authenticated = await confirmAuthenticatedSession();
 
@@ -1334,7 +1342,7 @@
 
         clearDraft();
         signupCompleted = true;
-        showSignupCompleteModal();
+        showSignupCompleteModal(profileImageUploadFailed);
       } finally {
         signupSubmitInFlight = false;
 
@@ -1390,13 +1398,11 @@
         const payload = await safeReadJson(response);
 
         if (!response.ok) {
-          setStatus(payload.message || "프로필 사진을 업로드하지 못했습니다.", true);
           return "";
         }
         pendingProfileImageDataUrl = "";
         return payload.profile?.pictureUrl || "";
       } catch {
-        setStatus("프로필 사진을 업로드하지 못했습니다.", true);
         return "";
       }
     }
@@ -1416,7 +1422,10 @@
       }
     }
 
-    function showSignupCompleteModal() {
+    function showSignupCompleteModal(profileImageUploadFailed = false) {
+      signupCompleteMessage.textContent = profileImageUploadFailed
+        ? "계정은 정상적으로 생성되었습니다. 프로필 사진은 마이페이지에서 다시 등록해 주세요."
+        : "이메일 인증 계정으로 로그인되었습니다. 잠시 후 메인 페이지로 이동합니다.";
       signupCompleteModal.classList.add("is-open");
       goHomeButton.focus();
       window.setTimeout(goHome, SIGNUP_REDIRECT_DELAY_MS);
