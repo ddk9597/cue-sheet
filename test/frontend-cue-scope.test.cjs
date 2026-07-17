@@ -217,7 +217,7 @@ function createHarness({ localStorageEntries = {} } = {}) {
   sandbox.prompt = () => null;
   sandbox.requestAnimationFrame = (callback) => callback();
   sandbox.getSelection = () => null;
-  sandbox.location = { href: "http://localhost/cues.html" };
+  sandbox.location = { href: "http://localhost/workspace.html" };
   sandbox.matchMedia = () => ({ matches: false });
   sandbox.scrollX = 0;
   sandbox.scrollY = 0;

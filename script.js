@@ -42,7 +42,6 @@ const TODO_DEFAULT_HTML = `
 const STORAGE_MODE_LOADING = "loading";
 const STORAGE_MODE_DATABASE = "database";
 const STORAGE_MODE_LOCAL = "local";
-const isCueWorkspacePage = document.body.classList.contains("cue-workspace-page");
 const authTitle = document.querySelector("#authTitle");
 const authStatus = document.querySelector("#authStatus");
 const googleSignInButton = document.querySelector("#googleSignInButton");
@@ -283,6 +282,9 @@ for (const modal of blockingModals) {
     syncModalState();
   });
 }
+
+window.addEventListener("hashchange", openWorkspaceCueEditorFromUrl);
+openWorkspaceCueEditorFromUrl();
 
 workspaceAudienceRefreshButton?.addEventListener("click", () => {
   loadWorkspaceAudiencePreview();
@@ -678,7 +680,7 @@ tapTempoApplyButton?.addEventListener("click", () => {
       // Ignore session storage failures and still move to the editor.
     }
 
-    window.location.href = "./cues.html#cue-editor";
+    window.location.href = "./workspace.html#cue-editor";
     return;
   }
 
@@ -1161,11 +1163,6 @@ function openModalById(modalId, section = "") {
     return;
   }
 
-  if (isCueWorkspacePage && modal === cueModal) {
-    focusCueModalSection(section);
-    return;
-  }
-
   if (!modal.open) {
     if (typeof modal.showModal === "function") {
       modal.showModal();
@@ -1250,11 +1247,6 @@ function closeModal(modal) {
     return;
   }
 
-  if (isCueWorkspacePage && modal === cueModal) {
-    closeCueEntryOverlay({ restoreFocus: false });
-    return;
-  }
-
   if (modal === cueModal) {
     closeCueEntryOverlay({ restoreFocus: false });
   }
@@ -1268,10 +1260,20 @@ function closeModal(modal) {
 }
 
 function syncModalState() {
-  const hasOpenBlockingDialog = [...document.querySelectorAll("dialog[open]")]
-    .some((dialog) => !(isCueWorkspacePage && dialog === cueModal));
+  const hasOpenBlockingDialog = Boolean(document.querySelector("dialog[open]"));
 
   document.body.classList.toggle("has-modal-open", hasOpenBlockingDialog);
+}
+
+function openWorkspaceCueEditorFromUrl() {
+  const cueEditorHashRequested = window.location.hash === "#cue-editor";
+  const cueEditorQueryRequested = /(?:^|[?&])tool=cue(?:&|$)/.test(window.location.search || "");
+
+  if (!hasCueEditor || (!cueEditorHashRequested && !cueEditorQueryRequested)) {
+    return;
+  }
+
+  openModalById("cueModal", "input");
 }
 
 function focusCueModalSection(section) {
@@ -1960,7 +1962,7 @@ function openCueEntryOverlay(options = {}) {
     return;
   }
 
-  if (!isCueWorkspacePage && !cueModal?.open) {
+  if (!cueModal?.open) {
     openModalById("cueModal", "input");
   }
 

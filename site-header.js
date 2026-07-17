@@ -18,19 +18,9 @@
       href: "./about.html",
     },
     {
-      id: "cues",
-      label: "목록 편집",
-      href: "./cues.html#cue-editor",
-    },
-    {
       id: "workspace",
       label: "내 작업 공간",
       href: "./workspace.html",
-    },
-    {
-      id: "audience",
-      label: "관객용 목록",
-      href: "./audience.html",
     },
     {
       id: "mypage",

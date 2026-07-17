@@ -1,6 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
+  "redirects": [
+    {
+      "source": "/cues.html",
+      "destination": "/workspace.html?tool=cue",
+      "permanent": true
+    },
+    {
+      "source": "/cues",
+      "destination": "/workspace.html?tool=cue",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
