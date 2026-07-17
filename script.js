@@ -57,8 +57,9 @@ const memberLoginLink = document.querySelector(".member-login-link");
 const memberDirectoryList = document.querySelector("#memberDirectoryList");
 const memberPanel = document.querySelector("#memberPanel");
 const memberStatus = document.querySelector("#memberStatus");
-const memberProfileModalStatus = document.querySelector("#memberProfileModalStatus");
+const memberWorkspaceModalStatus = document.querySelector("#memberWorkspaceModalStatus");
 const memberGroupModalStatus = document.querySelector("#memberGroupModalStatus");
+const memberMessagesModalStatus = document.querySelector("#memberMessagesModalStatus");
 const memberProfileForm = document.querySelector("#memberProfileForm");
 const memberProfileImage = document.querySelector("#memberProfileImage");
 const memberProfileInitial = document.querySelector("#memberProfileInitial");
@@ -134,6 +135,9 @@ const practiceModal = document.querySelector("#practiceModal");
 const cueModal = document.querySelector("#cueModal");
 const todoModal = document.querySelector("#todoModal");
 const audienceModal = document.querySelector("#audienceModal");
+const workspaceModal = document.querySelector("#workspaceModal");
+const groupModal = document.querySelector("#groupModal");
+const messagesModal = document.querySelector("#messagesModal");
 const workspaceAudienceStatus = document.querySelector("#workspaceAudienceStatus");
 const workspaceAudienceCount = document.querySelector("#workspaceAudienceCount");
 const workspaceAudienceRefreshButton = document.querySelector("#workspaceAudienceRefreshButton");
@@ -450,7 +454,7 @@ memberMessageList?.addEventListener("click", (event) => {
   }
 
   if (groupLink) {
-    loadMemberGroupDetail(groupLink.dataset.memberMessageGroup);
+    openMemberGroupFromMessage(groupLink.dataset.memberMessageGroup);
   }
 });
 
@@ -1172,14 +1176,18 @@ function openModalById(modalId, section = "") {
 
   syncModalState();
 
-  if (modal.id === "profileModal" && memberProfileModalStatus) {
-    memberProfileModalStatus.textContent = "프로필 정보를 확인하고 수정할 수 있습니다.";
+  if (modal === workspaceModal && memberWorkspaceModalStatus) {
+    memberWorkspaceModalStatus.textContent = "프로필과 개인 메모를 확인하고 수정할 수 있습니다.";
   }
 
-  if (modal.id === "groupModal" && memberGroupModalStatus) {
+  if (modal === groupModal && memberGroupModalStatus) {
     memberGroupModalStatus.textContent = memberGroupDetailInFlight
       ? "그룹 상세를 불러오는 중입니다."
       : "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
+  }
+
+  if (modal === messagesModal && memberMessagesModalStatus) {
+    memberMessagesModalStatus.textContent = "받은 그룹 초대와 알림을 확인할 수 있습니다.";
   }
 
   if (modal === audienceModal) {
@@ -1212,15 +1220,27 @@ function openModalById(modalId, section = "") {
       return;
     }
 
-    if (modal.id === "profileModal") {
+    if (modal === workspaceModal) {
+      if (section === "memo") {
+        memberMemoInput?.focus();
+        return;
+      }
+
       memberProfileNameInput?.focus();
       return;
     }
 
-    if (modal.id === "groupModal") {
+    if (modal === groupModal) {
       const selectedGroup = memberGroupList?.querySelector('[aria-selected="true"]');
 
       (selectedGroup || memberGroupNameInput)?.focus();
+      return;
+    }
+
+    if (modal === messagesModal) {
+      const firstMessageAction = memberMessageList?.querySelector("button:not(:disabled)");
+
+      (firstMessageAction || memberMessageList)?.focus();
     }
   });
 }
@@ -2910,6 +2930,7 @@ async function acceptMemberInvite(inviteId) {
 
   memberActionInFlight = true;
   memberNotice = "초대를 수락하는 중입니다.";
+  focusMemberMessagesFeedback();
   updateMemberUi();
 
   try {
@@ -2940,6 +2961,7 @@ async function rejectMemberInvite(inviteId) {
 
   memberActionInFlight = true;
   memberNotice = "초대를 거절하는 중입니다.";
+  focusMemberMessagesFeedback();
   updateMemberUi();
 
   try {
@@ -2970,6 +2992,7 @@ async function markMemberMessageRead(messageId, type = "invite") {
 
   memberActionInFlight = true;
   memberNotice = "메시지를 읽음 처리하는 중입니다.";
+  focusMemberMessagesFeedback();
   updateMemberUi();
 
   try {
@@ -2994,6 +3017,40 @@ async function markMemberMessageRead(messageId, type = "invite") {
     memberActionInFlight = false;
     updateMemberUi();
   }
+}
+
+function openMemberGroupFromMessage(groupId) {
+  const targetGroupId = String(groupId || "").trim();
+  const canOpenGroup = memberGroups.some((group) => String(group.id) === targetGroupId);
+
+  if (
+    !authSession.authenticated
+    || memberWorkspaceInFlight
+    || memberActionInFlight
+    || !targetGroupId
+    || !canOpenGroup
+  ) {
+    return;
+  }
+
+  if (messagesModal) {
+    closeModal(messagesModal);
+  }
+
+  pendingMemberGroupFocusId = targetGroupId;
+  loadMemberGroupDetail(targetGroupId);
+
+  if (groupModal) {
+    openModalById(groupModal.id);
+  }
+}
+
+function focusMemberMessagesFeedback() {
+  if (!messagesModal?.open || !memberMessagesModalStatus) {
+    return;
+  }
+
+  memberMessagesModalStatus.focus({ preventScroll: true });
 }
 
 async function loadMemberGroupDetail(groupId, options = {}) {
@@ -5030,16 +5087,22 @@ function updateMemberUi() {
     memberStatus.classList.remove("is-error");
   }
 
-  if (memberProfileModalStatus) {
-    memberProfileModalStatus.textContent = !isLoggedIn
-      ? "로그인 후 프로필을 관리할 수 있습니다."
-      : memberNotice || "프로필 정보를 확인하고 수정할 수 있습니다.";
+  if (memberWorkspaceModalStatus) {
+    memberWorkspaceModalStatus.textContent = !isLoggedIn
+      ? "로그인 후 내 작업공간을 사용할 수 있습니다."
+      : memberNotice || "프로필과 개인 메모를 확인하고 수정할 수 있습니다.";
   }
 
   if (memberGroupModalStatus) {
     memberGroupModalStatus.textContent = !isLoggedIn
       ? "로그인 후 그룹 작업을 사용할 수 있습니다."
       : memberNotice || "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
+  }
+
+  if (memberMessagesModalStatus) {
+    memberMessagesModalStatus.textContent = !isLoggedIn
+      ? "로그인 후 메시지를 확인할 수 있습니다."
+      : memberNotice || "받은 그룹 초대와 알림을 확인할 수 있습니다.";
   }
 
   if (memberGroupNameInput) {
@@ -5345,7 +5408,7 @@ function renderMemberMessages(isLoggedIn, isBusy) {
   }
 
   if (!memberMessages.length) {
-    memberMessageList.appendChild(createMemberEmptyItem("새 초대가 없습니다."));
+    memberMessageList.appendChild(createMemberEmptyItem("받은 메시지가 없습니다."));
     return;
   }
 
@@ -5362,6 +5425,7 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     const rejectButton = document.createElement("button");
     const inviter = message.inviterName || message.inviterEmail;
     const isInvite = message.type === "invite";
+    const canOpenGroup = memberGroups.some((group) => String(group.id) === String(message.groupId));
     const typeLabel = isInvite ? "초대" : "공지";
     const statusLabel = {
       pending: "대기",
@@ -5387,7 +5451,7 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     groupButton.className = "ghost-button member-small-button";
     groupButton.type = "button";
     groupButton.textContent = "그룹";
-    groupButton.disabled = isBusy || !message.groupId;
+    groupButton.disabled = isBusy;
     groupButton.dataset.memberMessageGroup = message.groupId;
     readButton.className = "ghost-button member-small-button";
     readButton.type = "button";
@@ -5407,7 +5471,10 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     rejectButton.dataset.memberInviteReject = message.id;
 
     main.append(title, meta, body);
-    actions.append(groupButton, readButton);
+    if (canOpenGroup) {
+      actions.append(groupButton);
+    }
+    actions.append(readButton);
     if (isInvite) {
       actions.append(acceptButton, rejectButton);
     }

@@ -18,9 +18,9 @@
           오늘 필요한 준비부터 팀과 공유할 공연 정보까지, 한곳에서 차분하게 이어가세요.
         </p>
         <nav class="workspace-hero-nav" aria-label="작업 공간 바로가기">
-          <a href="#memberMemoBlock">개인 메모</a>
-          <button type="button" data-modal-target="profileModal" data-member-modal-trigger>프로필</button>
-          <button type="button" data-modal-target="groupModal" data-member-modal-trigger>그룹 작업</button>
+          <button type="button" data-modal-target="workspaceModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="workspaceModal">내 작업공간</button>
+          <button type="button" data-modal-target="groupModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="groupModal">그룹</button>
+          <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함</button>
           <a href="./mypage.html">마이페이지</a>
         </nav>
       </div>
@@ -118,7 +118,7 @@
         <div class="member-header workspace-member-header">
           <div>
             <p class="panel-label">Work Management</p>
-            <strong id="memberTitle" class="member-title">개인 준비와 그룹 작업</strong>
+            <strong id="memberTitle" class="member-title">작업공간 메뉴</strong>
             <span id="authEmailLabel" class="auth-email member-session-email" hidden></span>
           </div>
           <div class="member-header-actions">
@@ -129,9 +129,9 @@
         <div class="workspace-member-status-row">
           <p id="memberStatus" class="save-status" aria-live="polite">로그인 후 사용할 수 있습니다.</p>
           <nav class="workspace-member-nav" aria-label="계정 작업 바로가기">
-            <a href="#memberMemoBlock">개인 메모</a>
-            <button type="button" data-modal-target="profileModal" data-member-modal-trigger>프로필</button>
-            <button type="button" data-modal-target="groupModal" data-member-modal-trigger>그룹</button>
+            <button type="button" data-modal-target="workspaceModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="workspaceModal">내 작업공간</button>
+            <button type="button" data-modal-target="groupModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="groupModal">그룹</button>
+            <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함</button>
           </nav>
         </div>
         <div class="member-login-gate" aria-label="로그인 안내">
@@ -146,37 +146,22 @@
           </div>
         </div>
         <div class="member-grid">
-          <section class="workspace-management-grid" aria-label="프로필과 그룹 관리">
-            <button class="workspace-management-card is-profile" type="button" data-modal-target="profileModal" data-member-modal-trigger>
-              <span class="workspace-management-icon" aria-hidden="true">P</span>
-              <span><small>Profile</small><strong>프로필 관리</strong><em>내 사진과 공개 정보를 확인하고 수정합니다.</em></span>
+          <section class="workspace-management-grid" aria-label="작업공간, 그룹과 메시지함">
+            <button class="workspace-management-card is-workspace" type="button" data-modal-target="workspaceModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="workspaceModal">
+              <span class="workspace-management-icon" aria-hidden="true">W</span>
+              <span><small>Workspace</small><strong>내 작업공간</strong><em>내 프로필과 공연 준비 메모를 관리합니다.</em></span>
               <i aria-hidden="true">→</i>
             </button>
-            <button class="workspace-management-card is-group" type="button" data-modal-target="groupModal" data-member-modal-trigger>
+            <button class="workspace-management-card is-group" type="button" data-modal-target="groupModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="groupModal">
               <span class="workspace-management-icon" aria-hidden="true">G</span>
-              <span><small>Groups</small><strong>그룹 작업</strong><em>그룹을 선택해 멤버, 큐시트, 공지와 공연을 관리합니다.</em></span>
+              <span><small>Groups</small><strong>그룹</strong><em>멤버, 큐시트, 공지와 공연을 관리합니다.</em></span>
               <i aria-hidden="true">→</i>
             </button>
-          </section>
-
-          <header class="workspace-section-divider workspace-personal-divider">
-            <div><span>01</span><div><strong>개인 준비</strong><p>공연과 합주에 필요한 나만의 메모를 관리합니다.</p></div></div>
-          </header>
-
-          <section id="memberMemoBlock" class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
-            <div class="member-block-header">
-              <div>
-                <p class="panel-label">Private Note</p>
-                <strong id="memberMemoTitle">내 메모</strong>
-              </div>
-            </div>
-            <form id="memberMemoForm" class="member-memo-form">
-              <label class="field" for="memberMemoInput">
-                <span>메모</span>
-                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="7" placeholder="공연 준비 메모"></textarea>
-              </label>
-              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
-            </form>
+            <button class="workspace-management-card is-messages" type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">
+              <span class="workspace-management-icon" aria-hidden="true">M</span>
+              <span><small>Inbox</small><strong>메시지함</strong><em>받은 그룹 초대와 새 알림을 확인합니다.</em></span>
+              <i aria-hidden="true">→</i>
+            </button>
           </section>
         </div>
       </section>
@@ -477,66 +462,84 @@
     </div>
   </dialog>
 
-  <dialog id="profileModal" class="modal workspace-feature-modal" aria-labelledby="profileModalTitle">
+  <dialog id="workspaceModal" class="modal modal-wide workspace-personal-modal" aria-labelledby="workspaceModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <p class="panel-label">Profile</p>
-          <strong id="profileModalTitle" class="modal-title">프로필 관리</strong>
+          <p class="panel-label">Personal Workspace</p>
+          <strong id="workspaceModalTitle" class="modal-title">내 작업공간</strong>
         </div>
-        <button class="modal-close" type="button" data-modal-close aria-label="프로필 모달 닫기">닫기</button>
+        <button class="modal-close" type="button" data-modal-close aria-label="내 작업공간 모달 닫기">닫기</button>
       </div>
-      <div class="modal-body workspace-profile-modal-body">
-        <section id="memberProfileBlock" class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
-          <div class="member-block-header">
-            <div>
-              <p class="panel-label">Public Profile</p>
-              <strong id="memberProfileTitle">내 프로필</strong>
-            </div>
-          </div>
-          <p id="memberProfileModalStatus" class="save-status workspace-modal-status" aria-live="polite">
-            프로필 정보를 확인하고 수정할 수 있습니다.
-          </p>
-          <form id="memberProfileForm" class="member-profile-form" autocomplete="off">
-            <div class="member-profile-preview">
-              <img id="memberProfileImage" alt="" hidden>
-              <span id="memberProfileInitial" class="directory-avatar">M</span>
-            </div>
-            <div class="member-profile-fields">
-              <label class="field" for="memberProfileNameInput">
-                <span>이름</span>
-                <input id="memberProfileNameInput" name="profileName" type="text" maxlength="80" placeholder="홍길동">
-              </label>
-              <label class="field" for="memberProfileEmailInput">
-                <span>이메일</span>
-                <input id="memberProfileEmailInput" name="profileEmail" type="email" disabled>
-              </label>
-              <label class="field" for="memberProfileRegionInput">
-                <span>지역</span>
-                <input id="memberProfileRegionInput" name="profileRegion" type="text" maxlength="40" placeholder="서울">
-              </label>
-              <label class="field" for="memberProfilePositionInput">
-                <span>포지션</span>
-                <input id="memberProfilePositionInput" name="profilePosition" type="text" maxlength="40" placeholder="보컬, 기타">
-              </label>
-              <label class="field" for="memberProfileGenreInput">
-                <span>장르</span>
-                <input id="memberProfileGenreInput" name="profileGenre" type="text" maxlength="80" placeholder="인디록, 시티팝">
-              </label>
-              <div class="field profile-image-trigger">
-                <span>프로필 사진</span>
-                <input id="memberProfilePictureInput" name="profilePicture" type="hidden">
-                <button id="memberProfilePictureButton" class="ghost-button" type="button">사진 선택 및 편집</button>
-                <button id="memberProfilePictureRemoveButton" class="ghost-button" type="button">사진 제거</button>
+      <div class="modal-body workspace-personal-modal-body">
+        <p id="memberWorkspaceModalStatus" class="save-status workspace-modal-status" aria-live="polite">
+          프로필과 개인 메모를 확인하고 수정할 수 있습니다.
+        </p>
+        <div class="workspace-personal-modal-grid">
+          <section id="memberProfileBlock" class="member-block member-profile-block" aria-labelledby="memberProfileTitle">
+            <div class="member-block-header">
+              <div>
+                <p class="panel-label">Public Profile</p>
+                <strong id="memberProfileTitle">내 프로필</strong>
               </div>
-              <label class="field member-profile-intro" for="memberProfileMemoInput">
-                <span>소개</span>
-                <input id="memberProfileMemoInput" name="profileMemo" type="text" maxlength="120" placeholder="활동 가능 시간, 선호 팀 분위기 등">
-              </label>
-              <button id="memberProfileSaveButton" class="primary-button" type="submit">프로필 저장</button>
             </div>
-          </form>
-        </section>
+            <form id="memberProfileForm" class="member-profile-form" autocomplete="off">
+              <div class="member-profile-preview">
+                <img id="memberProfileImage" alt="" hidden>
+                <span id="memberProfileInitial" class="directory-avatar">M</span>
+              </div>
+              <div class="member-profile-fields">
+                <label class="field" for="memberProfileNameInput">
+                  <span>이름</span>
+                  <input id="memberProfileNameInput" name="profileName" type="text" maxlength="80" placeholder="홍길동">
+                </label>
+                <label class="field" for="memberProfileEmailInput">
+                  <span>이메일</span>
+                  <input id="memberProfileEmailInput" name="profileEmail" type="email" disabled>
+                </label>
+                <label class="field" for="memberProfileRegionInput">
+                  <span>지역</span>
+                  <input id="memberProfileRegionInput" name="profileRegion" type="text" maxlength="40" placeholder="서울">
+                </label>
+                <label class="field" for="memberProfilePositionInput">
+                  <span>포지션</span>
+                  <input id="memberProfilePositionInput" name="profilePosition" type="text" maxlength="40" placeholder="보컬, 기타">
+                </label>
+                <label class="field" for="memberProfileGenreInput">
+                  <span>장르</span>
+                  <input id="memberProfileGenreInput" name="profileGenre" type="text" maxlength="80" placeholder="인디록, 시티팝">
+                </label>
+                <div class="field profile-image-trigger">
+                  <span>프로필 사진</span>
+                  <input id="memberProfilePictureInput" name="profilePicture" type="hidden">
+                  <button id="memberProfilePictureButton" class="ghost-button" type="button">사진 선택 및 편집</button>
+                  <button id="memberProfilePictureRemoveButton" class="ghost-button" type="button">사진 제거</button>
+                </div>
+                <label class="field member-profile-intro" for="memberProfileMemoInput">
+                  <span>소개</span>
+                  <input id="memberProfileMemoInput" name="profileMemo" type="text" maxlength="120" placeholder="활동 가능 시간, 선호 팀 분위기 등">
+                </label>
+                <button id="memberProfileSaveButton" class="primary-button" type="submit">프로필 저장</button>
+              </div>
+            </form>
+          </section>
+
+          <section id="memberMemoBlock" class="member-block member-memo-block" aria-labelledby="memberMemoTitle">
+            <div class="member-block-header">
+              <div>
+                <p class="panel-label">Private Note</p>
+                <strong id="memberMemoTitle">내 메모</strong>
+              </div>
+            </div>
+            <form id="memberMemoForm" class="member-memo-form">
+              <label class="field" for="memberMemoInput">
+                <span>메모</span>
+                <textarea id="memberMemoInput" name="memberMemo" maxlength="5000" rows="10" placeholder="공연 준비 메모"></textarea>
+              </label>
+              <button id="memberMemoSaveButton" class="primary-button" type="submit">메모 저장</button>
+            </form>
+          </section>
+        </div>
       </div>
     </div>
   </dialog>
@@ -546,7 +549,7 @@
       <div class="modal-header">
         <div>
           <p class="panel-label">Group Workspace</p>
-          <strong id="groupModalTitle" class="modal-title">그룹 작업</strong>
+          <strong id="groupModalTitle" class="modal-title">그룹</strong>
         </div>
         <button class="modal-close" type="button" data-modal-close aria-label="그룹 모달 닫기">닫기</button>
       </div>
@@ -592,15 +595,6 @@
             </section>
           </details>
 
-          <details class="workspace-group-side-section">
-            <summary><span>메시지함</span><small>초대와 알림</small></summary>
-            <section class="member-block member-messages-block" aria-labelledby="memberMessagesTitle">
-              <div class="member-block-header">
-                <strong id="memberMessagesTitle">메시지함</strong>
-              </div>
-              <ul id="memberMessageList" class="member-list"></ul>
-            </section>
-          </details>
         </aside>
 
         <section id="memberGroupDetail" class="member-block member-group-detail-block workspace-group-content" aria-labelledby="memberGroupDetailTitle">
@@ -690,6 +684,32 @@
               <ul id="memberPerformanceList" class="member-list"></ul>
             </section>
           </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="messagesModal" class="modal modal-wide workspace-feature-modal workspace-messages-modal" aria-labelledby="messagesModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Inbox</p>
+          <strong id="messagesModalTitle" class="modal-title">메시지함</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="메시지함 모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body workspace-messages-modal-body">
+        <p id="memberMessagesModalStatus" class="save-status workspace-modal-status" tabindex="-1" aria-live="polite">
+          받은 그룹 초대와 알림을 확인할 수 있습니다.
+        </p>
+        <section class="member-block member-messages-block" aria-labelledby="memberMessagesTitle">
+          <div class="member-block-header">
+            <div>
+              <p class="panel-label">Received</p>
+              <strong id="memberMessagesTitle">받은 메시지</strong>
+            </div>
+          </div>
+          <ul id="memberMessageList" class="member-list workspace-message-list" tabindex="-1" aria-label="받은 메시지 목록"></ul>
         </section>
       </div>
     </div>

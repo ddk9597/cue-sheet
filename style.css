@@ -1090,7 +1090,7 @@ textarea {
 .workspace-management-grid {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1125,12 +1125,16 @@ textarea {
   box-shadow: none;
 }
 
-.workspace-management-card.is-profile {
+.workspace-management-card.is-workspace {
   background: linear-gradient(145deg, rgba(240, 247, 255, 0.92), rgba(249, 246, 255, 0.82));
 }
 
 .workspace-management-card.is-group {
   background: linear-gradient(145deg, rgba(243, 250, 247, 0.94), rgba(239, 246, 255, 0.84));
+}
+
+.workspace-management-card.is-messages {
+  background: linear-gradient(145deg, rgba(255, 248, 242, 0.94), rgba(249, 244, 255, 0.84));
 }
 
 .workspace-management-icon {
@@ -1147,6 +1151,10 @@ textarea {
 
 .is-group .workspace-management-icon {
   background: rgba(157, 219, 194, 0.25);
+}
+
+.is-messages .workspace-management-icon {
+  background: rgba(238, 167, 191, 0.22);
 }
 
 .workspace-management-card > span:nth-child(2) {
@@ -1388,16 +1396,28 @@ textarea {
   scroll-margin-top: 108px;
 }
 
+.workspace-personal-modal .modal-card,
 .workspace-feature-modal .modal-card,
 .workspace-group-modal .modal-card {
   max-height: calc(100vh - 28px);
 }
 
-.workspace-profile-modal-body {
+.workspace-personal-modal-body,
+.workspace-messages-modal-body {
+  display: grid;
+  gap: 14px;
   padding: 24px;
 }
 
-.workspace-profile-modal-body .member-profile-block,
+.workspace-personal-modal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.workspace-personal-modal .member-block,
+.workspace-messages-modal .member-block,
 .workspace-group-modal .member-block {
   display: grid;
   gap: 14px;
@@ -1408,11 +1428,43 @@ textarea {
   background: rgba(248, 250, 254, 0.78);
 }
 
-.workspace-profile-modal-body .member-profile-preview {
+.workspace-personal-modal .member-profile-preview {
   width: 96px;
   height: 96px;
   border: 4px solid #fff;
   box-shadow: 0 10px 24px rgba(82, 101, 133, 0.12);
+}
+
+.workspace-personal-modal .member-memo-block {
+  background: linear-gradient(150deg, rgba(248, 245, 255, 0.9), rgba(244, 250, 255, 0.82));
+}
+
+.workspace-personal-modal .member-memo-form textarea {
+  min-height: 360px;
+  resize: vertical;
+}
+
+.workspace-messages-modal .member-messages-block {
+  min-height: 300px;
+  background: linear-gradient(150deg, rgba(255, 249, 245, 0.92), rgba(247, 246, 255, 0.84));
+}
+
+.workspace-message-list {
+  max-height: min(560px, calc(100vh - 310px));
+  overflow-y: auto;
+  padding-right: 3px;
+  scrollbar-width: thin;
+}
+
+.workspace-message-list:focus-visible {
+  outline: 2px solid rgba(86, 124, 190, 0.46);
+  outline-offset: 4px;
+}
+
+.workspace-message-list .member-list-item,
+.workspace-message-list .member-list-empty {
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .workspace-group-modal .modal-card {
@@ -1434,6 +1486,11 @@ textarea {
   border: 1px solid rgba(93, 113, 154, 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.68);
+}
+
+.workspace-modal-status:focus-visible {
+  outline: 2px solid rgba(86, 124, 190, 0.46);
+  outline-offset: 3px;
 }
 
 .workspace-group-sidebar,
@@ -3412,7 +3469,8 @@ textarea {
 
   .member-profile-form,
   .member-login-gate,
-  .member-subgrid {
+  .member-subgrid,
+  .workspace-personal-modal-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3513,6 +3571,14 @@ textarea {
 
 .workspace-feature-modal {
   width: min(860px, calc(100vw - 28px));
+}
+
+.modal.workspace-personal-modal {
+  width: min(1180px, calc(100vw - 28px));
+}
+
+.modal.workspace-messages-modal {
+  width: min(900px, calc(100vw - 28px));
 }
 
 .modal.workspace-group-modal {
@@ -4916,6 +4982,23 @@ body.has-cue-touch-drag {
 
   .workspace-group-content {
     margin-top: 12px;
+  }
+
+  .workspace-message-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .workspace-message-list .member-list-item {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-message-list .member-list-actions {
+    justify-content: flex-start;
+  }
+
+  .workspace-personal-modal .member-memo-form textarea {
+    min-height: 240px;
   }
 
   .workspace-page .member-dashboard-item:first-child {
