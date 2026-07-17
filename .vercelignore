@@ -1,6 +1,11 @@
-test.md
 .git
 .gitignore
 .vercel
 .env*
 node_modules
+cloudflare.md
+test
+migrations
+*.md
+*.txt
+.npmrc

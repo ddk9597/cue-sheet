@@ -20,7 +20,6 @@ async function findOrCreateUser(sql, googleUser) {
   const normalizedEmail = normalizeEmail(googleUser?.email);
   const googleSub = String(googleUser?.googleSub || "").trim();
   const name = String(googleUser?.name || "").trim();
-  const pictureUrl = String(googleUser?.pictureUrl || "").trim();
 
   if (!normalizedEmail || !googleSub) {
     const error = new Error("Google 계정 정보를 확인할 수 없습니다.");
@@ -37,10 +36,10 @@ async function findOrCreateUser(sql, googleUser) {
     await sql.query(
       [
         "UPDATE app_users",
-        "SET email = $2, name = $3, picture_url = $4, last_login_at = NOW()",
+        "SET email = $2, name = $3, last_login_at = NOW()",
         "WHERE id = $1",
       ].join(" "),
-      [googleRows[0].id, normalizedEmail, name, pictureUrl],
+      [googleRows[0].id, normalizedEmail, name],
     );
     return {
       id: googleRows[0].id,
@@ -63,10 +62,10 @@ async function findOrCreateUser(sql, googleUser) {
     await sql.query(
       [
         "UPDATE app_users",
-        "SET google_sub = $2, name = $3, picture_url = $4, last_login_at = NOW()",
+        "SET google_sub = $2, name = $3, last_login_at = NOW()",
         "WHERE id = $1",
       ].join(" "),
-      [existingRows[0].id, googleSub, name, pictureUrl],
+      [existingRows[0].id, googleSub, name],
     );
     return {
       id: existingRows[0].id,
@@ -76,11 +75,11 @@ async function findOrCreateUser(sql, googleUser) {
 
   const insertedRows = await sql.query(
     [
-      "INSERT INTO app_users (email, google_sub, name, picture_url, last_login_at)",
-      "VALUES ($1, $2, $3, $4, NOW())",
+      "INSERT INTO app_users (email, google_sub, name, last_login_at)",
+      "VALUES ($1, $2, $3, NOW())",
       "RETURNING id, email",
     ].join(" "),
-    [normalizedEmail, googleSub, name, pictureUrl],
+    [normalizedEmail, googleSub, name],
   );
 
   return insertedRows[0];
@@ -160,7 +159,6 @@ async function updateEmailUserSignup(sql, userId, payload) {
   const region = normalizeProfileText(payload.region, 40);
   const position = normalizeProfileText(payload.position, 40);
   const genre = normalizeProfileText(payload.genre, 80);
-  const pictureUrl = normalizeProfileUrl(payload.pictureUrl);
   const password = String(payload.password || "");
 
   if (!isValidEmail(email)) {
@@ -191,20 +189,13 @@ async function updateEmailUserSignup(sql, userId, payload) {
     throw error;
   }
 
-  if (String(payload.pictureUrl || "").trim() && !pictureUrl) {
-    const error = new Error("프로필사진 URL을 확인해 주세요.");
-
-    error.statusCode = 400;
-    throw error;
-  }
-
   const passwordRecord = createPasswordRecord(password);
   const rows = await sql.query(
     [
       "UPDATE app_users",
       "SET email = $2, name = $3, birth_date = $4, phone = $5, memo = $6,",
-      "region = $7, \"position\" = $8, genre = $9, picture_url = $10,",
-      "password_hash = $11, password_salt = $12, last_login_at = NOW()",
+      "region = $7, \"position\" = $8, genre = $9,",
+      "password_hash = $10, password_salt = $11, last_login_at = NOW()",
       "WHERE id = $1",
       "RETURNING id, email",
     ].join(" "),
@@ -218,7 +209,6 @@ async function updateEmailUserSignup(sql, userId, payload) {
       region,
       position,
       genre,
-      pictureUrl,
       passwordRecord.hash,
       passwordRecord.salt,
     ],
@@ -236,22 +226,6 @@ async function updateEmailUserSignup(sql, userId, payload) {
 
 function normalizeProfileText(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
-}
-
-function normalizeProfileUrl(value) {
-  const url = String(value || "").trim().slice(0, 500);
-
-  if (!url) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(url);
-
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
-  } catch {
-    return "";
-  }
 }
 
 async function authenticateEmailPassword(sql, email, password) {

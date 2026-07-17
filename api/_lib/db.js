@@ -50,6 +50,8 @@ async function ensureSchemaLocked(sql) {
       "google_sub TEXT UNIQUE,",
       "name TEXT NOT NULL DEFAULT '',",
       "picture_url TEXT NOT NULL DEFAULT '',",
+      "picture_key TEXT NOT NULL DEFAULT '',",
+      "pending_picture_key TEXT NOT NULL DEFAULT '',",
       "region TEXT NOT NULL DEFAULT '',",
       "\"position\" TEXT NOT NULL DEFAULT '',",
       "genre TEXT NOT NULL DEFAULT '',",
@@ -66,6 +68,8 @@ async function ensureSchemaLocked(sql) {
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_url TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_key TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pending_picture_key TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS \"position\" TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS genre TEXT NOT NULL DEFAULT ''");

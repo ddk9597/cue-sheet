@@ -67,7 +67,6 @@ const memberProfileEmailInput = document.querySelector("#memberProfileEmailInput
 const memberProfileRegionInput = document.querySelector("#memberProfileRegionInput");
 const memberProfilePositionInput = document.querySelector("#memberProfilePositionInput");
 const memberProfileGenreInput = document.querySelector("#memberProfileGenreInput");
-const memberProfilePictureInput = document.querySelector("#memberProfilePictureInput");
 const memberProfilePictureButton = document.querySelector("#memberProfilePictureButton");
 const memberProfilePictureRemoveButton = document.querySelector("#memberProfilePictureRemoveButton");
 const memberProfileMemoInput = document.querySelector("#memberProfileMemoInput");
@@ -211,6 +210,7 @@ let memberGroupMessages = [];
 let memberGroupPerformances = [];
 let memberPerformanceCueLinks = {};
 let memberNotice = "";
+let memberNoticeIsError = false;
 let memberWorkspaceInFlight = false;
 let memberActionInFlight = false;
 let memberGroupDetailInFlight = false;
@@ -477,12 +477,10 @@ memberProfilePictureButton?.addEventListener("click", () => {
 memberProfilePictureRemoveButton?.addEventListener("click", removeMemberProfileImage);
 
 memberProfileNameInput?.addEventListener("input", () => {
-  if (!memberProfilePictureInput?.value.trim()) {
-    renderMemberProfilePreview({
-      name: memberProfileNameInput.value,
-      pictureUrl: "",
-    });
-  }
+  renderMemberProfilePreview({
+    name: memberProfileNameInput.value,
+    pictureUrl: memberProfile?.pictureUrl || "",
+  });
 });
 
 memberGroupList?.addEventListener("click", (event) => {
@@ -2648,6 +2646,7 @@ async function loadMemberWorkspace() {
   }
 
   memberWorkspaceInFlight = true;
+  memberNoticeIsError = false;
   memberNotice = "회원 정보를 불러오는 중입니다.";
   updateMemberUi();
 
@@ -2678,6 +2677,7 @@ async function loadMemberWorkspace() {
     }
 
     memberNotice = "";
+    memberNoticeIsError = false;
     if (selectedMemberGroupId) {
       await loadMemberGroupDetail(selectedMemberGroupId, { silent: true });
     } else {
@@ -2685,6 +2685,7 @@ async function loadMemberWorkspace() {
     }
   } catch (error) {
     memberNotice = error.message || "회원 정보를 불러오지 못했습니다.";
+    memberNoticeIsError = true;
   } finally {
     memberWorkspaceInFlight = false;
     updateMemberUi();
@@ -2699,6 +2700,7 @@ function resetMemberWorkspace() {
   selectedMemberGroupId = "";
   resetMemberGroupDetail();
   memberNotice = "";
+  memberNoticeIsError = false;
   memberWorkspaceInFlight = false;
   memberActionInFlight = false;
   memberGroupDetailInFlight = false;
@@ -2746,19 +2748,11 @@ async function saveMemberProfile() {
   }
 
   const name = String(memberProfileNameInput?.value || "").trim();
-  const pictureUrl = String(memberProfilePictureInput?.value || "").trim();
 
   if (!name) {
     memberNotice = "이름을 입력해 주세요.";
     updateMemberUi();
     memberProfileNameInput?.focus();
-    return;
-  }
-
-  if (pictureUrl && !isValidProfileUrl(pictureUrl)) {
-    memberNotice = "프로필사진 URL은 http 또는 https 주소로 입력해 주세요.";
-    updateMemberUi();
-    memberProfilePictureInput?.focus();
     return;
   }
 
@@ -2774,7 +2768,6 @@ async function saveMemberProfile() {
         region: memberProfileRegionInput?.value || "",
         position: memberProfilePositionInput?.value || "",
         genre: memberProfileGenreInput?.value || "",
-        pictureUrl,
         memo: memberProfileMemoInput?.value || "",
       },
     });
@@ -2796,37 +2789,75 @@ async function saveMemberProfile() {
   }
 }
 
-async function uploadMemberProfileImage(dataUrl) {
-  const result = await fetchMemberJson("profile-image", {
-    method: "POST",
-    body: { dataUrl },
-  });
-
-  if (!result.ok) {
-    throw new Error(result.payload.message || "프로필 사진을 업로드하지 못했습니다.");
+async function uploadMemberProfileImage(file, onProgress) {
+  if (!authSession.authenticated) {
+    throw new Error("로그인 후 프로필 사진을 업로드할 수 있습니다.");
   }
 
-  memberProfile = normalizeMemberProfile(result.payload.profile);
-  syncMemberProfileForm();
-  await loadMemberDirectory();
-  memberNotice = "프로필 사진을 저장했습니다.";
+  if (memberActionInFlight) {
+    throw new Error("다른 작업이 끝난 뒤 다시 시도해 주세요.");
+  }
+
+  if (typeof window.uploadImageToR2 !== "function") {
+    throw new Error("이미지 업로드 기능을 불러오지 못했습니다. 페이지를 새로고침해 주세요.");
+  }
+
+  memberActionInFlight = true;
+  memberNoticeIsError = false;
+  memberNotice = "프로필 사진 업로드를 준비하는 중입니다.";
   updateMemberUi();
+
+  try {
+    const completed = await window.uploadImageToR2(file, "profile", {
+      onProgress(progress) {
+        onProgress?.(progress);
+        memberNotice = progress?.message || memberNotice;
+        updateMemberUi();
+      },
+    });
+
+    memberProfile = normalizeMemberProfile(completed.profile || {
+      ...memberProfile,
+      pictureKey: completed.objectKey,
+      pictureUrl: completed.displayUrl,
+    });
+    renderMemberProfilePreview({
+      name: memberProfileNameInput ? memberProfileNameInput.value : memberProfile.name,
+      pictureUrl: memberProfile.pictureUrl,
+    });
+    await loadMemberDirectory();
+    memberNotice = "프로필 사진을 저장했습니다.";
+    memberNoticeIsError = false;
+  } catch (error) {
+    memberNotice = error.message || "프로필 사진을 업로드하지 못했습니다.";
+    memberNoticeIsError = true;
+    throw error;
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
+  }
 }
 
 async function removeMemberProfileImage() {
-  if (!authSession.authenticated || memberActionInFlight || !memberProfile?.pictureUrl) return;
+  if (!authSession.authenticated || memberActionInFlight || !(memberProfile?.pictureKey || memberProfile?.pictureUrl)) return;
   memberActionInFlight = true;
+  memberNoticeIsError = false;
   memberNotice = "프로필 사진을 삭제하는 중입니다.";
   updateMemberUi();
   try {
     const result = await fetchMemberJson("profile-image", { method: "DELETE" });
     if (!result.ok) throw new Error(result.payload.message);
     memberProfile = normalizeMemberProfile(result.payload.profile);
-    syncMemberProfileForm();
+    renderMemberProfilePreview({
+      name: memberProfileNameInput ? memberProfileNameInput.value : memberProfile.name,
+      pictureUrl: memberProfile.pictureUrl,
+    });
     await loadMemberDirectory();
     memberNotice = "프로필 사진을 삭제했습니다.";
+    memberNoticeIsError = false;
   } catch (error) {
     memberNotice = error.message || "프로필 사진을 삭제하지 못했습니다.";
+    memberNoticeIsError = true;
   } finally {
     memberActionInFlight = false;
     updateMemberUi();
@@ -3675,6 +3706,7 @@ function normalizeMemberProfile(value) {
   return {
     email: normalizeEmail(value?.email),
     name: String(value?.name || "").trim(),
+    pictureKey: String(value?.pictureKey || "").trim(),
     pictureUrl: String(value?.pictureUrl || "").trim(),
     region: String(value?.region || "").trim(),
     position: String(value?.position || "").trim(),
@@ -3699,16 +3731,6 @@ function normalizeMemberDirectory(value) {
       memo: String(member?.memo || "").trim(),
     }))
     .filter((member) => member.id);
-}
-
-function isValidProfileUrl(value) {
-  try {
-    const parsed = new URL(String(value || "").trim());
-
-    return ["http:", "https:"].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
 }
 
 async function handleGoogleCredentialResponse(googleResponse) {
@@ -5072,6 +5094,12 @@ function updateMemberUi() {
 
   const isLoggedIn = authSession.authenticated;
   const isBusy = memberWorkspaceInFlight || memberActionInFlight;
+
+  if (isBusy) {
+    memberNoticeIsError = false;
+  }
+
+  const statusIsError = isLoggedIn && Boolean(memberNotice) && memberNoticeIsError;
   const ownerGroups = isLoggedIn
     ? memberGroups.filter((group) => group.role === "owner")
     : [];
@@ -5086,25 +5114,28 @@ function updateMemberUi() {
       memberStatus.textContent = memberNotice || "회원 데이터를 계정 기준으로 관리합니다.";
     }
 
-    memberStatus.classList.remove("is-error");
+    memberStatus.classList.toggle("is-error", statusIsError);
   }
 
   if (memberWorkspaceModalStatus) {
     memberWorkspaceModalStatus.textContent = !isLoggedIn
       ? "로그인 후 내 작업공간을 사용할 수 있습니다."
       : memberNotice || "프로필과 개인 메모를 확인하고 수정할 수 있습니다.";
+    memberWorkspaceModalStatus.classList.toggle("is-error", statusIsError);
   }
 
   if (memberGroupModalStatus) {
     memberGroupModalStatus.textContent = !isLoggedIn
       ? "로그인 후 그룹 작업을 사용할 수 있습니다."
       : memberNotice || "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
+    memberGroupModalStatus.classList.toggle("is-error", statusIsError);
   }
 
   if (memberMessagesModalStatus) {
     memberMessagesModalStatus.textContent = !isLoggedIn
       ? "로그인 후 메시지를 확인할 수 있습니다."
       : memberNotice || "받은 그룹 초대와 알림을 확인할 수 있습니다.";
+    memberMessagesModalStatus.classList.toggle("is-error", statusIsError);
   }
 
   if (memberGroupNameInput) {
@@ -5253,9 +5284,6 @@ function syncMemberProfileForm() {
   if (memberProfileGenreInput) {
     memberProfileGenreInput.value = profile.genre || "";
   }
-  if (memberProfilePictureInput) {
-    memberProfilePictureInput.value = pictureUrl;
-  }
   if (memberProfileMemoInput) {
     memberProfileMemoInput.value = profile.memo || "";
   }
@@ -5283,7 +5311,6 @@ function setMemberProfileDisabled(disabled) {
     memberProfileRegionInput,
     memberProfilePositionInput,
     memberProfileGenreInput,
-    memberProfilePictureInput,
     memberProfileMemoInput,
   ]) {
     if (input) {
@@ -5295,7 +5322,9 @@ function setMemberProfileDisabled(disabled) {
     memberProfileSaveButton.disabled = disabled;
   }
   if (memberProfilePictureButton) memberProfilePictureButton.disabled = disabled;
-  if (memberProfilePictureRemoveButton) memberProfilePictureRemoveButton.disabled = disabled || !memberProfile?.pictureUrl;
+  if (memberProfilePictureRemoveButton) {
+    memberProfilePictureRemoveButton.disabled = disabled || !(memberProfile?.pictureKey || memberProfile?.pictureUrl);
+  }
 }
 
 function getProfileInitial(value) {

@@ -830,7 +830,6 @@
             </label>
             <div class="field profile-field is-picture profile-image-trigger">
               <span>프로필 사진</span>
-              <input id="pictureUrlInput" name="pictureUrl" type="hidden">
               <button id="signupProfilePictureButton" class="ghost-button" type="button">사진 선택 및 편집</button>
               <img id="signupProfilePicturePreview" class="signup-profile-picture-preview" alt="편집한 프로필 사진 미리보기" hidden>
               <p class="field-note">가입이 완료되면 편집한 사진이 안전하게 업로드됩니다.</p>
@@ -935,6 +934,7 @@
   </div>
 
   <script src="./auth-nav.js"></script>
+  <script src="./r2-image-upload.js"></script>
   <script src="./profile-image-editor.js"></script>
   <script>
     const AUTH_SESSION_ENDPOINT = "/api/auth/session";
@@ -946,7 +946,8 @@
     const SIGNUP_STORAGE_KEY = "cue-sheet-signup-draft";
     let signupSubmitInFlight = false;
     let signupCompleted = false;
-    let pendingProfileImageDataUrl = "";
+    let pendingProfileImageFile = null;
+    let pendingProfileImagePreviewUrl = "";
     const signupState = {
       consent: null,
       emailVerification: null,
@@ -991,7 +992,6 @@
     const regionInput = document.querySelector("#regionInput");
     const positionInput = document.querySelector("#positionInput");
     const genreInput = document.querySelector("#genreInput");
-    const pictureUrlInput = document.querySelector("#pictureUrlInput");
     const signupProfilePictureButton = document.querySelector("#signupProfilePictureButton");
     const signupProfilePicturePreview = document.querySelector("#signupProfilePicturePreview");
     const memoInput = document.querySelector("#memoInput");
@@ -1012,11 +1012,10 @@
     verifyEmailButton.addEventListener("click", verifyEmailCode);
     signupProfilePictureButton.addEventListener("click", () => {
       window.ProfileImageEditor.open({
-        onSave(dataUrl) {
-          pendingProfileImageDataUrl = dataUrl;
-          signupProfilePicturePreview.src = dataUrl;
-          signupProfilePicturePreview.hidden = false;
+        onSave(file) {
+          setPendingProfileImage(file);
           clearSavedSection("profile");
+          setStatus("편집한 프로필 사진을 준비했습니다. 가입 완료 후 R2에 업로드합니다.");
         },
       });
     });
@@ -1051,7 +1050,7 @@
       clearSavedSection("profile");
     });
 
-    for (const input of [nameInput, birthInput, regionInput, positionInput, genreInput, pictureUrlInput, memoInput]) {
+    for (const input of [nameInput, birthInput, regionInput, positionInput, genreInput, memoInput]) {
       input.addEventListener("input", () => {
         clearSavedSection("profile");
       });
@@ -1196,7 +1195,6 @@
       const region = regionInput.value.trim();
       const position = positionInput.value.trim();
       const genre = genreInput.value.trim();
-      const pictureUrl = pictureUrlInput.value.trim();
 
       if (!isValidEmail(email)) {
         setStatus("아이디로 사용할 이메일 주소를 확인해 주세요.", true);
@@ -1216,12 +1214,6 @@
         return false;
       }
 
-      if (pictureUrl && !isValidProfileUrl(pictureUrl)) {
-        setStatus("프로필사진 URL은 http 또는 https 주소로 입력해 주세요.", true);
-        pictureUrlInput.focus();
-        return false;
-      }
-
       return {
         email,
         name,
@@ -1229,7 +1221,6 @@
         region,
         position,
         genre,
-        pictureUrl,
         memo: memoInput.value.trim(),
         savedAt: new Date().toISOString(),
       };
@@ -1303,16 +1294,21 @@
           return;
         }
 
-        let profileImageUploadFailed = false;
+        const authenticated = await confirmAuthenticatedSession();
 
-        if (pendingProfileImageDataUrl) {
-          const uploadedPictureUrl = await uploadSignupProfileImage(pendingProfileImageDataUrl);
+        if (!authenticated) {
+          setStatus("로그인 세션을 확인하지 못했습니다. 이메일 인증을 다시 완료해 주세요.", true);
+          emailInput.focus();
+          return;
+        }
 
-          if (uploadedPictureUrl) {
-            profile.pictureUrl = uploadedPictureUrl;
-            pictureUrlInput.value = uploadedPictureUrl;
-          } else {
-            profileImageUploadFailed = true;
+        let profileImageUploadError = "";
+
+        if (pendingProfileImageFile) {
+          try {
+            await uploadSignupProfileImage(pendingProfileImageFile);
+          } catch (error) {
+            profileImageUploadError = error?.message || "프로필 사진을 R2에 업로드하지 못했습니다.";
           }
         }
 
@@ -1328,21 +1324,14 @@
         passwordConfirmInput.value = "";
         updatePasswordRules();
         persistDraft();
-        setStatus(profileImageUploadFailed
-          ? "가입은 완료되었지만 프로필 사진은 저장하지 못했습니다. 마이페이지에서 다시 등록해 주세요."
-          : "가입이 완료되었습니다. 비밀번호는 저장 후 화면에서 비웠습니다.");
+        setStatus(profileImageUploadError
+          ? `가입은 완료되었지만 프로필 사진 업로드에 실패했습니다: ${profileImageUploadError}`
+          : "가입이 완료되었습니다. 비밀번호는 저장 후 화면에서 비웠습니다.", Boolean(profileImageUploadError));
         renderState();
-        const authenticated = await confirmAuthenticatedSession();
-
-        if (!authenticated) {
-          setStatus("로그인 세션을 확인하지 못했습니다. 이메일 인증을 다시 완료해 주세요.", true);
-          emailInput.focus();
-          return;
-        }
 
         clearDraft();
         signupCompleted = true;
-        showSignupCompleteModal(profileImageUploadFailed);
+        showSignupCompleteModal(profileImageUploadError);
       } finally {
         signupSubmitInFlight = false;
 
@@ -1367,7 +1356,6 @@
             region: profile.region,
             position: profile.position,
             genre: profile.genre,
-            pictureUrl: profile.pictureUrl,
             memo: profile.memo,
             phone: phone.phone,
             password,
@@ -1387,24 +1375,24 @@
       }
     }
 
-    async function uploadSignupProfileImage(dataUrl) {
-      setStatus("가입 정보를 저장했습니다. 프로필 사진을 업로드하는 중입니다.");
-      try {
-        const response = await fetch("/api/member/profile-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ dataUrl }),
-        });
-        const payload = await safeReadJson(response);
-
-        if (!response.ok) {
-          return "";
-        }
-        pendingProfileImageDataUrl = "";
-        return payload.profile?.pictureUrl || "";
-      } catch {
-        return "";
+    async function uploadSignupProfileImage(file) {
+      if (typeof window.uploadImageToR2 !== "function") {
+        throw new Error("프로필 이미지 업로드 모듈을 불러오지 못했습니다.");
       }
+
+      const onProgress = ({ message } = {}) => {
+        if (message) {
+          setStatus(`가입 정보를 저장했습니다. ${message}`);
+        }
+      };
+
+      const uploaded = await window.uploadImageToR2(file, "profile", { onProgress });
+
+      if (pendingProfileImageFile === file) {
+        pendingProfileImageFile = null;
+      }
+
+      return uploaded;
     }
 
     async function confirmAuthenticatedSession() {
@@ -1422,13 +1410,16 @@
       }
     }
 
-    function showSignupCompleteModal(profileImageUploadFailed = false) {
-      signupCompleteMessage.textContent = profileImageUploadFailed
-        ? "계정은 정상적으로 생성되었습니다. 프로필 사진은 마이페이지에서 다시 등록해 주세요."
+    function showSignupCompleteModal(profileImageUploadError = "") {
+      signupCompleteMessage.textContent = profileImageUploadError
+        ? `계정은 정상적으로 생성되었습니다. 프로필 사진 업로드 오류: ${profileImageUploadError} 내 작업 공간에서 다시 등록해 주세요.`
         : "이메일 인증 계정으로 로그인되었습니다. 잠시 후 메인 페이지로 이동합니다.";
       signupCompleteModal.classList.add("is-open");
       goHomeButton.focus();
-      window.setTimeout(goHome, SIGNUP_REDIRECT_DELAY_MS);
+
+      if (!profileImageUploadError) {
+        window.setTimeout(goHome, SIGNUP_REDIRECT_DELAY_MS);
+      }
     }
 
     function goHome() {
@@ -1461,13 +1452,22 @@
       }
 
       if (signupState.profile) {
+        signupState.profile = {
+          email: signupState.profile.email || "",
+          name: signupState.profile.name || "",
+          birthDate: signupState.profile.birthDate || "",
+          region: signupState.profile.region || "",
+          position: signupState.profile.position || "",
+          genre: signupState.profile.genre || "",
+          memo: signupState.profile.memo || "",
+          savedAt: signupState.profile.savedAt || "",
+        };
         emailInput.value = signupState.profile.email || "";
         nameInput.value = signupState.profile.name || "";
         birthInput.value = signupState.profile.birthDate || "";
         regionInput.value = signupState.profile.region || "";
         positionInput.value = signupState.profile.position || "";
         genreInput.value = signupState.profile.genre || "";
-        pictureUrlInput.value = signupState.profile.pictureUrl || "";
         memoInput.value = signupState.profile.memo || "";
       }
 
@@ -1562,16 +1562,6 @@
       );
     }
 
-    function isValidProfileUrl(value) {
-      try {
-        const parsed = new URL(String(value || "").trim());
-
-        return ["http:", "https:"].includes(parsed.protocol);
-      } catch {
-        return false;
-      }
-    }
-
     function formatProfileSummary(profile) {
       if (!profile) {
         return "미저장";
@@ -1591,6 +1581,22 @@
     function setFinalSubmitBusy(isBusy) {
       saveAllButton.disabled = isBusy;
       saveAllButton.textContent = isBusy ? "가입 중" : "가입하기";
+      signupProfilePictureButton.disabled = isBusy;
+    }
+
+    function setPendingProfileImage(file) {
+      if (!(file instanceof File)) {
+        throw new Error("편집한 프로필 사진 파일을 확인하지 못했습니다.");
+      }
+
+      if (pendingProfileImagePreviewUrl) {
+        URL.revokeObjectURL(pendingProfileImagePreviewUrl);
+      }
+
+      pendingProfileImageFile = file;
+      pendingProfileImagePreviewUrl = URL.createObjectURL(file);
+      signupProfilePicturePreview.src = pendingProfileImagePreviewUrl;
+      signupProfilePicturePreview.hidden = false;
     }
 
     function updatePasswordRules() {

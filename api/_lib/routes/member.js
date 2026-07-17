@@ -1,16 +1,26 @@
 const crypto = require("node:crypto");
 const {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} = require("@aws-sdk/client-s3");
-const {
   getSessionUser,
   isValidEmail,
   normalizeEmail,
 } = require("../auth");
 const { ensureSchema, getSql } = require("../db");
 const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const {
+  buildImageDisplayUrl,
+  createPresignedImageUpload,
+  deleteImageObject,
+  getOwnedLegacyProfileImageKey,
+  getR2Storage,
+  getSafeStorageErrorDetails,
+  headImageObject,
+  isOwnedImageObjectKey,
+  isStorageObjectNotFound,
+  normalizePublicBaseUrl,
+  resolveProfilePictureUrl,
+  validateImageUploadRequest,
+  validateUploadedImageHead,
+} = require("../r2");
 
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_MEMO_LENGTH = 5000;
@@ -20,7 +30,9 @@ const ROUTE_METHODS = {
   me: ["GET"],
   dashboard: ["GET"],
   profile: ["GET", "PUT"],
-  "profile-image": ["POST", "DELETE"],
+  "profile-image": ["DELETE"],
+  "uploads/presign": ["POST"],
+  "uploads/complete": ["POST"],
   groups: ["GET", "POST"],
   invites: ["POST"],
   "invites/accept": ["POST"],
@@ -108,10 +120,23 @@ module.exports = async (request, response) => {
       return;
     }
 
-    if (route === "profile-image") {
-      const payload = request.method === "POST" ? await readJsonBody(request) : {};
+    if (route === "uploads/presign") {
+      const payload = await readJsonBody(request);
 
-      await handleProfileImage(sql, response, sessionUser, payload, request.method);
+      await handlePresignImageUpload(sql, response, sessionUser, payload);
+      return;
+    }
+
+    if (route === "uploads/complete") {
+      const payload = await readJsonBody(request);
+
+      await handleCompleteImageUpload(sql, response, sessionUser, payload);
+      return;
+    }
+
+    if (route === "profile-image") {
+
+      await handleDeleteProfileImage(sql, response, sessionUser);
       return;
     }
 
@@ -240,9 +265,9 @@ async function handleGetGroups(sql, response, sessionUser) {
 async function handleGetDirectory(sql, response) {
   const rows = await sql.query(
     [
-      "SELECT id, name, picture_url, region, \"position\", genre, memo, last_login_at",
+      "SELECT id, name, picture_url, picture_key, region, \"position\", genre, memo, last_login_at",
       "FROM app_users",
-      "WHERE name <> '' OR region <> '' OR \"position\" <> '' OR genre <> '' OR picture_url <> ''",
+      "WHERE name <> '' OR region <> '' OR \"position\" <> '' OR genre <> '' OR picture_url <> '' OR picture_key <> ''",
       "ORDER BY last_login_at DESC, id DESC",
       "LIMIT 12",
     ].join(" "),
@@ -277,7 +302,7 @@ async function handleGetBands(sql, response) {
 async function handleGetMe(sql, response, sessionUser) {
   const rows = await sql.query(
     [
-      "SELECT email, name, picture_url, region, \"position\", genre, memo",
+      "SELECT email, name, picture_url, picture_key, region, \"position\", genre, memo",
       "FROM app_users",
       "WHERE id = $1",
       "LIMIT 1",
@@ -370,7 +395,7 @@ async function handleGetDashboard(sql, response, sessionUser) {
 async function handleGetProfile(sql, response, sessionUser) {
   const rows = await sql.query(
     [
-      "SELECT email, name, picture_url, region, \"position\", genre, memo",
+      "SELECT email, name, picture_url, picture_key, region, \"position\", genre, memo",
       "FROM app_users",
       "WHERE id = $1",
       "LIMIT 1",
@@ -389,24 +414,19 @@ async function handleSaveProfile(sql, response, sessionUser, payload) {
   const position = normalizeProfileText(payload.position, 40);
   const genre = normalizeProfileText(payload.genre, 80);
   const memo = normalizeProfileText(payload.memo, 120);
-  const pictureUrl = normalizeProfileUrl(payload.pictureUrl);
 
   if (!name) {
     throwHttpError(400, "invalid_profile_name", "이름을 입력해 주세요.");
   }
 
-  if (String(payload.pictureUrl || "").trim() && !pictureUrl) {
-    throwHttpError(400, "invalid_picture_url", "프로필사진 URL을 확인해 주세요.");
-  }
-
   const rows = await sql.query(
     [
       "UPDATE app_users",
-      "SET name = $2, region = $3, \"position\" = $4, genre = $5, memo = $6, picture_url = $7",
+      "SET name = $2, region = $3, \"position\" = $4, genre = $5, memo = $6",
       "WHERE id = $1",
-      "RETURNING email, name, picture_url, region, \"position\", genre, memo",
+      "RETURNING email, name, picture_url, picture_key, region, \"position\", genre, memo",
     ].join(" "),
-    [sessionUser.id, name, region, position, genre, memo, pictureUrl],
+    [sessionUser.id, name, region, position, genre, memo],
   );
 
   sendJson(response, 200, {
@@ -414,81 +434,198 @@ async function handleSaveProfile(sql, response, sessionUser, payload) {
   });
 }
 
-async function handleProfileImage(sql, response, sessionUser, payload, method) {
-  const storage = getProfileImageStorage({ required: method === "POST" });
-  const currentRows = await sql.query(
-    "SELECT picture_url FROM app_users WHERE id = $1 LIMIT 1",
-    [sessionUser.id],
-  );
-  const previousUrl = String(currentRows[0]?.picture_url || "");
-  let pictureUrl = "";
-  let uploadedKey = "";
+async function handlePresignImageUpload(sql, response, sessionUser, payload) {
+  const upload = validateImageUploadRequest(payload);
+  let presigned;
 
-  if (method === "POST") {
-    const match = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(payload.dataUrl || ""));
-
-    if (!match) {
-      throwHttpError(400, "invalid_profile_image", "편집된 WebP 이미지를 확인해 주세요.");
+  try {
+    presigned = await createPresignedImageUpload({
+      userId: sessionUser.id,
+      contentType: upload.contentType,
+      size: upload.size,
+    });
+  } catch (error) {
+    if (error.statusCode && error.errorCode) {
+      throw error;
     }
 
-    const image = Buffer.from(match[1], "base64");
-
-    if (!image.length || image.length > 1024 * 1024 || image.subarray(0, 4).toString("ascii") !== "RIFF"
-      || image.subarray(8, 12).toString("ascii") !== "WEBP") {
-      throwHttpError(400, "invalid_profile_image", "프로필 이미지는 1MB 이하의 WebP 파일이어야 합니다.");
-    }
-
-    uploadedKey = `profiles/${sessionUser.id}/${crypto.randomUUID()}.webp`;
-
-    await storage.client.send(new PutObjectCommand({
-      Bucket: storage.bucket,
-      Key: uploadedKey,
-      Body: image,
-      ContentType: "image/webp",
-      CacheControl: "public, max-age=3600",
-    }));
-
-    pictureUrl = `${storage.publicBaseUrl}/${uploadedKey}`;
+    logStorageError("profile image presign error", error);
+    throwHttpError(502, "upload_presign_failed", "이미지 업로드 주소를 발급하지 못했습니다.");
   }
 
   let rows;
 
   try {
     rows = await sql.query(
-      [
-        "UPDATE app_users SET picture_url = $2 WHERE id = $1",
-        "RETURNING email, name, picture_url, region, \"position\", genre, memo",
-      ].join(" "),
-      [sessionUser.id, pictureUrl],
+      "UPDATE app_users SET pending_picture_key = $2 WHERE id = $1 RETURNING id",
+      [sessionUser.id, presigned.objectKey],
     );
+  } catch {
+    throwHttpError(500, "upload_record_db_save_failed", "이미지 업로드 정보를 DB에 저장하지 못했습니다.");
+  }
+
+  if (!rows[0]) {
+    throwHttpError(404, "member_not_found", "회원 정보를 찾을 수 없습니다.");
+  }
+
+  sendJson(response, 200, {
+    uploadUrl: presigned.uploadUrl,
+    objectKey: presigned.objectKey,
+  });
+}
+
+async function handleCompleteImageUpload(sql, response, sessionUser, payload) {
+  const objectKey = typeof payload.objectKey === "string" ? payload.objectKey : "";
+
+  if (!isOwnedImageObjectKey(objectKey, sessionUser.id)) {
+    throwHttpError(403, "upload_object_not_owned", "현재 사용자의 이미지 경로가 아닙니다.");
+  }
+
+  let head;
+
+  try {
+    head = await headImageObject(objectKey);
   } catch (error) {
-    if (storage && uploadedKey) {
-      try {
-        await storage.client.send(new DeleteObjectCommand({
-          Bucket: storage.bucket,
-          Key: uploadedKey,
-        }));
-      } catch (cleanupError) {
-        console.error("new profile image cleanup error", cleanupError);
-      }
+    if (isStorageObjectNotFound(error)) {
+      await releasePendingImageUpload(sql, objectKey, sessionUser.id);
+      throwHttpError(404, "uploaded_image_not_found", "업로드된 이미지를 찾을 수 없습니다.");
+    }
+
+    if (error.statusCode && error.errorCode) {
+      throw error;
+    }
+
+    logStorageError("profile image head error", error);
+    throwHttpError(502, "upload_verification_failed", "업로드 완료 여부를 확인하지 못했습니다.");
+  }
+
+  try {
+    validateUploadedImageHead(head, objectKey);
+  } catch (error) {
+    const released = await releasePendingImageUpload(sql, objectKey, sessionUser.id);
+
+    if (released) {
+      await deleteImageObjectQuietly(objectKey, "invalid profile image cleanup error");
     }
 
     throw error;
   }
 
-  const previousKey = storage
-    ? getOwnedProfileImageKey(previousUrl, storage.publicBaseUrl, sessionUser.id)
-    : "";
+  let currentRows;
+  let rows;
 
-  if (previousKey && previousUrl !== pictureUrl) {
-    try {
-      await storage.client.send(new DeleteObjectCommand({
-        Bucket: storage.bucket,
-        Key: previousKey,
-      }));
-    } catch (error) {
-      console.error("old profile image delete error", error);
+  try {
+    [currentRows, rows] = await sql.transaction((txn) => [
+      txn.query(
+        [
+          "SELECT email, name, picture_url, picture_key, pending_picture_key,",
+          "region, \"position\", genre, memo",
+          "FROM app_users WHERE id = $1 LIMIT 1 FOR UPDATE",
+        ].join(" "),
+        [sessionUser.id],
+      ),
+      txn.query(
+        [
+          "UPDATE app_users",
+          "SET picture_key = $2, pending_picture_key = '', picture_url = ''",
+          "WHERE id = $1 AND pending_picture_key = $2",
+          "RETURNING email, name, picture_url, picture_key, region, \"position\", genre, memo",
+        ].join(" "),
+        [sessionUser.id, objectKey],
+      ),
+    ]);
+  } catch {
+    await cleanupImageAfterDatabaseFailure(sql, objectKey, sessionUser.id);
+    throwHttpError(500, "profile_image_db_save_failed", "이미지 정보를 DB에 저장하지 못했습니다.");
+  }
+
+  const current = currentRows[0];
+
+  if (!current) {
+    await deleteImageObjectQuietly(objectKey, "missing profile image cleanup error");
+    throwHttpError(404, "member_not_found", "회원 정보를 찾을 수 없습니다.");
+  }
+
+  const previousPictureKey = String(current.picture_key || "").trim();
+
+  if (!rows[0]) {
+    if (previousPictureKey === objectKey) {
+      sendJson(response, 200, {
+        objectKey,
+        displayUrl: buildImageDisplayUrl(objectKey),
+        profile: normalizeProfileRow(current, sessionUser),
+      });
+      return;
     }
+
+    await deleteImageObjectQuietly(objectKey, "retired profile image cleanup error");
+    throwHttpError(409, "upload_record_not_pending", "이미 만료되었거나 교체된 이미지 업로드입니다.");
+  }
+
+  const previousLegacyKey = getOwnedLegacyImageKey(current.picture_url, sessionUser.id);
+  const previousOwnedKey = isOwnedImageObjectKey(previousPictureKey, sessionUser.id)
+    ? previousPictureKey
+    : previousLegacyKey;
+
+  if (previousOwnedKey && previousOwnedKey !== objectKey) {
+    await deleteImageObjectQuietly(previousOwnedKey, "old profile image delete error");
+  }
+
+  sendJson(response, 200, {
+    objectKey,
+    displayUrl: buildImageDisplayUrl(objectKey),
+    profile: normalizeProfileRow(rows[0], sessionUser),
+  });
+}
+
+async function handleDeleteProfileImage(sql, response, sessionUser) {
+  const preflightRows = await sql.query(
+    "SELECT picture_key, picture_url, pending_picture_key FROM app_users WHERE id = $1 LIMIT 1",
+    [sessionUser.id],
+  );
+  const preflight = preflightRows[0];
+
+  if (!preflight) {
+    throwHttpError(404, "member_not_found", "회원 정보를 찾을 수 없습니다.");
+  }
+
+  const preflightOwnedKeys = getOwnedProfileImageKeys(preflight, sessionUser.id);
+
+  if (preflightOwnedKeys.length) {
+    getR2Storage();
+  }
+
+  const [currentRows, rows] = await sql.transaction((txn) => [
+    txn.query(
+      "SELECT picture_key, picture_url, pending_picture_key FROM app_users WHERE id = $1 LIMIT 1 FOR UPDATE",
+      [sessionUser.id],
+    ),
+    txn.query(
+      [
+        "UPDATE app_users SET picture_key = '', pending_picture_key = '', picture_url = '' WHERE id = $1",
+        "RETURNING email, name, picture_url, picture_key, region, \"position\", genre, memo",
+      ].join(" "),
+      [sessionUser.id],
+    ),
+  ]);
+  const current = currentRows[0];
+
+  if (!current || !rows[0]) {
+    for (const objectKey of preflightOwnedKeys) {
+      await deleteImageObjectQuietly(objectKey, "missing profile image delete error");
+    }
+
+    throwHttpError(404, "member_not_found", "회원 정보를 찾을 수 없습니다.");
+  }
+
+  const ownedKeys = getOwnedProfileImageKeys(current, sessionUser.id);
+
+  if (ownedKeys.length && !preflightOwnedKeys.length) {
+    getR2Storage();
+  }
+
+  for (const objectKey of ownedKeys) {
+    await deleteImageObjectQuietly(objectKey, "profile image delete error");
   }
 
   sendJson(response, 200, {
@@ -496,44 +633,72 @@ async function handleProfileImage(sql, response, sessionUser, payload, method) {
   });
 }
 
-function getProfileImageStorage(options = {}) {
-  const accountId = String(process.env.R2_ACCOUNT_ID || "").trim();
-  const accessKeyId = String(process.env.R2_ACCESS_KEY_ID || "").trim();
-  const secretAccessKey = String(process.env.R2_SECRET_ACCESS_KEY || "").trim();
-  const bucket = String(process.env.R2_BUCKET_NAME || "").trim();
-  const publicBaseUrl = normalizeProfileStorageBaseUrl(process.env.R2_PUBLIC_BASE_URL);
+function getOwnedProfileImageKeys(row, userId) {
+  const pictureKey = String(row?.picture_key || "").trim();
+  const pendingPictureKey = String(row?.pending_picture_key || "").trim();
+  const ownedKeys = new Set();
 
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
-    if (options.required) {
-      throwHttpError(503, "profile_storage_not_configured", "R2 프로필 이미지 저장소 설정을 확인해 주세요.");
+  if (isOwnedImageObjectKey(pictureKey, userId)) {
+    ownedKeys.add(pictureKey);
+  } else {
+    const legacyKey = getOwnedLegacyImageKey(row?.picture_url, userId);
+
+    if (legacyKey) {
+      ownedKeys.add(legacyKey);
     }
-
-    return null;
   }
 
-  return {
-    bucket,
-    publicBaseUrl,
-    client: new S3Client({
-      region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId, secretAccessKey },
-    }),
-  };
+  if (isOwnedImageObjectKey(pendingPictureKey, userId)) {
+    ownedKeys.add(pendingPictureKey);
+  }
+
+  return [...ownedKeys];
 }
 
-function getOwnedProfileImageKey(value, publicBaseUrl, userId) {
-  try {
-    const url = new URL(String(value || ""));
-    const base = new URL(`${publicBaseUrl}/`);
-    const basePath = base.pathname.replace(/\/$/, "");
-    const expectedPrefix = `${basePath}/profiles/${userId}/`;
+function getOwnedLegacyImageKey(value, userId) {
+  const publicBaseUrl = normalizePublicBaseUrl(process.env.R2_PUBLIC_BASE_URL);
 
-    if (url.origin !== base.origin || !url.pathname.startsWith(expectedPrefix)) return "";
-    return decodeURIComponent(url.pathname.slice(basePath.length + 1));
-  } catch {
-    return "";
+  return publicBaseUrl
+    ? getOwnedLegacyProfileImageKey(value, userId, publicBaseUrl)
+    : "";
+}
+
+async function deleteImageObjectQuietly(objectKey, label) {
+  try {
+    await deleteImageObject(objectKey);
+  } catch (error) {
+    logStorageError(label, error);
   }
+}
+
+async function cleanupImageAfterDatabaseFailure(sql, objectKey, userId) {
+  const released = await releasePendingImageUpload(sql, objectKey, userId);
+
+  if (released) {
+    await deleteImageObjectQuietly(objectKey, "new profile image cleanup error");
+  }
+}
+
+async function releasePendingImageUpload(sql, objectKey, userId) {
+  try {
+    const rows = await sql.query(
+      [
+        "UPDATE app_users SET pending_picture_key = ''",
+        "WHERE id = $1 AND pending_picture_key = $2 AND picture_key <> $2",
+        "RETURNING id",
+      ].join(" "),
+      [userId, objectKey],
+    );
+
+    return Boolean(rows[0]);
+  } catch (error) {
+    logStorageError("pending profile image release deferred after database error", error);
+    return false;
+  }
+}
+
+function logStorageError(label, error) {
+  console.error(label, getSafeStorageErrorDetails(error));
 }
 
 async function handleCreateGroup(sql, response, sessionUser, payload) {
@@ -872,37 +1037,6 @@ function normalizeProfileText(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
 }
 
-function normalizeProfileUrl(value) {
-  const url = String(value || "").trim().slice(0, 500);
-
-  if (!url) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(url);
-
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
-  } catch {
-    return "";
-  }
-}
-
-function normalizeProfileStorageBaseUrl(value) {
-  try {
-    const url = new URL(String(value || "").trim());
-
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
-      return "";
-    }
-
-    url.pathname = url.pathname.replace(/\/+$/, "");
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return "";
-  }
-}
-
 function normalizePositiveId(value) {
   const id = String(value || "").trim();
 
@@ -968,10 +1102,13 @@ function normalizeGroupMessageRow(row) {
 }
 
 function normalizeProfileRow(row, sessionUser) {
+  const pictureKey = String(row?.picture_key || "").trim();
+
   return {
     email: normalizeEmail(row?.email || sessionUser?.email),
     name: String(row?.name || "").trim(),
-    pictureUrl: String(row?.picture_url || "").trim(),
+    pictureKey,
+    pictureUrl: resolveProfilePictureUrl(row),
     region: String(row?.region || "").trim(),
     position: String(row?.position || "").trim(),
     genre: String(row?.genre || "").trim(),
@@ -988,7 +1125,7 @@ function normalizeDirectoryRow(row) {
   return {
     id: String(row?.id || ""),
     name: name || "이름 없는 회원",
-    pictureUrl: String(row?.picture_url || "").trim(),
+    pictureUrl: resolveProfilePictureUrl(row),
     region,
     position,
     genre,
