@@ -52,7 +52,7 @@
         <a class="site-brand" href="./index.html#overview">Cue Sheet</a>
         <nav class="site-nav" aria-label="상단 메뉴">
           ${navLinks.join("\n          ")}
-          <a href="./login.html"${authAriaCurrent} data-auth-nav-link data-signup-href="./login.html">로그인</a>
+          <a href="./login.html"${authAriaCurrent} hidden data-auth-nav-link data-signup-href="./login.html">로그인</a>
         </nav>
       </div>
     </header>

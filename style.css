@@ -86,6 +86,11 @@ textarea {
   flex-wrap: wrap;
 }
 
+[data-auth-nav-link][hidden],
+.member-login-link[hidden] {
+  display: none;
+}
+
 .site-nav a,
 .site-nav button {
   padding: 10px 14px;

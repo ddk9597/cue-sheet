@@ -11,7 +11,11 @@
   updateAuthNavigation();
 
   async function updateAuthNavigation() {
-    const authenticated = await isAuthenticatedSession();
+    const authenticated = await getAuthenticatedSession();
+
+    if (authenticated === null) {
+      return;
+    }
 
     setAuthNavigationState(authenticated);
   }
@@ -27,7 +31,7 @@
     }
   }
 
-  async function isAuthenticatedSession() {
+  async function getAuthenticatedSession() {
     try {
       const response = await fetch(SESSION_ENDPOINT, {
         cache: "no-store",
@@ -37,14 +41,22 @@
       });
 
       if (!response.ok) {
-        return false;
+        return null;
       }
 
       const payload = await response.json();
 
-      return Boolean(payload?.authenticated);
+      if (payload?.authenticated === true) {
+        return true;
+      }
+
+      if (payload?.authenticated === false) {
+        return false;
+      }
+
+      return null;
     } catch {
-      return false;
+      return null;
     }
   }
 })();

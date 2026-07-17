@@ -5801,7 +5801,7 @@ function updateAuthUi() {
     logoutButton.disabled = authInFlight || emailAuthInFlight;
   }
   if (memberLoginLink) {
-    memberLoginLink.hidden = authSession.authenticated;
+    memberLoginLink.hidden = !authSession.resolved || authSession.authenticated;
   }
 
   if (authSession.authenticated) {
