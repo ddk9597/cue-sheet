@@ -1,5 +1,9 @@
 const crypto = require("node:crypto");
-const { del, put } = require("@vercel/blob");
+const {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} = require("@aws-sdk/client-s3");
 const {
   getSessionUser,
   isValidEmail,
@@ -411,12 +415,14 @@ async function handleSaveProfile(sql, response, sessionUser, payload) {
 }
 
 async function handleProfileImage(sql, response, sessionUser, payload, method) {
+  const storage = getProfileImageStorage({ required: method === "POST" });
   const currentRows = await sql.query(
     "SELECT picture_url FROM app_users WHERE id = $1 LIMIT 1",
     [sessionUser.id],
   );
   const previousUrl = String(currentRows[0]?.picture_url || "");
   let pictureUrl = "";
+  let uploadedKey = "";
 
   if (method === "POST") {
     const match = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(payload.dataUrl || ""));
@@ -432,27 +438,54 @@ async function handleProfileImage(sql, response, sessionUser, payload, method) {
       throwHttpError(400, "invalid_profile_image", "프로필 이미지는 1MB 이하의 WebP 파일이어야 합니다.");
     }
 
-    const pathname = `profiles/${sessionUser.id}/${crypto.randomUUID()}.webp`;
-    const blob = await put(pathname, image, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "image/webp",
-    });
+    uploadedKey = `profiles/${sessionUser.id}/${crypto.randomUUID()}.webp`;
 
-    pictureUrl = blob.url;
+    await storage.client.send(new PutObjectCommand({
+      Bucket: storage.bucket,
+      Key: uploadedKey,
+      Body: image,
+      ContentType: "image/webp",
+      CacheControl: "public, max-age=3600",
+    }));
+
+    pictureUrl = `${storage.publicBaseUrl}/${uploadedKey}`;
   }
 
-  const rows = await sql.query(
-    [
-      "UPDATE app_users SET picture_url = $2 WHERE id = $1",
-      "RETURNING email, name, picture_url, region, \"position\", genre, memo",
-    ].join(" "),
-    [sessionUser.id, pictureUrl],
-  );
+  let rows;
 
-  if (isOwnedProfileBlob(previousUrl, sessionUser.id) && previousUrl !== pictureUrl) {
+  try {
+    rows = await sql.query(
+      [
+        "UPDATE app_users SET picture_url = $2 WHERE id = $1",
+        "RETURNING email, name, picture_url, region, \"position\", genre, memo",
+      ].join(" "),
+      [sessionUser.id, pictureUrl],
+    );
+  } catch (error) {
+    if (storage && uploadedKey) {
+      try {
+        await storage.client.send(new DeleteObjectCommand({
+          Bucket: storage.bucket,
+          Key: uploadedKey,
+        }));
+      } catch (cleanupError) {
+        console.error("new profile image cleanup error", cleanupError);
+      }
+    }
+
+    throw error;
+  }
+
+  const previousKey = storage
+    ? getOwnedProfileImageKey(previousUrl, storage.publicBaseUrl, sessionUser.id)
+    : "";
+
+  if (previousKey && previousUrl !== pictureUrl) {
     try {
-      await del(previousUrl);
+      await storage.client.send(new DeleteObjectCommand({
+        Bucket: storage.bucket,
+        Key: previousKey,
+      }));
     } catch (error) {
       console.error("old profile image delete error", error);
     }
@@ -463,15 +496,43 @@ async function handleProfileImage(sql, response, sessionUser, payload, method) {
   });
 }
 
-function isOwnedProfileBlob(value, userId) {
+function getProfileImageStorage(options = {}) {
+  const accountId = String(process.env.R2_ACCOUNT_ID || "").trim();
+  const accessKeyId = String(process.env.R2_ACCESS_KEY_ID || "").trim();
+  const secretAccessKey = String(process.env.R2_SECRET_ACCESS_KEY || "").trim();
+  const bucket = String(process.env.R2_BUCKET_NAME || "").trim();
+  const publicBaseUrl = normalizeProfileStorageBaseUrl(process.env.R2_PUBLIC_BASE_URL);
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
+    if (options.required) {
+      throwHttpError(503, "profile_storage_not_configured", "R2 프로필 이미지 저장소 설정을 확인해 주세요.");
+    }
+
+    return null;
+  }
+
+  return {
+    bucket,
+    publicBaseUrl,
+    client: new S3Client({
+      region: "auto",
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId, secretAccessKey },
+    }),
+  };
+}
+
+function getOwnedProfileImageKey(value, publicBaseUrl, userId) {
   try {
     const url = new URL(String(value || ""));
+    const base = new URL(`${publicBaseUrl}/`);
+    const basePath = base.pathname.replace(/\/$/, "");
+    const expectedPrefix = `${basePath}/profiles/${userId}/`;
 
-    return url.protocol === "https:"
-      && url.hostname.endsWith(".blob.vercel-storage.com")
-      && url.pathname.startsWith(`/profiles/${userId}/`);
+    if (url.origin !== base.origin || !url.pathname.startsWith(expectedPrefix)) return "";
+    return decodeURIComponent(url.pathname.slice(basePath.length + 1));
   } catch {
-    return false;
+    return "";
   }
 }
 
@@ -822,6 +883,21 @@ function normalizeProfileUrl(value) {
     const parsed = new URL(url);
 
     return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeProfileStorageBaseUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+      return "";
+    }
+
+    url.pathname = url.pathname.replace(/\/+$/, "");
+    return url.toString().replace(/\/$/, "");
   } catch {
     return "";
   }

@@ -8,10 +8,10 @@
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1087.0",
     "@neondatabase/serverless": "^1.0.1",
     "@nestjs/common": "^11.1.27",
     "@nestjs/core": "^11.1.27",
-    "@vercel/blob": "^2.6.1",
     "google-auth-library": "^10.6.2",
     "nodemailer": "^9.0.3",
     "reflect-metadata": "^0.2.2",
