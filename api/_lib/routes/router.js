@@ -9,6 +9,7 @@ const groupsHandler = require("./groups");
 const memberHandler = require("./member");
 const performancesHandler = require("./performances");
 const practiceHandler = require("./practice");
+const recruitHandler = require("./recruit");
 const todoAuthHandler = require("./todo-auth");
 const todosHandler = require("./todos");
 
@@ -22,6 +23,7 @@ const ROUTES = new Map([
   ["member", memberHandler],
   ["performances", performancesHandler],
   ["practice", practiceHandler],
+  ["recruit", recruitHandler],
   ["todo-auth", todoAuthHandler],
   ["todos", todosHandler],
 ]);

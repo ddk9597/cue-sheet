@@ -244,6 +244,33 @@ async function ensureSchemaLocked(sql) {
     ].join(" "));
 
     await sql.query([
+      "CREATE TABLE IF NOT EXISTS recruit_posts (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "intent TEXT NOT NULL CHECK (intent IN ('구해요', '할래요')),",
+      "instrument TEXT NOT NULL CHECK (instrument IN ('일렉', '드럼', '기타', '베이스', '보컬', '신디')),",
+      "title TEXT NOT NULL DEFAULT '',",
+      "region TEXT NOT NULL DEFAULT '',",
+      "genre TEXT NOT NULL DEFAULT '',",
+      "schedule TEXT NOT NULL DEFAULT '',",
+      "content TEXT NOT NULL DEFAULT '',",
+      "contact TEXT NOT NULL DEFAULT '',",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_posts_created_at_idx",
+      "ON recruit_posts (created_at DESC, id DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_posts_category_idx",
+      "ON recruit_posts (intent, instrument, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
       "CREATE INDEX IF NOT EXISTS performances_group_id_idx",
       "ON performances (group_id, performance_date, updated_at DESC)",
     ].join(" "));
