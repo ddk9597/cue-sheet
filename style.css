@@ -3519,6 +3519,14 @@ textarea {
   width: min(1380px, calc(100vw - 28px));
 }
 
+.modal.workspace-cue-modal {
+  width: min(1480px, calc(100vw - 20px));
+}
+
+.modal.workspace-audience-modal {
+  width: min(820px, calc(100vw - 28px));
+}
+
 body.cue-workspace-page .page {
   min-height: auto;
 }
@@ -3602,6 +3610,211 @@ body.cue-workspace-page .cue-workspace-modal .modal-close {
   max-height: calc(100vh - 140px);
   padding: 22px 24px 24px;
   overflow: auto;
+}
+
+.workspace-cue-modal .modal-card,
+.workspace-audience-modal .modal-card {
+  height: min(900px, calc(100vh - 28px));
+}
+
+.workspace-cue-modal-body {
+  min-height: 0;
+  background: linear-gradient(145deg, rgba(244, 249, 255, 0.84), rgba(250, 247, 255, 0.72));
+}
+
+.workspace-cue-modal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+}
+
+.workspace-cue-modal-summary > div:first-child {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+  gap: 2px 14px;
+}
+
+.workspace-cue-modal-summary .panel-label {
+  grid-column: 1 / -1;
+}
+
+.workspace-cue-modal-summary .summary-title {
+  margin: 0;
+}
+
+.workspace-cue-modal-summary .total-duration {
+  font-size: clamp(1.22rem, 2vw, 1.8rem);
+}
+
+.workspace-cue-modal-state {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.workspace-cue-modal-state .save-status {
+  max-width: 680px;
+  text-align: right;
+}
+
+.workspace-audience-modal-body {
+  min-height: 0;
+  padding: 0;
+  background: linear-gradient(145deg, #edf7ff 0%, #faf5ff 54%, #eefaf4 100%);
+}
+
+.workspace-audience-view {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: 26px 18px 30px;
+}
+
+.workspace-audience-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: end;
+  padding: 22px 4px 24px;
+}
+
+.workspace-audience-kicker {
+  margin: 0 0 8px;
+  color: var(--accent-deep);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.workspace-audience-summary h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 5vw, 2.7rem);
+  line-height: 1;
+}
+
+.workspace-audience-summary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workspace-audience-summary-actions .ghost-button {
+  min-height: 40px;
+  text-decoration: none;
+}
+
+.workspace-audience-count {
+  display: grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgba(93, 113, 154, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent-deep);
+  font-weight: 900;
+}
+
+.workspace-audience-setlist {
+  overflow: hidden;
+  border: 1px solid rgba(93, 113, 154, 0.16);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 42px rgba(82, 101, 133, 0.14);
+}
+
+.workspace-audience-setlist-header {
+  padding: 20px 18px 15px;
+  border-bottom: 1px solid rgba(93, 113, 154, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.78));
+}
+
+.workspace-audience-setlist-header strong {
+  display: block;
+  font-size: 1.3rem;
+}
+
+.workspace-audience-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  list-style: none;
+}
+
+.workspace-audience-part-heading {
+  margin: 7px 3px -3px;
+  color: var(--accent-deep);
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.workspace-audience-cue {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 112px;
+  padding: 6px;
+  border: 1px solid rgba(93, 113, 154, 0.16);
+  border-radius: 21px;
+  background: linear-gradient(135deg, rgba(69, 101, 163, 0.94), rgba(92, 76, 145, 0.9));
+  box-shadow: 0 14px 28px rgba(82, 101, 133, 0.16);
+}
+
+.workspace-audience-cue > span,
+.workspace-audience-cue > strong {
+  display: grid;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.workspace-audience-cue > span {
+  place-items: center;
+  border-radius: 15px;
+  background: rgba(24, 35, 54, 0.54);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.workspace-audience-cue > strong {
+  min-width: 0;
+  padding: 16px 20px;
+  border-radius: 17px;
+  background: rgba(24, 35, 54, 0.14);
+  font-size: clamp(1.12rem, 3vw, 1.55rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.workspace-audience-intermission {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 15px 18px;
+  border: 1px solid rgba(93, 113, 154, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(232, 244, 255, 0.96), rgba(245, 240, 255, 0.96));
+  text-align: center;
+}
+
+.workspace-audience-intermission strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+}
+
+.workspace-audience-intermission span {
+  color: var(--text-subtle);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .todo-panel {
@@ -4841,6 +5054,63 @@ body.has-cue-touch-drag {
     max-height: calc(100dvh - 38px);
     padding: 16px 18px 18px;
     overflow-x: hidden;
+  }
+
+  .workspace-cue-modal .modal-card,
+  .workspace-audience-modal .modal-card {
+    height: 100dvh;
+  }
+
+  .workspace-cue-modal-body {
+    padding: 12px;
+  }
+
+  .workspace-cue-modal-summary {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .workspace-cue-modal-summary > div:first-child {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .workspace-cue-modal-state {
+    justify-items: stretch;
+  }
+
+  .workspace-cue-modal-state .save-status {
+    max-width: none;
+    text-align: left;
+  }
+
+  .workspace-audience-modal-body {
+    padding: 0;
+  }
+
+  .workspace-audience-view {
+    padding: 18px 12px 24px;
+  }
+
+  .workspace-audience-summary {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 4px 20px;
+  }
+
+  .workspace-audience-summary-actions {
+    justify-content: flex-start;
+  }
+
+  .workspace-audience-cue {
+    grid-template-columns: 44px minmax(0, 1fr);
+    min-height: 94px;
+  }
+
+  .workspace-audience-cue > strong {
+    padding: 13px 15px;
   }
 
   .todo-panel {

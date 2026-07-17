@@ -34,29 +34,54 @@
               <p class="panel-label">Quick Actions</p>
               <strong class="summary-title">바로 시작하기</strong>
             </div>
-            <span id="saveStatus" class="save-status" aria-live="polite">목록 편집 페이지에서 생성과 편집을 진행합니다.</span>
+            <span id="workspaceToolStatus" class="save-status">도구를 선택하면 이 화면 위에 작업 창이 열립니다.</span>
           </div>
           <div class="workspace-tool-grid" aria-label="작업공간 도구">
-            <a class="home-tool-card" href="./cues.html#cue-editor">
+            <button
+              class="home-tool-card"
+              type="button"
+              data-modal-target="cueModal"
+              data-modal-section="input"
+              aria-haspopup="dialog"
+              aria-controls="cueModal"
+            >
               <span>01</span>
               <strong>목록 편집</strong>
               <small>개인 큐시트를 만들고 저장합니다.</small>
-            </a>
-            <button class="home-tool-card" type="button" data-modal-target="practiceModal">
+            </button>
+            <button
+              class="home-tool-card"
+              type="button"
+              data-modal-target="practiceModal"
+              aria-haspopup="dialog"
+              aria-controls="practiceModal"
+            >
               <span>02</span>
               <strong>연습 기록</strong>
               <small>날짜별 연습 시간을 기록합니다.</small>
             </button>
-            <button class="home-tool-card" type="button" data-modal-target="todoModal">
+            <button
+              class="home-tool-card"
+              type="button"
+              data-modal-target="todoModal"
+              aria-haspopup="dialog"
+              aria-controls="todoModal"
+            >
               <span>03</span>
               <strong>할 일</strong>
               <small>공연 준비 항목을 정리합니다.</small>
             </button>
-            <a class="home-tool-card" href="./audience.html">
+            <button
+              class="home-tool-card"
+              type="button"
+              data-modal-target="audienceModal"
+              aria-haspopup="dialog"
+              aria-controls="audienceModal"
+            >
               <span>04</span>
               <strong>관객용 목록</strong>
               <small>공유되는 큐시트 화면을 확인합니다.</small>
-            </a>
+            </button>
           </div>
         </div>
         <aside class="workspace-session-card" aria-label="현재 큐시트 상태와 BPM 측정">
@@ -158,6 +183,299 @@
     </section>
 
   </main>
+
+  <dialog id="cueModal" class="modal modal-wide workspace-cue-modal" aria-labelledby="cueModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Cue Sheet</p>
+          <strong id="cueModalTitle" class="modal-title">목록 편집</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="목록 편집 모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body modal-stack workspace-cue-modal-body">
+        <section class="panel workspace-cue-modal-summary" aria-label="큐시트 저장 상태">
+          <div>
+            <p class="panel-label">Current Cue</p>
+            <strong class="summary-title">현재 큐시트</strong>
+            <strong id="cueModalTotalDuration" class="total-duration">00:00:00</strong>
+          </div>
+          <div class="workspace-cue-modal-state">
+            <p id="saveStatus" class="save-status" aria-live="polite">저장 상태를 확인하는 중입니다.</p>
+            <div class="summary-actions">
+              <button id="saveButton" class="primary-button" type="button">목록 저장하기</button>
+              <button id="clearAllButton" class="ghost-button" type="button">전체 삭제</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="cue-editor" class="panel form-panel" aria-label="큐시트 입력" tabindex="-1">
+          <div class="form-panel-header">
+            <div class="form-panel-copy">
+              <p class="panel-label">큐시트 입력</p>
+              <strong class="form-panel-title">항목 추가</strong>
+            </div>
+            <div class="form-panel-actions">
+              <button id="openCueEntryButton" class="primary-button" type="button">항목 추가</button>
+              <button id="addIntermissionButton" class="ghost-button" type="button">구분선 추가</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="cue-list-panel" class="panel list-panel" aria-label="큐시트 목록" tabindex="-1">
+          <div class="list-scroll">
+            <div class="list-header">
+              <span>이동</span>
+              <span>제목</span>
+              <span>BPM</span>
+              <span>시간</span>
+              <span>통기타</span>
+              <span>일렉기타</span>
+              <span>베이스</span>
+              <span>관리</span>
+            </div>
+            <p class="list-guide">우측 칸에서 튜닝을 선택해 연속 세팅 흐름을 확인하세요. 베이스는 `D 드랍`까지 선택할 수 있습니다.</p>
+            <div class="list-header-mobile" aria-hidden="true">
+              <span>이동</span>
+              <span>제목</span>
+              <span>재생</span>
+              <span class="list-header-mobile-tunings">A E B</span>
+              <span>메뉴</span>
+            </div>
+            <ul id="cueList" class="cue-list"></ul>
+            <p id="emptyState" class="empty-state">등록된 큐시트가 없습니다.</p>
+          </div>
+        </section>
+      </div>
+      <div id="cueEntryOverlay" class="submodal" hidden>
+        <div class="submodal-card" role="dialog" aria-modal="true" aria-labelledby="cueEntryTitle">
+          <div class="submodal-header">
+            <div>
+              <p class="panel-label">Cue Sheet</p>
+              <strong id="cueEntryTitle" class="submodal-title">항목 추가</strong>
+            </div>
+            <button class="modal-close" type="button" data-cue-entry-close aria-label="입력 모달 닫기">닫기</button>
+          </div>
+          <form id="cueForm" class="cue-entry-form">
+            <label class="field">
+              <span id="titleFieldLabel">멘트</span>
+              <input
+                id="titleInput"
+                name="title"
+                type="text"
+                maxlength="60"
+                placeholder="예: 오프닝 멘트"
+                required
+              >
+            </label>
+
+            <label id="bpmField" class="field bpm-field">
+              <span>BPM</span>
+              <input
+                id="bpmInput"
+                name="bpm"
+                type="text"
+                inputmode="numeric"
+                maxlength="3"
+                placeholder="예: 120"
+              >
+            </label>
+
+            <fieldset class="field duration-field">
+              <legend>시간</legend>
+              <div class="duration-inputs">
+                <label>
+                  <input
+                    id="durationMinutesInput"
+                    name="durationMinutes"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    placeholder="분"
+                    required
+                  >
+                  <span>분</span>
+                </label>
+                <label>
+                  <input
+                    id="durationSecondsInput"
+                    name="durationSeconds"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    max="59"
+                    placeholder="초"
+                    value="0"
+                    required
+                  >
+                  <span>초</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="cue-entry-actions">
+              <button class="ghost-button" type="button" data-cue-entry-close>취소</button>
+              <button id="cueEntrySubmitButton" class="primary-button" type="submit">추가</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <template id="cueItemTemplate">
+    <li class="cue-item">
+      <button class="drag-handle" type="button" aria-label="순서 이동" title="드래그하여 순서 이동">
+        <span class="drag-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+      <div class="cue-main">
+        <strong class="cue-title"></strong>
+      </div>
+      <div class="bpm-cell">
+        <input
+          class="bpm-list-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="3"
+          aria-label="BPM"
+          placeholder="BPM"
+        >
+        <button
+          class="metronome-button"
+          type="button"
+          aria-label="메트로놈 재생"
+          aria-pressed="false"
+          title="메트로놈 재생"
+        >
+          <span class="metronome-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+      <span class="cue-duration"></span>
+      <div class="cue-desktop-tunings">
+        <label class="tuning-cell" data-field="acousticTuning">
+          <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
+            <option value="standard">정튜닝</option>
+            <option value="half-down">하프다운</option>
+            <option value="inactive">쉬는타임</option>
+          </select>
+        </label>
+        <label class="tuning-cell" data-field="electricTuning">
+          <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
+            <option value="standard">정튜닝</option>
+            <option value="half-down">하프다운</option>
+          </select>
+        </label>
+        <label class="tuning-cell" data-field="bassTuning">
+          <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
+            <option value="standard">정튜닝</option>
+            <option value="half-down">하프다운</option>
+            <option value="d-drop">D 드랍</option>
+            <option value="inactive">쉬는타임</option>
+          </select>
+        </label>
+      </div>
+      <div class="cue-mobile-tuning-group" aria-hidden="true">
+        <span class="cue-mobile-tuning-chip" data-field="acousticTuning">A</span>
+        <span class="cue-mobile-tuning-chip" data-field="electricTuning">E</span>
+        <span class="cue-mobile-tuning-chip" data-field="bassTuning">B</span>
+      </div>
+      <button class="delete-button" type="button">삭제</button>
+      <details class="cue-mobile-actions">
+        <summary class="cue-menu-button" aria-label="항목 메뉴" title="항목 메뉴">
+          <span class="cue-menu-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </summary>
+        <div class="cue-mobile-actions-panel">
+          <label class="cue-mobile-bpm-row">
+            <span>BPM</span>
+            <input
+              class="bpm-list-input cue-mobile-bpm-input"
+              type="text"
+              inputmode="numeric"
+              maxlength="3"
+              aria-label="BPM"
+              placeholder="BPM"
+            >
+          </label>
+          <p class="cue-mobile-meta">시간 <span class="cue-mobile-duration-value"></span></p>
+          <div class="cue-mobile-tuning-editor">
+            <label class="cue-mobile-tuning-row">
+              <span>A</span>
+              <select class="tuning-select" data-field="acousticTuning" aria-label="통기타 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+                <option value="inactive">쉬는타임</option>
+              </select>
+            </label>
+            <label class="cue-mobile-tuning-row">
+              <span>E</span>
+              <select class="tuning-select" data-field="electricTuning" aria-label="일렉기타 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+              </select>
+            </label>
+            <label class="cue-mobile-tuning-row">
+              <span>B</span>
+              <select class="tuning-select" data-field="bassTuning" aria-label="베이스 튜닝">
+                <option value="standard">정튜닝</option>
+                <option value="half-down">하프다운</option>
+                <option value="d-drop">D 드랍</option>
+                <option value="inactive">쉬는타임</option>
+              </select>
+            </label>
+          </div>
+          <div class="cue-mobile-action-grid">
+            <button class="ghost-button cue-move-button" type="button" data-direction="up">위로</button>
+            <button class="ghost-button cue-move-button" type="button" data-direction="down">아래로</button>
+          </div>
+          <button class="delete-button cue-mobile-delete" type="button">삭제</button>
+        </div>
+      </details>
+    </li>
+  </template>
+
+  <dialog id="audienceModal" class="modal workspace-audience-modal" aria-labelledby="audienceModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="panel-label">Audience View</p>
+          <strong id="audienceModalTitle" class="modal-title">관객용 목록</strong>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="관객용 목록 모달 닫기">닫기</button>
+      </div>
+      <div class="modal-body workspace-audience-modal-body">
+        <section class="workspace-audience-view" aria-labelledby="workspaceAudienceHeading">
+          <header class="workspace-audience-summary">
+            <div>
+              <p class="workspace-audience-kicker">Live Set</p>
+              <h2 id="workspaceAudienceHeading">오늘의 큐시트</h2>
+              <p id="workspaceAudienceStatus" class="save-status" aria-live="polite">모달을 열면 공개 목록을 불러옵니다.</p>
+            </div>
+            <div class="workspace-audience-summary-actions">
+              <span id="workspaceAudienceCount" class="workspace-audience-count">--</span>
+              <button id="workspaceAudienceRefreshButton" class="ghost-button" type="button">새로고침</button>
+              <a class="ghost-button" href="./audience.html" target="_blank" rel="noopener">전체 화면</a>
+            </div>
+          </header>
+          <section class="workspace-audience-setlist" aria-labelledby="workspaceAudienceSetlistTitle">
+            <div class="workspace-audience-setlist-header">
+              <p class="panel-label">Set Order</p>
+              <strong id="workspaceAudienceSetlistTitle">공연 순서</strong>
+            </div>
+            <p id="workspaceAudienceEmpty" class="empty-state">공개된 큐시트를 확인하는 중입니다.</p>
+            <ol id="workspaceAudienceList" class="workspace-audience-list"></ol>
+          </section>
+        </section>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="profileModal" class="modal workspace-feature-modal" aria-labelledby="profileModalTitle">
     <div class="modal-card">

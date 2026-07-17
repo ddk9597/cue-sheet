@@ -1,4 +1,5 @@
 const CUES_API_ENDPOINT = "/api/cues";
+const AUDIENCE_CUES_ENDPOINT = "/api/audience-cues";
 const PRACTICE_API_ENDPOINT = "/api/practice";
 const AUTH_SESSION_ENDPOINT = "/api/auth/session";
 const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
@@ -120,6 +121,7 @@ const cueEntryCloseButtons = document.querySelectorAll("[data-cue-entry-close]")
 const cueList = document.querySelector("#cueList");
 const emptyState = document.querySelector("#emptyState");
 const totalDuration = document.querySelector("#totalDuration");
+const cueModalTotalDuration = document.querySelector("#cueModalTotalDuration");
 const saveButton = document.querySelector("#saveButton");
 const saveStatus = document.querySelector("#saveStatus");
 const clearAllButton = document.querySelector("#clearAllButton");
@@ -131,6 +133,12 @@ const tapTempoStatus = document.querySelector("#tapTempoStatus");
 const practiceModal = document.querySelector("#practiceModal");
 const cueModal = document.querySelector("#cueModal");
 const todoModal = document.querySelector("#todoModal");
+const audienceModal = document.querySelector("#audienceModal");
+const workspaceAudienceStatus = document.querySelector("#workspaceAudienceStatus");
+const workspaceAudienceCount = document.querySelector("#workspaceAudienceCount");
+const workspaceAudienceRefreshButton = document.querySelector("#workspaceAudienceRefreshButton");
+const workspaceAudienceEmpty = document.querySelector("#workspaceAudienceEmpty");
+const workspaceAudienceList = document.querySelector("#workspaceAudienceList");
 const blockingModals = document.querySelectorAll("dialog.modal");
 const modalTriggers = document.querySelectorAll("[data-modal-target]");
 const memberModalTriggers = document.querySelectorAll("[data-member-modal-trigger]");
@@ -142,6 +150,7 @@ const todoPasswordInput = document.querySelector("#todoPasswordInput");
 const todoUnlockButton = document.querySelector("#todoUnlockButton");
 const todoToolbarButtons = document.querySelectorAll("[data-todo-command]");
 const cueItemTemplate = document.querySelector("#cueItemTemplate");
+const hasCueEditor = Boolean(cueModal && cueForm && cueList && cueItemTemplate);
 const practiceMonthLabel = document.querySelector("#practiceMonthLabel");
 const practiceMonthSummary = document.querySelector("#practiceMonthSummary");
 const practiceCalendar = document.querySelector("#practiceCalendar");
@@ -240,6 +249,7 @@ let todoPendingSave = false;
 let todoLastSavedHtml = "";
 let todoNeedsInitialDbSave = false;
 let todoUserScoped = false;
+let workspaceAudienceLoadVersion = 0;
 
 for (const trigger of modalTriggers) {
   trigger.addEventListener("click", (event) => {
@@ -262,9 +272,17 @@ for (const modal of blockingModals) {
   });
 
   modal.addEventListener("close", () => {
+    if (modal === cueModal) {
+      closeCueEntryOverlay({ restoreFocus: false });
+    }
+
     syncModalState();
   });
 }
+
+workspaceAudienceRefreshButton?.addEventListener("click", () => {
+  loadWorkspaceAudiencePreview();
+});
 
 for (const button of todoToolbarButtons) {
   button.addEventListener("pointerdown", (event) => {
@@ -649,7 +667,7 @@ tapTempoApplyButton?.addEventListener("click", () => {
     return;
   }
 
-  if (!isCueWorkspacePage) {
+  if (!hasCueEditor) {
     try {
       window.sessionStorage.setItem(PENDING_TAP_BPM_STORAGE_KEY, measuredTapBpm);
     } catch {
@@ -948,7 +966,7 @@ setupCueInteractDrag();
 setupTodoInteractDrag();
 
 window.addEventListener("beforeunload", (event) => {
-  if (!isCueWorkspacePage || !hasPendingChanges()) {
+  if (!hasCueEditor || !hasPendingChanges()) {
     return;
   }
 
@@ -1164,6 +1182,10 @@ function openModalById(modalId, section = "") {
       : "그룹을 선택하면 오른쪽에 상세 정보가 표시됩니다.";
   }
 
+  if (modal === audienceModal) {
+    loadWorkspaceAudiencePreview();
+  }
+
   window.requestAnimationFrame(() => {
     if (modal === cueModal) {
       focusCueModalSection(section);
@@ -1182,6 +1204,11 @@ function openModalById(modalId, section = "") {
       }
 
       focusTodoEditor();
+      return;
+    }
+
+    if (modal === audienceModal) {
+      workspaceAudienceRefreshButton?.focus();
       return;
     }
 
@@ -1235,6 +1262,128 @@ function focusCueModalSection(section) {
 
   cueEditorPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
   openCueEntryButton?.focus();
+}
+
+async function loadWorkspaceAudiencePreview() {
+  if (!workspaceAudienceList || !workspaceAudienceStatus || !workspaceAudienceEmpty) {
+    return;
+  }
+
+  const loadVersion = ++workspaceAudienceLoadVersion;
+
+  workspaceAudienceStatus.classList.remove("is-error");
+  workspaceAudienceStatus.textContent = "공개된 최신 큐시트를 불러오는 중입니다.";
+  workspaceAudienceList.replaceChildren();
+  workspaceAudienceEmpty.hidden = false;
+  workspaceAudienceEmpty.textContent = "공개된 큐시트를 확인하는 중입니다.";
+  if (workspaceAudienceCount) {
+    workspaceAudienceCount.textContent = "--";
+  }
+  workspaceAudienceRefreshButton?.setAttribute("aria-busy", "true");
+  if (workspaceAudienceRefreshButton) {
+    workspaceAudienceRefreshButton.disabled = true;
+  }
+
+  try {
+    const response = await fetch(AUDIENCE_CUES_ENDPOINT, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const payload = await safeReadJson(response);
+
+    if (!response.ok) {
+      throw new Error(payload.message || "관객용 목록을 불러오지 못했습니다.");
+    }
+
+    if (loadVersion !== workspaceAudienceLoadVersion) {
+      return;
+    }
+
+    renderWorkspaceAudiencePreview(normalizeCueCollection(payload.items));
+  } catch (error) {
+    if (loadVersion !== workspaceAudienceLoadVersion) {
+      return;
+    }
+
+    workspaceAudienceList.replaceChildren();
+    workspaceAudienceEmpty.hidden = false;
+    workspaceAudienceEmpty.textContent = "목록을 불러오지 못했습니다.";
+    workspaceAudienceStatus.classList.add("is-error");
+    workspaceAudienceStatus.textContent = error.message || "관객용 목록을 불러오지 못했습니다.";
+    if (workspaceAudienceCount) {
+      workspaceAudienceCount.textContent = "--";
+    }
+  } finally {
+    if (loadVersion === workspaceAudienceLoadVersion) {
+      workspaceAudienceRefreshButton?.removeAttribute("aria-busy");
+      if (workspaceAudienceRefreshButton) {
+        workspaceAudienceRefreshButton.disabled = false;
+      }
+    }
+  }
+}
+
+function renderWorkspaceAudiencePreview(items) {
+  if (!workspaceAudienceList || !workspaceAudienceStatus || !workspaceAudienceEmpty) {
+    return;
+  }
+
+  const songs = items.filter((item) => item.type !== CUE_TYPE_INTERMISSION);
+
+  workspaceAudienceList.replaceChildren();
+  workspaceAudienceEmpty.hidden = items.length > 0;
+  workspaceAudienceEmpty.textContent = "아직 공개된 큐시트가 없습니다.";
+  workspaceAudienceStatus.classList.remove("is-error");
+  workspaceAudienceStatus.textContent = songs.length
+    ? "공개된 최신 공연 순서입니다."
+    : "공개된 큐시트가 없습니다.";
+
+  if (workspaceAudienceCount) {
+    workspaceAudienceCount.textContent = `${songs.length}곡`;
+  }
+
+  let partNumber = 1;
+  let songNumber = 0;
+  let shouldRenderPartHeading = true;
+
+  for (const item of items) {
+    if (item.type === CUE_TYPE_INTERMISSION) {
+      const intermission = document.createElement("li");
+      const title = document.createElement("strong");
+      const duration = document.createElement("span");
+
+      intermission.className = "workspace-audience-intermission";
+      title.textContent = item.title || "인터미션";
+      duration.textContent = formatDuration(item.seconds);
+      intermission.append(title, duration);
+      workspaceAudienceList.appendChild(intermission);
+      partNumber += 1;
+      shouldRenderPartHeading = true;
+      continue;
+    }
+
+    if (shouldRenderPartHeading) {
+      const heading = document.createElement("li");
+
+      heading.className = "workspace-audience-part-heading";
+      heading.textContent = `${partNumber}부`;
+      workspaceAudienceList.appendChild(heading);
+      shouldRenderPartHeading = false;
+    }
+
+    songNumber += 1;
+    const cue = document.createElement("li");
+    const number = document.createElement("span");
+    const title = document.createElement("strong");
+
+    cue.className = "workspace-audience-cue";
+    number.textContent = String(songNumber).padStart(2, "0");
+    title.textContent = item.title;
+    cue.append(number, title);
+    workspaceAudienceList.appendChild(cue);
+  }
 }
 
 async function loadTodoDocument() {
@@ -2970,7 +3119,7 @@ async function loadMemberGroupCue(cueId) {
     return;
   }
 
-  if (isCueWorkspacePage && hasPendingChanges()) {
+  if (hasCueEditor && hasPendingChanges()) {
     const confirmed = window.confirm("현재 편집 중인 변경사항이 있습니다. 그룹 큐시트를 불러올까요?");
 
     if (!confirmed) {
@@ -3613,7 +3762,7 @@ async function logoutAuthSession() {
     return;
   }
 
-  if (isCueWorkspacePage && hasPendingChanges()) {
+  if (hasCueEditor && hasPendingChanges()) {
     const confirmed = window.confirm("저장되지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?");
 
     if (!confirmed) {
@@ -4287,10 +4436,16 @@ function render() {
     }
   }
 
+  const formattedTotalDuration = formatDuration(
+    cues.reduce((sum, cue) => sum + cue.seconds, 0),
+  );
+
   if (totalDuration) {
-    totalDuration.textContent = formatDuration(
-      cues.reduce((sum, cue) => sum + cue.seconds, 0),
-    );
+    totalDuration.textContent = formattedTotalDuration;
+  }
+
+  if (cueModalTotalDuration) {
+    cueModalTotalDuration.textContent = formattedTotalDuration;
   }
 
   updateActionState();
@@ -4669,7 +4824,7 @@ function hasPendingChanges() {
 function updateActionState(saved = false) {
   const storageIdentity = getCueStorageIdentity();
 
-  if (storageMode !== STORAGE_MODE_LOADING && storageIdentity === "anonymous" && isCueWorkspacePage) {
+  if (storageMode !== STORAGE_MODE_LOADING && storageIdentity === "anonymous" && hasCueEditor) {
     persistLocalCues(cues);
   }
 
@@ -4698,7 +4853,7 @@ function updateActionState(saved = false) {
     storageMode === STORAGE_MODE_LOCAL && Boolean(storageWarningMessage),
   );
 
-  if (!isCueWorkspacePage) {
+  if (!hasCueEditor) {
     if (saveButton) {
       saveButton.disabled = true;
     }
@@ -4781,7 +4936,7 @@ function updateActionState(saved = false) {
 }
 
 function restorePendingTapBpm() {
-  if (!isCueWorkspacePage) {
+  if (!hasCueEditor) {
     return;
   }
 
