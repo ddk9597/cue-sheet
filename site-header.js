@@ -22,11 +22,6 @@
       label: "내 작업 공간",
       href: "./workspace.html",
     },
-    {
-      id: "mypage",
-      label: "마이페이지",
-      href: "./mypage.html",
-    },
   ];
 
   const navLinks = navigationItems.map((item) => {
