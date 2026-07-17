@@ -42,7 +42,6 @@ async function verifyGoogleCredential(credential) {
     googleSub,
     email,
     name: String(payload?.name || "").trim(),
-    pictureUrl: String(payload?.picture || "").trim(),
   };
 }
 

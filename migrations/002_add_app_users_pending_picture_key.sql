@@ -1,0 +1,2 @@
+ALTER TABLE app_users
+ADD COLUMN IF NOT EXISTS pending_picture_key TEXT NOT NULL DEFAULT '';

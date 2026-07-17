@@ -10,7 +10,7 @@ const scriptSource = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
 const siteHeaderSource = fs.readFileSync(path.join(ROOT, "site-header.js"), "utf8");
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"));
 
-test("공통 헤더에는 홈, 소개와 내 작업 공간만 표시한다", () => {
+test("공통 헤더에는 핵심 페이지와 밴드 구해요 게시판을 표시한다", () => {
   const mount = {
     dataset: { current: "workspace" },
     outerHTML: "",
@@ -27,6 +27,8 @@ test("공통 헤더에는 홈, 소개와 내 작업 공간만 표시한다", () 
   assert.doesNotMatch(mount.outerHTML, />목록 편집<|>관객용 목록<|>마이페이지</);
   assert.match(mount.outerHTML, />홈</);
   assert.match(mount.outerHTML, />소개</);
+  assert.match(mount.outerHTML, /href="\.\/recruit\.html"/);
+  assert.match(mount.outerHTML, />밴드 구해요</);
   assert.match(mount.outerHTML, />내 작업 공간</);
 });
 

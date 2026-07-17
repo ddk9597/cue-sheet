@@ -50,6 +50,8 @@ async function ensureSchemaLocked(sql) {
       "google_sub TEXT UNIQUE,",
       "name TEXT NOT NULL DEFAULT '',",
       "picture_url TEXT NOT NULL DEFAULT '',",
+      "picture_key TEXT NOT NULL DEFAULT '',",
+      "pending_picture_key TEXT NOT NULL DEFAULT '',",
       "region TEXT NOT NULL DEFAULT '',",
       "\"position\" TEXT NOT NULL DEFAULT '',",
       "genre TEXT NOT NULL DEFAULT '',",
@@ -66,6 +68,8 @@ async function ensureSchemaLocked(sql) {
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_url TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS picture_key TEXT NOT NULL DEFAULT ''");
+    await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pending_picture_key TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS \"position\" TEXT NOT NULL DEFAULT ''");
     await sql.query("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS genre TEXT NOT NULL DEFAULT ''");
@@ -241,6 +245,33 @@ async function ensureSchemaLocked(sql) {
       "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
       ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE TABLE IF NOT EXISTS recruit_posts (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "intent TEXT NOT NULL CHECK (intent IN ('구해요', '할래요')),",
+      "instrument TEXT NOT NULL CHECK (instrument IN ('일렉', '드럼', '기타', '베이스', '보컬', '신디')),",
+      "title TEXT NOT NULL DEFAULT '',",
+      "region TEXT NOT NULL DEFAULT '',",
+      "genre TEXT NOT NULL DEFAULT '',",
+      "schedule TEXT NOT NULL DEFAULT '',",
+      "content TEXT NOT NULL DEFAULT '',",
+      "contact TEXT NOT NULL DEFAULT '',",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_posts_created_at_idx",
+      "ON recruit_posts (created_at DESC, id DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_posts_category_idx",
+      "ON recruit_posts (intent, instrument, created_at DESC)",
     ].join(" "));
 
     await sql.query([

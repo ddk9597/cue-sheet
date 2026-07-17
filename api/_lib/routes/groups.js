@@ -8,6 +8,7 @@ const {
 const { normalizeCueList } = require("../cues");
 const { ensureSchema, getSql } = require("../db");
 const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { resolveProfilePictureUrl } = require("../r2");
 
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_GROUP_DESCRIPTION_LENGTH = 500;
@@ -276,7 +277,7 @@ async function handleGetMembers(sql, response, sessionUser, groupId) {
   const rows = await sql.query(
     [
       "SELECT",
-      "u.id, u.email, u.name, u.picture_url, u.region, u.\"position\", u.genre,",
+      "u.id, u.email, u.name, u.picture_url, u.picture_key, u.region, u.\"position\", u.genre,",
       "gm.role, gm.created_at",
       "FROM group_members gm",
       "JOIN app_users u ON u.id = gm.user_id",
@@ -607,7 +608,7 @@ function normalizeMemberRow(row) {
     id: String(row?.id || ""),
     email: normalizeEmail(row?.email),
     name: String(row?.name || "").trim(),
-    pictureUrl: String(row?.picture_url || "").trim(),
+    pictureUrl: resolveProfilePictureUrl(row),
     region: String(row?.region || "").trim(),
     position: String(row?.position || "").trim(),
     genre: String(row?.genre || "").trim(),

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="악기 파트별로 밴드 멤버와 팀을 찾는 Cue Sheet 구인 게시판">
+  <title>밴드 구해요 | Cue Sheet</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./recruit.css">
+</head>
+<body>
+  <div data-site-header data-current="recruit"></div>
+  <script src="./site-header.js"></script>
+
+  <main class="recruit-page">
+    <section class="recruit-hero" aria-labelledby="recruitTitle">
+      <div class="recruit-hero-copy">
+        <p class="eyebrow">Find your sound</p>
+        <h1 id="recruitTitle">같이할 사람을 찾고,<br>하고 싶은 팀을 만나요.</h1>
+        <p>밴드가 파트를 찾는 <strong>구해요</strong>, 내가 밴드를 찾는 <strong>할래요</strong>. 원하는 파트와 활동 조건으로 빠르게 연결해 보세요.</p>
+      </div>
+      <div class="recruit-hero-parts" aria-label="게시판 악기 분류">
+        <span data-part="일렉"><b>EL</b>일렉</span>
+        <span data-part="드럼"><b>DR</b>드럼</span>
+        <span data-part="기타"><b>GT</b>기타</span>
+        <span data-part="베이스"><b>BS</b>베이스</span>
+        <span data-part="보컬"><b>VO</b>보컬</span>
+        <span data-part="신디"><b>SY</b>신디</span>
+      </div>
+    </section>
+
+    <section class="recruit-board" aria-labelledby="boardTitle">
+      <aside class="recruit-filters" aria-label="게시글 필터">
+        <div class="filter-heading">
+          <p class="panel-label">Filter</p>
+          <strong>어떤 만남을 찾나요?</strong>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">모집 유형</span>
+          <div class="intent-filter" role="group" aria-label="모집 유형">
+            <button type="button" class="filter-button is-active" data-intent-filter="전체" aria-pressed="true">전체</button>
+            <button type="button" class="filter-button" data-intent-filter="구해요" aria-pressed="false"><i class="filter-dot filter-dot-want"></i>구해요</button>
+            <button type="button" class="filter-button" data-intent-filter="할래요" aria-pressed="false"><i class="filter-dot filter-dot-join"></i>할래요</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">악기 파트</span>
+          <div class="instrument-filter" role="group" aria-label="악기 파트">
+            <button type="button" class="part-filter is-active" data-instrument-filter="전체" aria-pressed="true"><b>ALL</b><span>전체</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="일렉" aria-pressed="false"><b>EL</b><span>일렉</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="드럼" aria-pressed="false"><b>DR</b><span>드럼</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="기타" aria-pressed="false"><b>GT</b><span>기타</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="베이스" aria-pressed="false"><b>BS</b><span>베이스</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="보컬" aria-pressed="false"><b>VO</b><span>보컬</span></button>
+            <button type="button" class="part-filter" data-instrument-filter="신디" aria-pressed="false"><b>SY</b><span>신디</span></button>
+          </div>
+        </div>
+
+        <p class="filter-guide">조건을 선택하면 게시글 목록에 바로 반영됩니다.</p>
+      </aside>
+
+      <div class="recruit-results">
+        <div class="recruit-toolbar">
+          <div>
+            <p class="panel-label">Recruit board</p>
+            <h2 id="boardTitle">밴드 구해요</h2>
+          </div>
+          <button id="openPostFormButton" class="primary-button recruit-write-button" type="button"><span aria-hidden="true">＋</span> 글쓰기</button>
+        </div>
+
+        <div class="recruit-search-row">
+          <label class="recruit-search">
+            <span class="sr-only">게시글 검색</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.4A7.75 7.75 0 1 1 3.5 11.25a7.75 7.75 0 0 1 15.5 0Z"/></svg>
+            <input id="recruitSearchInput" type="search" placeholder="지역, 장르, 제목으로 검색" autocomplete="off">
+          </label>
+          <p id="recruitResultSummary" class="recruit-result-summary" aria-live="polite">게시글을 불러오는 중입니다.</p>
+        </div>
+
+        <div id="recruitPostList" class="recruit-post-list" aria-live="polite" aria-busy="true">
+          <div class="recruit-skeleton" aria-hidden="true"></div>
+          <div class="recruit-skeleton" aria-hidden="true"></div>
+          <div class="recruit-skeleton" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="postFormDialog" class="recruit-dialog">
+    <form id="recruitPostForm" class="recruit-dialog-card" method="dialog">
+      <div class="recruit-dialog-header">
+        <div>
+          <p class="panel-label">New post</p>
+          <h2>새 게시글 작성</h2>
+        </div>
+        <button class="dialog-close-button" type="button" data-close-dialog aria-label="닫기">×</button>
+      </div>
+
+      <p id="postFormAuthNotice" class="post-form-notice" hidden>글을 등록하려면 <a href="./login.html">로그인</a>해 주세요.</p>
+
+      <fieldset class="post-intent-fieldset">
+        <legend>어떤 글인가요?</legend>
+        <div class="post-intent-options">
+          <label>
+            <input type="radio" name="intent" value="구해요" checked>
+            <span><b>구해요</b><small>우리 팀에 필요한 파트를 찾아요</small></span>
+          </label>
+          <label>
+            <input type="radio" name="intent" value="할래요">
+            <span><b>할래요</b><small>내가 합류할 밴드를 찾아요</small></span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="post-form-grid">
+        <label class="field">
+          <span>악기 파트</span>
+          <select name="instrument" required>
+            <option value="">선택해 주세요</option>
+            <option value="일렉">일렉</option>
+            <option value="드럼">드럼</option>
+            <option value="기타">기타</option>
+            <option value="베이스">베이스</option>
+            <option value="보컬">보컬</option>
+            <option value="신디">신디</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>활동 지역</span>
+          <input name="region" type="text" maxlength="40" placeholder="예: 서울 마포" autocomplete="address-level2">
+        </label>
+        <label class="field post-form-wide">
+          <span>제목</span>
+          <input name="title" type="text" maxlength="100" placeholder="어떤 멤버나 밴드를 찾고 있나요?" required>
+        </label>
+        <label class="field">
+          <span>장르</span>
+          <input name="genre" type="text" maxlength="60" placeholder="예: 인디록, 시티팝">
+        </label>
+        <label class="field">
+          <span>활동 일정</span>
+          <input name="schedule" type="text" maxlength="80" placeholder="예: 토요일 오후, 주 1회">
+        </label>
+        <label class="field post-form-wide">
+          <span>활동 내용</span>
+          <textarea name="content" maxlength="2000" placeholder="목표, 활동 방식, 원하는 실력이나 경험 등을 자세히 적어 주세요." required></textarea>
+        </label>
+        <label class="field post-form-wide">
+          <span>연락 방법</span>
+          <input name="contact" type="text" maxlength="120" placeholder="예: 오픈채팅 링크 또는 이메일" required>
+        </label>
+      </div>
+
+      <p id="postFormMessage" class="post-form-message" role="alert"></p>
+      <div class="recruit-dialog-actions">
+        <button class="ghost-button" type="button" data-close-dialog>취소</button>
+        <button id="submitRecruitPostButton" class="primary-button" type="submit">게시글 등록</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="postDetailDialog" class="recruit-dialog recruit-detail-dialog">
+    <article class="recruit-dialog-card recruit-detail-card">
+      <div class="recruit-dialog-header">
+        <p class="panel-label">Post detail</p>
+        <button class="dialog-close-button" type="button" data-close-detail aria-label="닫기">×</button>
+      </div>
+      <div id="recruitPostDetail"></div>
+    </article>
+  </dialog>
+
+  <div id="recruitToast" class="recruit-toast" role="status" aria-live="polite"></div>
+
+  <script src="./auth-nav.js"></script>
+  <script src="./recruit.js"></script>
+</body>
+</html>

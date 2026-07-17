@@ -18,6 +18,11 @@
       href: "./about.html",
     },
     {
+      id: "recruit",
+      label: "밴드 구해요",
+      href: "./recruit.html",
+    },
+    {
       id: "workspace",
       label: "내 작업 공간",
       href: "./workspace.html",

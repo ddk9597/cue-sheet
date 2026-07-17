@@ -21,6 +21,10 @@
     {
       "source": "/audience",
       "destination": "/audience.html"
+    },
+    {
+      "source": "/recruit",
+      "destination": "/recruit.html"
     }
   ]
 }
