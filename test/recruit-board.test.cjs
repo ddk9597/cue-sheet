@@ -46,3 +46,18 @@ test("게시글 API와 화면은 작성자 아이디 및 프로필 사진을 제
   assert.match(client, /createAuthorAvatar\(post\)/);
   assert.match(client, /post\.authorId/);
 });
+
+test("게시글 댓글은 회원 정보와 함께 저장되고 상세 화면에서 동작한다", () => {
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS recruit_comments/);
+  assert.match(schema, /post_id BIGINT NOT NULL REFERENCES recruit_posts\(id\) ON DELETE CASCADE/);
+  assert.match(schema, /user_id BIGINT NOT NULL REFERENCES app_users\(id\) ON DELETE CASCADE/);
+  assert.match(recruitRoute, /segments\[1\] === "comments"/);
+  assert.match(recruitRoute, /handleListComments/);
+  assert.match(recruitRoute, /handleCreateComment/);
+  assert.match(recruitRoute, /로그인 후 댓글을 작성할 수 있습니다/);
+  assert.match(recruitRoute, /COUNT\(\*\)::int FROM recruit_comments/);
+  assert.match(client, /function createCommentSection\(post\)/);
+  assert.match(client, /async function loadComments\(postId\)/);
+  assert.match(client, /async function submitComment\(event\)/);
+  assert.match(client, /createAuthorIdentity\(comment/);
+});

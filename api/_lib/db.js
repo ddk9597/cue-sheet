@@ -275,6 +275,22 @@ async function ensureSchemaLocked(sql) {
     ].join(" "));
 
     await sql.query([
+      "CREATE TABLE IF NOT EXISTS recruit_comments (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "post_id BIGINT NOT NULL REFERENCES recruit_posts(id) ON DELETE CASCADE,",
+      "user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "content TEXT NOT NULL DEFAULT '',",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_comments_post_id_idx",
+      "ON recruit_comments (post_id, created_at ASC, id ASC)",
+    ].join(" "));
+
+    await sql.query([
       "CREATE INDEX IF NOT EXISTS performances_group_id_idx",
       "ON performances (group_id, performance_date, updated_at DESC)",
     ].join(" "));
