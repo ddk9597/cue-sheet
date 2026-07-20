@@ -2,7 +2,7 @@ const AUTH_SESSION_ENDPOINT = "/api/auth/session";
 const AUTH_GOOGLE_ENDPOINT = "/api/auth/google";
 const AUTH_LOGIN_ENDPOINT = "/api/auth/login";
 const AUTH_LOGOUT_ENDPOINT = "/api/auth/logout";
-const LOGIN_REDIRECT_HREF = "./mypage.html";
+const LOGIN_REDIRECT_HREF = "./workspace.html";
 const AUTH_CHANNEL_NAME = "cue-sheet-auth-session";
 const AUTH_STORAGE_EVENT_KEY = "cue-sheet-auth-session-event";
 
@@ -145,7 +145,7 @@ async function loginWithEmailPassword() {
     if (emailPasswordInput) {
       emailPasswordInput.value = "";
     }
-    authNotice = "로그인되었습니다. 마이페이지로 이동합니다.";
+    authNotice = "로그인되었습니다. 내 작업 공간으로 이동합니다.";
     broadcastAuthSessionChange();
     updateAuthUi();
     redirectToWorkspace();
@@ -197,7 +197,7 @@ async function handleGoogleCredentialResponse(googleResponse) {
       emailLoginConfigured: authSession.emailLoginConfigured,
       googleClientId: authSession.googleClientId,
     }));
-    authNotice = "로그인되었습니다. 마이페이지로 이동합니다.";
+    authNotice = "로그인되었습니다. 내 작업 공간으로 이동합니다.";
     broadcastAuthSessionChange();
     updateAuthUi();
     redirectToWorkspace();
