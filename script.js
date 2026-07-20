@@ -1182,7 +1182,7 @@ function openModalById(modalId, section = "") {
   }
 
   if (modal === messagesModal && memberMessagesModalStatus) {
-    memberMessagesModalStatus.textContent = "받은 그룹 초대와 알림을 확인할 수 있습니다.";
+    memberMessagesModalStatus.textContent = "받은 쪽지, 그룹 초대와 알림을 확인할 수 있습니다.";
   }
 
   if (modal === audienceModal) {
@@ -3589,22 +3589,31 @@ function normalizeMemberMessages(value) {
   }
 
   return value
-    .map((message) => ({
-      id: String(message?.id || ""),
-      type: message?.type === "group_message" ? "group_message" : "invite",
-      messageType: String(message?.messageType || ""),
-      groupId: String(message?.groupId || ""),
-      groupName: String(message?.groupName || "").trim(),
-      title: String(message?.title || "").trim(),
-      body: String(message?.body || "").trim(),
-      inviterEmail: normalizeEmail(message?.inviterEmail),
-      inviterName: String(message?.inviterName || "").trim(),
-      status: ["pending", "accepted", "rejected", "notice"].includes(message?.status)
-        ? message.status
-        : String(message?.status || ""),
-      isRead: Boolean(message?.isRead),
-      createdAt: message?.createdAt || null,
-    }))
+    .map((message) => {
+      const type = ["group_message", "direct_message"].includes(message?.type)
+        ? message.type
+        : "invite";
+
+      return {
+        id: String(message?.id || ""),
+        type,
+        messageType: String(message?.messageType || ""),
+        groupId: String(message?.groupId || ""),
+        groupName: String(message?.groupName || "").trim(),
+        postId: String(message?.postId || ""),
+        title: String(message?.title || "").trim(),
+        body: String(message?.body || "").trim(),
+        inviterEmail: normalizeEmail(message?.inviterEmail),
+        inviterName: String(message?.inviterName || "").trim(),
+        senderName: String(message?.senderName || "").trim(),
+        senderId: String(message?.senderId || "").trim(),
+        status: ["pending", "accepted", "rejected", "notice", "message"].includes(message?.status)
+          ? message.status
+          : String(message?.status || ""),
+        isRead: Boolean(message?.isRead),
+        createdAt: message?.createdAt || null,
+      };
+    })
     .filter((message) => message.id);
 }
 
@@ -5134,7 +5143,7 @@ function updateMemberUi() {
   if (memberMessagesModalStatus) {
     memberMessagesModalStatus.textContent = !isLoggedIn
       ? "로그인 후 메시지를 확인할 수 있습니다."
-      : memberNotice || "받은 그룹 초대와 알림을 확인할 수 있습니다.";
+      : memberNotice || "받은 쪽지, 그룹 초대와 알림을 확인할 수 있습니다.";
     memberMessagesModalStatus.classList.toggle("is-error", statusIsError);
   }
 
@@ -5456,24 +5465,30 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     const rejectButton = document.createElement("button");
     const inviter = message.inviterName || message.inviterEmail;
     const isInvite = message.type === "invite";
+    const isDirectMessage = message.type === "direct_message";
+    const sender = [message.senderName, message.senderId].filter(Boolean).join(" ");
     const canOpenGroup = memberGroups.some((group) => String(group.id) === String(message.groupId));
-    const typeLabel = isInvite ? "초대" : "공지";
+    const typeLabel = isDirectMessage ? "쪽지" : isInvite ? "초대" : "공지";
     const statusLabel = {
       pending: "대기",
       accepted: "수락됨",
       rejected: "거절됨",
       notice: "공지",
+      message: "받은 쪽지",
     }[message.status] || "알림";
 
     item.className = "member-list-item";
     item.classList.toggle("is-unread", !message.isRead);
     main.className = "member-list-main";
     actions.className = "member-list-actions";
-    title.textContent = message.title || (isInvite ? `${message.groupName} 초대` : "그룹 알림");
+    title.textContent = message.title || (isDirectMessage
+      ? "게시글 쪽지"
+      : isInvite ? `${message.groupName} 초대` : "그룹 알림");
     meta.textContent = [
       typeLabel,
       message.groupName,
       isInvite && inviter ? `보낸 사람 ${inviter}` : "",
+      isDirectMessage && sender ? `보낸 사람 ${sender}` : "",
       statusLabel,
       formatMemberDate(message.createdAt),
     ].filter(Boolean).join(" · ");

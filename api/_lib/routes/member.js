@@ -327,6 +327,7 @@ async function handleGetDashboard(sql, response, sessionUser) {
     groupRows,
     unreadInviteRows,
     unreadMessageRows,
+    unreadDirectMessageRows,
   ] = await Promise.all([
     sql.query(
       [
@@ -375,10 +376,19 @@ async function handleGetDashboard(sql, response, sessionUser) {
       ].join(" "),
       [sessionUser.id],
     ),
+    sql.query(
+      [
+        "SELECT COUNT(*)::int AS unread_count",
+        "FROM direct_messages",
+        "WHERE recipient_user_id = $1 AND is_read = FALSE",
+      ].join(" "),
+      [sessionUser.id],
+    ),
   ]);
   const practiceSummary = summarizePracticeLogs(practiceRows[0]?.logs);
   const unreadMessages = Number(unreadInviteRows[0]?.unread_count || 0)
-    + Number(unreadMessageRows[0]?.unread_count || 0);
+    + Number(unreadMessageRows[0]?.unread_count || 0)
+    + Number(unreadDirectMessageRows[0]?.unread_count || 0);
 
   sendJson(response, 200, {
     dashboard: {
@@ -829,7 +839,7 @@ async function handleCreateInvite(sql, response, sessionUser, payload) {
 }
 
 async function handleGetMessages(sql, response, sessionUser) {
-  const [inviteRows, noticeRows] = await Promise.all([
+  const [inviteRows, noticeRows, directMessageRows] = await Promise.all([
     sql.query(
       [
         "SELECT",
@@ -859,10 +869,25 @@ async function handleGetMessages(sql, response, sessionUser) {
       ].join(" "),
       [sessionUser.id],
     ),
+    sql.query(
+      [
+        "SELECT",
+        "m.id, m.recruit_post_id, m.subject, m.body, m.is_read, m.created_at,",
+        "sender.id AS sender_user_id, sender.email AS sender_email,",
+        "COALESCE(NULLIF(sender.name, ''), 'Cue Sheet 멤버') AS sender_name",
+        "FROM direct_messages m",
+        "JOIN app_users sender ON sender.id = m.sender_user_id",
+        "WHERE m.recipient_user_id = $1",
+        "ORDER BY m.created_at DESC",
+        "LIMIT 30",
+      ].join(" "),
+      [sessionUser.id],
+    ),
   ]);
   const messages = [
     ...inviteRows.map(normalizeInviteRow),
     ...noticeRows.map(normalizeGroupMessageRow),
+    ...directMessageRows.map(normalizeDirectMessageRow),
   ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 
   sendJson(response, 200, {
@@ -891,6 +916,25 @@ async function handleReadMessage(sql, response, sessionUser, payload) {
 
     if (!rows[0]) {
       await throwMissingOrForbiddenMessage(sql, "group_message", messageId);
+    }
+
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
+  if (messageType === "direct_message") {
+    const rows = await sql.query(
+      [
+        "UPDATE direct_messages",
+        "SET is_read = TRUE",
+        "WHERE id = $1 AND recipient_user_id = $2",
+        "RETURNING id",
+      ].join(" "),
+      [messageId, sessionUser.id],
+    );
+
+    if (!rows[0]) {
+      await throwMissingOrForbiddenMessage(sql, "direct_message", messageId);
     }
 
     sendJson(response, 200, { ok: true });
@@ -1101,6 +1145,23 @@ function normalizeGroupMessageRow(row) {
   };
 }
 
+function normalizeDirectMessageRow(row) {
+  return {
+    id: String(row?.id || ""),
+    type: "direct_message",
+    messageType: "recruit_contact",
+    postId: String(row?.recruit_post_id || ""),
+    title: String(row?.subject || "").trim() || "게시글 쪽지",
+    body: String(row?.body || "").trim(),
+    senderName: String(row?.sender_name || "Cue Sheet 멤버").trim(),
+    senderId: getPublicMemberId(row?.sender_email, row?.sender_user_id),
+    status: "message",
+    isRead: Boolean(row?.is_read),
+    createdAt: row?.created_at ?? null,
+    respondedAt: null,
+  };
+}
+
 function normalizeProfileRow(row, sessionUser) {
   const pictureKey = String(row?.picture_key || "").trim();
 
@@ -1178,6 +1239,19 @@ function countTodoItems(html) {
 }
 
 async function throwMissingOrForbiddenMessage(sql, type, messageId) {
+  if (type === "direct_message") {
+    const rows = await sql.query(
+      "SELECT 1 FROM direct_messages WHERE id = $1 LIMIT 1",
+      [messageId],
+    );
+
+    throwHttpError(
+      rows[0] ? 403 : 404,
+      rows[0] ? "message_not_readable" : "message_not_found",
+      rows[0] ? "읽음 처리할 수 있는 메시지가 아닙니다." : "메시지를 찾을 수 없습니다.",
+    );
+  }
+
   if (type === "group_message") {
     const rows = await sql.query(
       "SELECT 1 FROM group_messages WHERE id = $1 LIMIT 1",
@@ -1201,6 +1275,15 @@ async function throwMissingOrForbiddenMessage(sql, type, messageId) {
     rows[0] ? "message_not_readable" : "message_not_found",
     rows[0] ? "읽음 처리할 수 있는 메시지가 아닙니다." : "메시지를 찾을 수 없습니다.",
   );
+}
+
+function getPublicMemberId(email, userId) {
+  const normalizedEmail = normalizeEmail(email);
+  const localPart = normalizedEmail.includes("@") ? normalizedEmail.split("@")[0] : "";
+
+  return localPart
+    ? `@${localPart}`
+    : `@member-${String(userId || "").trim() || "unknown"}`;
 }
 
 async function throwMissingOrForbiddenInvite(sql, inviteId, errorCode, message) {

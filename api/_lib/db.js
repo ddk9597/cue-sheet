@@ -291,6 +291,29 @@ async function ensureSchemaLocked(sql) {
     ].join(" "));
 
     await sql.query([
+      "CREATE TABLE IF NOT EXISTS direct_messages (",
+      "id BIGSERIAL PRIMARY KEY,",
+      "sender_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "recipient_user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,",
+      "recruit_post_id BIGINT REFERENCES recruit_posts(id) ON DELETE SET NULL,",
+      "subject TEXT NOT NULL DEFAULT '',",
+      "body TEXT NOT NULL DEFAULT '',",
+      "is_read BOOLEAN NOT NULL DEFAULT FALSE,",
+      "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS direct_messages_recipient_user_id_idx",
+      "ON direct_messages (recipient_user_id, is_read, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS direct_messages_sender_user_id_idx",
+      "ON direct_messages (sender_user_id, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
       "CREATE INDEX IF NOT EXISTS performances_group_id_idx",
       "ON performances (group_id, performance_date, updated_at DESC)",
     ].join(" "));

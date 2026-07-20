@@ -7,6 +7,7 @@ const INTENTS = new Set(["구해요", "할래요"]);
 const INSTRUMENTS = new Set(["일렉", "드럼", "기타", "베이스", "보컬", "신디"]);
 const MAX_POSTS = 100;
 const MAX_COMMENT_LENGTH = 800;
+const MAX_DIRECT_MESSAGE_LENGTH = 1000;
 
 module.exports = async (request, response) => {
   if (!["GET", "POST"].includes(request.method)) {
@@ -55,6 +56,24 @@ module.exports = async (request, response) => {
       const sessionUser = await requireSessionUser(sql, request, "로그인 후 댓글을 작성할 수 있습니다.");
 
       await handleCreateComment(sql, response, sessionUser, postId, await readJsonBody(request));
+      return;
+    }
+
+    if (segments.length === 2 && segments[1] === "message") {
+      if (request.method !== "POST") {
+        methodNotAllowed(response, ["POST"]);
+        return;
+      }
+
+      const postId = normalizePositiveId(segments[0]);
+
+      if (!postId) {
+        throwHttpError(400, "invalid_recruit_post_id", "게시글을 확인해 주세요.");
+      }
+
+      const sessionUser = await requireSessionUser(sql, request, "로그인 후 쪽지를 보낼 수 있습니다.");
+
+      await handleCreateDirectMessage(sql, response, sessionUser, postId, await readJsonBody(request));
       return;
     }
 
@@ -171,7 +190,7 @@ async function handleListComments(sql, response, postId) {
 async function handleCreateComment(sql, response, sessionUser, postId, payload) {
   await requireRecruitPost(sql, postId);
 
-  const content = normalizeText(payload.content, MAX_COMMENT_LENGTH);
+  const content = normalizeText(payload?.content, MAX_COMMENT_LENGTH);
 
   if (!content) {
     throwHttpError(400, "invalid_recruit_comment", "댓글 내용을 입력해 주세요.");
@@ -193,6 +212,34 @@ async function handleCreateComment(sql, response, sessionUser, postId, payload) 
   });
 }
 
+async function handleCreateDirectMessage(sql, response, sessionUser, postId, payload) {
+  const post = await requireRecruitPost(sql, postId);
+  const body = normalizeText(payload?.body, MAX_DIRECT_MESSAGE_LENGTH);
+
+  if (!body) {
+    throwHttpError(400, "invalid_direct_message", "쪽지 내용을 입력해 주세요.");
+  }
+
+  if (String(post.user_id) === String(sessionUser.id)) {
+    throwHttpError(409, "cannot_message_self", "내 게시글에는 쪽지를 보낼 수 없습니다.");
+  }
+
+  const subject = normalizeText(`RE: ${post.title}`, 140);
+  const rows = await sql.query([
+    "INSERT INTO direct_messages",
+    "(sender_user_id, recipient_user_id, recruit_post_id, subject, body)",
+    "VALUES ($1, $2, $3, $4, $5)",
+    "RETURNING id, created_at",
+  ].join(" "), [sessionUser.id, post.user_id, postId, subject, body]);
+
+  sendJson(response, 201, {
+    message: {
+      id: String(rows[0].id),
+      createdAt: rows[0].created_at,
+    },
+  });
+}
+
 async function requireSessionUser(sql, request, message = "로그인 후 게시글을 작성할 수 있습니다.") {
   const sessionUser = await getSessionUser(sql, request);
 
@@ -205,13 +252,15 @@ async function requireSessionUser(sql, request, message = "로그인 후 게시�
 
 async function requireRecruitPost(sql, postId) {
   const rows = await sql.query(
-    "SELECT id FROM recruit_posts WHERE id = $1 LIMIT 1",
+    "SELECT id, user_id, title FROM recruit_posts WHERE id = $1 LIMIT 1",
     [postId],
   );
 
   if (!rows[0]) {
     throwHttpError(404, "recruit_post_not_found", "게시글을 찾을 수 없습니다.");
   }
+
+  return rows[0];
 }
 
 function getPostSelectSql() {
@@ -251,6 +300,7 @@ function normalizePostRow(row) {
     content: row.content,
     contact: row.contact,
     commentCount: Number(row.comment_count || 0),
+    authorUserId: String(row.author_user_id),
     authorName: row.author_name,
     authorId: getPublicAuthorId(row.author_email, row.author_user_id),
     authorPictureUrl: resolveProfilePictureUrl({

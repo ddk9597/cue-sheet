@@ -8,7 +8,9 @@ const html = fs.readFileSync(path.join(ROOT, "recruit.html"), "utf8");
 const client = fs.readFileSync(path.join(ROOT, "recruit.js"), "utf8");
 const schema = fs.readFileSync(path.join(ROOT, "api/_lib/db.js"), "utf8");
 const recruitRoute = fs.readFileSync(path.join(ROOT, "api/_lib/routes/recruit.js"), "utf8");
+const memberRoute = fs.readFileSync(path.join(ROOT, "api/_lib/routes/member.js"), "utf8");
 const router = fs.readFileSync(path.join(ROOT, "api/_lib/routes/router.js"), "utf8");
+const workspaceClient = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
 
 test("구인 게시판은 요청된 모집 유형과 악기 분류를 모두 제공한다", () => {
   for (const intent of ["구해요", "할래요"]) {
@@ -60,4 +62,23 @@ test("게시글 댓글은 회원 정보와 함께 저장되고 상세 화면에�
   assert.match(client, /async function loadComments\(postId\)/);
   assert.match(client, /async function submitComment\(event\)/);
   assert.match(client, /createAuthorIdentity\(comment/);
+});
+
+test("게시글 작성자 쪽지는 서버가 수신자를 결정하고 메시지함에 표시된다", () => {
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS direct_messages/);
+  assert.match(schema, /sender_user_id BIGINT NOT NULL REFERENCES app_users\(id\) ON DELETE CASCADE/);
+  assert.match(schema, /recipient_user_id BIGINT NOT NULL REFERENCES app_users\(id\) ON DELETE CASCADE/);
+  assert.match(schema, /recruit_post_id BIGINT REFERENCES recruit_posts\(id\) ON DELETE SET NULL/);
+  assert.match(recruitRoute, /segments\[1\] === "message"/);
+  assert.match(recruitRoute, /handleCreateDirectMessage/);
+  assert.match(recruitRoute, /String\(post\.user_id\) === String\(sessionUser\.id\)/);
+  assert.match(recruitRoute, /sessionUser\.id, post\.user_id, postId, subject, body/);
+  assert.match(client, /function createDirectMessageSection\(post\)/);
+  assert.match(client, /async function submitDirectMessage\(event\)/);
+  assert.match(client, /panel\.dataset\.authorUserId === state\.userId/);
+  assert.match(memberRoute, /directMessageRows\.map\(normalizeDirectMessageRow\)/);
+  assert.match(memberRoute, /WHERE recipient_user_id = \$1 AND is_read = FALSE/);
+  assert.match(memberRoute, /UPDATE direct_messages/);
+  assert.match(workspaceClient, /message\.type === "direct_message"/);
+  assert.match(workspaceClient, /보낸 사람 \$\{sender\}/);
 });

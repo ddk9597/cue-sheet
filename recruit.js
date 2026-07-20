@@ -15,6 +15,7 @@
     instrument: "전체",
     search: "",
     authenticated: null,
+    userId: "",
     activePostId: "",
     commentLoadVersion: 0,
     commentsByPostId: new Map(),
@@ -118,9 +119,12 @@
       const payload = await readJson(response);
 
       state.authenticated = response.ok ? payload.authenticated === true : null;
+      state.userId = state.authenticated ? String(payload.userId || "") : "";
       updateCommentComposerAuthState();
+      updateDirectMessageActionState();
     } catch {
       state.authenticated = null;
+      state.userId = "";
     }
   }
 
@@ -292,12 +296,154 @@
       facts,
       createElement("p", post.content, "post-detail-content"),
       contact,
+      createDirectMessageSection(post),
       createCommentSection(post),
     );
     detail.replaceChildren(body);
     state.activePostId = post.id;
     detailDialog.showModal();
     void loadComments(post.id);
+  }
+
+  function createDirectMessageSection(post) {
+    const section = createElement("section", "", "post-direct-message");
+    const header = createElement("div", "", "post-direct-message-header");
+    const copy = createElement("div", "", "post-direct-message-copy");
+    const toggle = createElement("button", "쪽지 보내기", "primary-button post-direct-message-toggle");
+    const form = document.createElement("form");
+    const textarea = document.createElement("textarea");
+    const notice = createElement("p", "", "post-direct-message-notice");
+    const loginLink = createElement("a", "로그인");
+    const footer = createElement("div", "", "post-direct-message-footer");
+    const cancel = createElement("button", "취소", "ghost-button");
+    const submit = createElement("button", "쪽지 전송", "primary-button");
+    const message = createElement("p", "", "post-direct-message-status");
+
+    section.dataset.directMessagePanel = "";
+    section.dataset.authorUserId = post.authorUserId;
+    copy.append(
+      createElement("strong", `${post.authorName}님에게 쪽지 보내기`),
+      createElement("span", "보낸 쪽지는 작성자의 작업공간 메시지함에 전달됩니다."),
+    );
+    toggle.type = "button";
+    toggle.addEventListener("click", () => {
+      form.hidden = !form.hidden;
+
+      if (!form.hidden) {
+        updateDirectMessageActionState(section);
+        (state.authenticated === false ? loginLink : textarea).focus();
+      }
+    });
+    header.append(copy, toggle);
+
+    form.className = "post-direct-message-form";
+    form.dataset.postId = post.id;
+    form.hidden = true;
+    form.addEventListener("submit", submitDirectMessage);
+    textarea.name = "body";
+    textarea.maxLength = 1000;
+    textarea.required = true;
+    textarea.placeholder = "합주 제안이나 궁금한 내용을 입력해 주세요.";
+    textarea.setAttribute("aria-label", `${post.authorName}님에게 보낼 쪽지 내용`);
+    loginLink.href = "./login.html";
+    notice.append("쪽지를 보내려면 ", loginLink, "해 주세요.");
+    cancel.type = "button";
+    cancel.addEventListener("click", () => {
+      form.reset();
+      form.hidden = true;
+      message.textContent = "";
+      toggle.focus();
+    });
+    submit.type = "submit";
+    submit.dataset.directMessageSubmit = "";
+    footer.append(notice, cancel, submit);
+    message.dataset.directMessageStatus = "";
+    message.setAttribute("role", "alert");
+    form.append(textarea, footer, message);
+    section.append(header, form);
+    updateDirectMessageActionState(section);
+    return section;
+  }
+
+  async function submitDirectMessage(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const postId = String(form.dataset.postId || "");
+    const textarea = form.elements.body;
+    const submit = form.querySelector("[data-direct-message-submit]");
+    const message = form.querySelector("[data-direct-message-status]");
+    const body = String(textarea?.value || "").trim();
+
+    if (!body || !postId || !form.reportValidity()) {
+      textarea?.focus();
+      return;
+    }
+
+    submit.disabled = true;
+    submit.textContent = "전송 중…";
+    message.textContent = "";
+
+    try {
+      const response = await fetch(`${API_ENDPOINT}/${encodeURIComponent(postId)}/message`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ body }),
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          state.authenticated = false;
+          state.userId = "";
+          updateDirectMessageActionState();
+        }
+
+        if (payload.error === "cannot_message_self") {
+          form.closest("[data-direct-message-panel]").hidden = true;
+        }
+
+        throw new Error(payload.message || "쪽지를 보내지 못했습니다.");
+      }
+
+      form.reset();
+      form.hidden = true;
+      showToast("쪽지를 보냈습니다.");
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submit.disabled = state.authenticated === false;
+      submit.textContent = "쪽지 전송";
+    }
+  }
+
+  function updateDirectMessageActionState(root = document) {
+    const panels = root.matches?.("[data-direct-message-panel]")
+      ? [root]
+      : root.querySelectorAll?.("[data-direct-message-panel]") || [];
+
+    for (const panel of panels) {
+      const isOwnPost = Boolean(
+        state.authenticated === true
+        && state.userId
+        && panel.dataset.authorUserId === state.userId,
+      );
+      const form = panel.querySelector(".post-direct-message-form");
+      const loggedOut = state.authenticated === false;
+
+      panel.hidden = !panel.dataset.authorUserId || isOwnPost;
+
+      if (!form) {
+        continue;
+      }
+
+      form.elements.body.disabled = loggedOut;
+      form.querySelector(".post-direct-message-notice").hidden = !loggedOut;
+      form.querySelector("[data-direct-message-submit]").disabled = loggedOut;
+    }
   }
 
   function createCommentSection(post) {
@@ -573,6 +719,7 @@
         content: String(post?.content || "").trim(),
         contact: String(post?.contact || "").trim(),
         commentCount: Math.max(0, Number(post?.commentCount) || 0),
+        authorUserId: String(post?.authorUserId || ""),
         authorName: String(post?.authorName || "Cue Sheet 멤버").trim(),
         authorId: String(post?.authorId || "@member").trim(),
         authorPictureUrl: String(post?.authorPictureUrl || "").trim(),

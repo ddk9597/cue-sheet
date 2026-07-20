@@ -852,6 +852,107 @@
   color: var(--recruit-ink);
 }
 
+.post-direct-message {
+  display: grid;
+  gap: 14px;
+  padding: 17px;
+  border: 1px solid rgba(82, 118, 217, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(239, 243, 255, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.post-direct-message[hidden],
+.post-direct-message-form[hidden] {
+  display: none;
+}
+
+.post-direct-message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.post-direct-message-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.post-direct-message-copy strong {
+  color: var(--recruit-ink);
+  font-size: 0.94rem;
+}
+
+.post-direct-message-copy span {
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.post-direct-message-toggle {
+  flex: 0 0 auto;
+  min-width: 108px;
+  padding: 11px 15px;
+}
+
+.post-direct-message-form {
+  display: grid;
+  gap: 9px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(82, 118, 217, 0.14);
+}
+
+.post-direct-message-form textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 13px 14px;
+  border: 1px solid rgba(93, 113, 154, 0.16);
+  border-radius: 13px;
+  outline: 0;
+  background: #fff;
+  color: var(--recruit-ink);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.post-direct-message-form textarea:focus {
+  border-color: rgba(82, 118, 217, 0.55);
+  box-shadow: 0 0 0 4px rgba(82, 118, 217, 0.1);
+}
+
+.post-direct-message-form textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.post-direct-message-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.post-direct-message-notice {
+  margin: 0 auto 0 0;
+  color: #8b612a;
+  font-size: 0.78rem;
+}
+
+.post-direct-message-notice a {
+  color: #74501f;
+  font-weight: 900;
+}
+
+.post-direct-message-status {
+  min-height: 1.25em;
+  margin: 0;
+  color: #c94e48;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .post-comments {
   display: grid;
   gap: 16px;
@@ -1159,6 +1260,23 @@
   .post-comment-form-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .post-direct-message-header,
+  .post-direct-message-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .post-direct-message-toggle,
+  .post-direct-message-footer .ghost-button,
+  .post-direct-message-footer .primary-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .post-direct-message-notice {
+    margin-right: 0;
   }
 
   .post-comment-submit {
