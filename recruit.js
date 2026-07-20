@@ -235,10 +235,7 @@
       meta.append(createElement("span", "활동 조건은 상세 글에서 확인해 주세요."));
     }
 
-    bottom.append(
-      createElement("span", post.authorName, "post-card-author"),
-      createElement("span", "→", "post-card-arrow"),
-    );
+    bottom.append(createAuthorIdentity(post, "post-card-author"), createElement("span", "→", "post-card-arrow"));
     button.append(top, copy, meta, bottom);
     article.append(button);
     return article;
@@ -250,14 +247,19 @@
     const badges = createElement("div", "", "post-badges");
     const intent = createElement("span", post.intent, "post-intent-badge");
     const facts = document.createElement("dl");
+    const author = createElement("div", "", "post-detail-author");
 
     facts.className = "post-detail-facts";
     intent.dataset.intent = post.intent;
     badges.append(intent, createElement("span", post.instrument, "post-instrument-badge"));
+    author.append(
+      createAuthorIdentity(post, "post-detail-author-identity"),
+      createElement("time", formatDate(post.createdAt)),
+    );
     heading.append(
       badges,
       createElement("h2", post.title),
-      createElement("p", `${post.authorName} · ${formatDate(post.createdAt)}`, "post-detail-author"),
+      author,
     );
 
     for (const [label, value] of [
@@ -288,6 +290,7 @@
       post.schedule,
       post.content,
       post.authorName,
+      post.authorId,
     ].join(" ").toLocaleLowerCase("ko");
 
     return matchesIntent && matchesInstrument && (!state.search || searchableText.includes(state.search));
@@ -319,9 +322,47 @@
         content: String(post?.content || "").trim(),
         contact: String(post?.contact || "").trim(),
         authorName: String(post?.authorName || "Cue Sheet 멤버").trim(),
+        authorId: String(post?.authorId || "@member").trim(),
+        authorPictureUrl: String(post?.authorPictureUrl || "").trim(),
         createdAt: post?.createdAt || null,
       }))
       .filter((post) => post.id && post.title && post.intent && post.instrument);
+  }
+
+  function createAuthorIdentity(post, className) {
+    const identity = createElement("span", "", `post-author-identity ${className}`);
+    const copy = createElement("span", "", "post-author-copy");
+
+    copy.append(
+      createElement("strong", post.authorName),
+      createElement("small", post.authorId),
+    );
+    identity.append(createAuthorAvatar(post), copy);
+    return identity;
+  }
+
+  function createAuthorAvatar(post) {
+    const fallback = createElement("span", getAuthorInitial(post), "post-author-avatar post-author-avatar-fallback");
+
+    if (!post.authorPictureUrl) {
+      return fallback;
+    }
+
+    const image = document.createElement("img");
+
+    image.className = "post-author-avatar";
+    image.src = post.authorPictureUrl;
+    image.alt = `${post.authorName} 프로필 사진`;
+    image.loading = "lazy";
+    image.referrerPolicy = "no-referrer";
+    image.addEventListener("error", () => image.replaceWith(fallback), { once: true });
+    return image;
+  }
+
+  function getAuthorInitial(post) {
+    const value = String(post.authorName || post.authorId || "M").trim();
+
+    return (value[0] || "M").toUpperCase();
   }
 
   function createElement(tagName, text = "", className = "") {

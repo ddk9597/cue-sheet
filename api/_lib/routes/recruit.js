@@ -1,6 +1,7 @@
 const { getSessionUser } = require("../auth");
 const { ensureSchema, getSql } = require("../db");
 const { methodNotAllowed, readJsonBody, sendJson } = require("../http");
+const { resolveProfilePictureUrl } = require("../r2");
 
 const INTENTS = new Set(["구해요", "할래요"]);
 const INSTRUMENTS = new Set(["일렉", "드럼", "기타", "베이스", "보컬", "신디"]);
@@ -65,12 +66,7 @@ module.exports = async (request, response) => {
 
 async function handleListPosts(sql, response) {
   const rows = await sql.query([
-    "SELECT recruit_posts.id, recruit_posts.intent, recruit_posts.instrument,",
-    "recruit_posts.title, recruit_posts.region, recruit_posts.genre, recruit_posts.schedule,",
-    "recruit_posts.content, recruit_posts.contact, recruit_posts.created_at,",
-    "COALESCE(NULLIF(app_users.name, ''), 'Cue Sheet 멤버') AS author_name",
-    "FROM recruit_posts",
-    "JOIN app_users ON app_users.id = recruit_posts.user_id",
+    getPostSelectSql(),
     "ORDER BY recruit_posts.created_at DESC, recruit_posts.id DESC",
     "LIMIT $1",
   ].join(" "), [MAX_POSTS]);
@@ -114,7 +110,7 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
     "INSERT INTO recruit_posts",
     "(user_id, intent, instrument, title, region, genre, schedule, content, contact)",
     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-    "RETURNING id, intent, instrument, title, region, genre, schedule, content, contact, created_at",
+    "RETURNING id",
   ].join(" "), [
     sessionUser.id,
     intent,
@@ -127,12 +123,28 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
     contact,
   ]);
 
+  const postRows = await sql.query([
+    getPostSelectSql(),
+    "WHERE recruit_posts.id = $1",
+    "LIMIT 1",
+  ].join(" "), [rows[0].id]);
+
   sendJson(response, 201, {
-    post: normalizePostRow({
-      ...rows[0],
-      author_name: sessionUser.name || "Cue Sheet 멤버",
-    }),
+    post: normalizePostRow(postRows[0]),
   });
+}
+
+function getPostSelectSql() {
+  return [
+    "SELECT recruit_posts.id, recruit_posts.intent, recruit_posts.instrument,",
+    "recruit_posts.title, recruit_posts.region, recruit_posts.genre, recruit_posts.schedule,",
+    "recruit_posts.content, recruit_posts.contact, recruit_posts.created_at,",
+    "app_users.id AS author_user_id, app_users.email AS author_email,",
+    "COALESCE(NULLIF(app_users.name, ''), 'Cue Sheet 멤버') AS author_name,",
+    "app_users.picture_url AS author_picture_url, app_users.picture_key AS author_picture_key",
+    "FROM recruit_posts",
+    "JOIN app_users ON app_users.id = recruit_posts.user_id",
+  ].join(" ");
 }
 
 function normalizePostRow(row) {
@@ -147,8 +159,24 @@ function normalizePostRow(row) {
     content: row.content,
     contact: row.contact,
     authorName: row.author_name,
+    authorId: getPublicAuthorId(row.author_email, row.author_user_id),
+    authorPictureUrl: resolveProfilePictureUrl({
+      picture_key: row.author_picture_key,
+      picture_url: row.author_picture_url,
+    }),
     createdAt: row.created_at,
   };
+}
+
+function getPublicAuthorId(email, userId) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const localPart = normalizedEmail.includes("@") ? normalizedEmail.split("@")[0] : "";
+
+  if (localPart) {
+    return `@${localPart}`;
+  }
+
+  return `@member-${String(userId || "").trim() || "unknown"}`;
 }
 
 function normalizeText(value, maxLength) {
