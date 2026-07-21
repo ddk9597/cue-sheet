@@ -1117,7 +1117,7 @@
         const payload = await safeReadJson(response);
 
         if (!response.ok) {
-          setStatus(payload.message || "인증코드를 보내지 못했습니다.", true);
+          handleSignupRequestError(payload, "인증코드를 보내지 못했습니다.");
           return false;
         }
 
@@ -1166,7 +1166,7 @@
         const payload = await safeReadJson(response);
 
         if (!response.ok) {
-          setStatus(payload.message || "이메일 인증에 실패했습니다.", true);
+          handleSignupRequestError(payload, "이메일 인증에 실패했습니다.");
           return false;
         }
 
@@ -1364,7 +1364,7 @@
         const payload = await safeReadJson(response);
 
         if (!response.ok) {
-          setStatus(payload.message || "가입 정보를 저장하지 못했습니다.", true);
+          handleSignupRequestError(payload, "가입 정보를 저장하지 못했습니다.");
           return false;
         }
 
@@ -1623,6 +1623,17 @@
       } catch {
         return {};
       }
+    }
+
+    function handleSignupRequestError(payload, fallbackMessage) {
+      if (payload?.error === "email_already_registered") {
+        signupState.emailVerification = null;
+        emailCodeInput.value = "";
+        persistDraft();
+        renderState();
+      }
+
+      setStatus(payload?.message || fallbackMessage, true);
     }
 
     function normalizeEmail(value) {

@@ -5,6 +5,7 @@ const {
   findOrCreateEmailUser,
   findOrCreateUser,
   getSessionUser,
+  isEmailRegistered,
   normalizeEmail,
   isValidEmail,
   updateEmailUserSignup,
@@ -367,7 +368,7 @@ async function handleSignup(request, response) {
     }
 
     sendJson(response, statusCode, {
-      error: "signup_failed",
+      error: error.code || "signup_failed",
       message: error.message || "가입 정보를 저장하지 못했습니다.",
     });
   }
@@ -406,6 +407,14 @@ async function handleEmailStart(request, response) {
       sendJson(response, 400, {
         error: "invalid_email",
         message: "이메일 주소를 확인해 주세요.",
+      });
+      return;
+    }
+
+    if (await isEmailRegistered(sql, email)) {
+      sendJson(response, 409, {
+        error: "email_already_registered",
+        message: "이미 가입된 이메일입니다. 로그인해 주세요.",
       });
       return;
     }
@@ -565,9 +574,14 @@ async function handleEmailVerify(request, response) {
       return;
     }
 
-    console.error("email auth verify error", error);
-    sendJson(response, error.statusCode || 500, {
-      error: "email_auth_verify_failed",
+    const statusCode = error.statusCode || 500;
+
+    if (statusCode >= 500) {
+      console.error("email auth verify error", error);
+    }
+
+    sendJson(response, statusCode, {
+      error: error.code || "email_auth_verify_failed",
       message: error.message || "이메일 인증을 완료하지 못했습니다.",
     });
   }

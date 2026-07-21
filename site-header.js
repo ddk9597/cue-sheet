@@ -23,6 +23,11 @@
       href: "./recruit.html",
     },
     {
+      id: "community",
+      label: "커뮤니티",
+      href: "./community.html",
+    },
+    {
       id: "workspace",
       label: "내 작업 공간",
       href: "./workspace.html",

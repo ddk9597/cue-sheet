@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="음악 이야기, 합주, 공연과 친목 모임을 나누는 Cue Sheet 커뮤니티">
+  <title>커뮤니티 | Cue Sheet</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./community.css">
+</head>
+<body>
+  <div data-site-header data-current="community"></div>
+  <script src="./site-header.js"></script>
+
+  <main class="community-page">
+    <section class="community-hero" aria-labelledby="communityTitle">
+      <div>
+        <p class="panel-label">Cue Sheet Community</p>
+        <h1 id="communityTitle">음악 이야기를 나누고,<br>함께할 사람을 만나요.</h1>
+        <p>연주 이야기부터 번개 합주, 공연 동행과 정보 공유까지 편하게 소통해 보세요.</p>
+      </div>
+      <div class="community-hero-categories" aria-label="커뮤니티 분류">
+        <span><b>CHAT</b>자유</span>
+        <span><b>JAM</b>합주·친목</span>
+        <span><b>LIVE</b>공연·모임</span>
+        <span><b>TIP</b>정보공유</span>
+      </div>
+    </section>
+
+    <section class="community-board" aria-labelledby="communityBoardTitle">
+      <div class="community-board-header">
+        <div>
+          <p class="panel-label">Community board</p>
+          <h2 id="communityBoardTitle">우리들의 이야기</h2>
+        </div>
+        <button id="openCommunityFormButton" class="primary-button community-write-button" type="button"><span aria-hidden="true">＋</span> 글쓰기</button>
+      </div>
+
+      <div class="community-controls">
+        <div class="community-category-filter" role="group" aria-label="커뮤니티 분류">
+          <button type="button" class="is-active" data-community-category="전체" aria-pressed="true">전체</button>
+          <button type="button" data-community-category="자유" aria-pressed="false">자유</button>
+          <button type="button" data-community-category="합주·친목" aria-pressed="false">합주·친목</button>
+          <button type="button" data-community-category="공연·모임" aria-pressed="false">공연·모임</button>
+          <button type="button" data-community-category="정보공유" aria-pressed="false">정보공유</button>
+        </div>
+        <label class="community-search">
+          <span class="sr-only">커뮤니티 검색</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.4A7.75 7.75 0 1 1 3.5 11.25a7.75 7.75 0 0 1 15.5 0Z"/></svg>
+          <input id="communitySearchInput" type="search" placeholder="제목과 내용 검색" autocomplete="off">
+        </label>
+      </div>
+
+      <p id="communityResultSummary" class="community-result-summary" aria-live="polite">게시글을 불러오는 중입니다.</p>
+      <div id="communityPostList" class="community-post-list" aria-live="polite" aria-busy="true">
+        <div class="community-skeleton" aria-hidden="true"></div>
+        <div class="community-skeleton" aria-hidden="true"></div>
+        <div class="community-skeleton" aria-hidden="true"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="communityFormDialog" class="community-dialog">
+    <form id="communityPostForm" class="community-dialog-card" method="dialog">
+      <div class="community-dialog-header">
+        <div>
+          <p class="panel-label">New community post</p>
+          <h2>새 커뮤니티 글</h2>
+        </div>
+        <button class="community-close-button" type="button" data-close-community-form aria-label="닫기">×</button>
+      </div>
+
+      <p id="communityFormAuthNotice" class="community-auth-notice" hidden>글을 등록하려면 <a href="./login.html">로그인</a>해 주세요.</p>
+
+      <fieldset class="community-category-fieldset">
+        <legend>어떤 이야기인가요?</legend>
+        <div class="community-category-options">
+          <label><input type="radio" name="category" value="자유" checked><span><b>CHAT</b><small>자유</small></span></label>
+          <label><input type="radio" name="category" value="합주·친목"><span><b>JAM</b><small>합주·친목</small></span></label>
+          <label><input type="radio" name="category" value="공연·모임"><span><b>LIVE</b><small>공연·모임</small></span></label>
+          <label><input type="radio" name="category" value="정보공유"><span><b>TIP</b><small>정보공유</small></span></label>
+        </div>
+      </fieldset>
+
+      <label class="field">
+        <span>제목</span>
+        <input name="title" type="text" maxlength="100" placeholder="이야기의 제목을 입력해 주세요." required>
+      </label>
+      <label class="field">
+        <span>내용</span>
+        <textarea name="content" maxlength="3000" placeholder="서로 존중하는 마음으로 자유롭게 이야기해 보세요." required></textarea>
+      </label>
+
+      <p id="communityFormMessage" class="community-form-message" role="alert"></p>
+      <div class="community-dialog-actions">
+        <button class="ghost-button" type="button" data-close-community-form>취소</button>
+        <button id="submitCommunityPostButton" class="primary-button" type="submit">게시글 등록</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="communityDetailDialog" class="community-dialog community-detail-dialog">
+    <article class="community-dialog-card">
+      <div class="community-dialog-header">
+        <p class="panel-label">Community post</p>
+        <button class="community-close-button" type="button" data-close-community-detail aria-label="닫기">×</button>
+      </div>
+      <div id="communityPostDetail"></div>
+    </article>
+  </dialog>
+
+  <div id="communityToast" class="community-toast" role="status" aria-live="polite"></div>
+
+  <script src="./auth-nav.js"></script>
+  <script src="./community.js"></script>
+</body>
+</html>

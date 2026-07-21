@@ -12,6 +12,41 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
 }
 
+function createEmailAlreadyRegisteredError() {
+  const error = new Error("이미 가입된 이메일입니다. 로그인해 주세요.");
+
+  error.code = "email_already_registered";
+  error.statusCode = 409;
+  return error;
+}
+
+function isUserRegistrationComplete(user) {
+  return Boolean(
+    String(user?.password_hash || "").trim()
+      || String(user?.google_sub || "").trim(),
+  );
+}
+
+async function isEmailRegistered(sql, email) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return false;
+  }
+
+  const rows = await sql.query(
+    [
+      "SELECT id FROM app_users",
+      "WHERE email = $1",
+      "AND (password_hash <> '' OR COALESCE(google_sub, '') <> '')",
+      "LIMIT 1",
+    ].join(" "),
+    [normalizedEmail],
+  );
+
+  return Boolean(rows[0]);
+}
+
 async function cleanupExpiredAuthRows(sql) {
   await sql.query("DELETE FROM user_sessions WHERE expires_at <= NOW()");
 }
@@ -96,11 +131,15 @@ async function findOrCreateEmailUser(sql, email) {
   }
 
   const existingRows = await sql.query(
-    "SELECT id, email FROM app_users WHERE email = $1 LIMIT 1",
+    "SELECT id, email, google_sub, password_hash FROM app_users WHERE email = $1 LIMIT 1",
     [normalizedEmail],
   );
 
   if (existingRows[0]) {
+    if (isUserRegistrationComplete(existingRows[0])) {
+      throw createEmailAlreadyRegisteredError();
+    }
+
     await sql.query(
       "UPDATE app_users SET last_login_at = NOW() WHERE id = $1",
       [existingRows[0].id],
@@ -112,12 +151,42 @@ async function findOrCreateEmailUser(sql, email) {
     [
       "INSERT INTO app_users (email, last_login_at)",
       "VALUES ($1, NOW())",
+      "ON CONFLICT (email) DO NOTHING",
       "RETURNING id, email",
     ].join(" "),
     [normalizedEmail],
   );
 
-  return insertedRows[0];
+  if (insertedRows[0]) {
+    return insertedRows[0];
+  }
+
+  const conflictedRows = await sql.query(
+    "SELECT id, email, google_sub, password_hash FROM app_users WHERE email = $1 LIMIT 1",
+    [normalizedEmail],
+  );
+  const conflictedUser = conflictedRows[0];
+
+  if (!conflictedUser) {
+    const error = new Error("회원 정보를 확인하지 못했습니다.");
+
+    error.statusCode = 500;
+    throw error;
+  }
+
+  if (isUserRegistrationComplete(conflictedUser)) {
+    throw createEmailAlreadyRegisteredError();
+  }
+
+  await sql.query(
+    "UPDATE app_users SET last_login_at = NOW() WHERE id = $1",
+    [conflictedUser.id],
+  );
+
+  return {
+    id: conflictedUser.id,
+    email: conflictedUser.email,
+  };
 }
 
 function isValidPassword(value) {
@@ -196,7 +265,7 @@ async function updateEmailUserSignup(sql, userId, payload) {
       "SET email = $2, name = $3, birth_date = $4, phone = $5, memo = $6,",
       "region = $7, \"position\" = $8, genre = $9,",
       "password_hash = $10, password_salt = $11, last_login_at = NOW()",
-      "WHERE id = $1",
+      "WHERE id = $1 AND password_hash = '' AND COALESCE(google_sub, '') = ''",
       "RETURNING id, email",
     ].join(" "),
     [
@@ -215,6 +284,15 @@ async function updateEmailUserSignup(sql, userId, payload) {
   );
 
   if (!rows[0]) {
+    const existingRows = await sql.query(
+      "SELECT id, google_sub, password_hash FROM app_users WHERE id = $1 LIMIT 1",
+      [userId],
+    );
+
+    if (existingRows[0] && isUserRegistrationComplete(existingRows[0])) {
+      throw createEmailAlreadyRegisteredError();
+    }
+
     const error = new Error("회원 정보를 찾을 수 없습니다.");
 
     error.statusCode = 404;
@@ -441,6 +519,7 @@ module.exports = {
   findOrCreateEmailUser,
   findOrCreateUser,
   getSessionUser,
+  isEmailRegistered,
   isValidPassword,
   isValidEmail,
   normalizeEmail,

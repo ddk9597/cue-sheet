@@ -4,6 +4,7 @@ const albumArtHandler = require("./album-art");
 const albumImageHandler = require("./album-image");
 const audienceCuesHandler = require("./audience-cues");
 const authHandler = require("./auth");
+const communityHandler = require("./community");
 const cuesHandler = require("./cues");
 const groupsHandler = require("./groups");
 const memberHandler = require("./member");
@@ -18,6 +19,7 @@ const ROUTES = new Map([
   ["album-image", albumImageHandler],
   ["audience-cues", audienceCuesHandler],
   ["auth", authHandler],
+  ["community", communityHandler],
   ["cues", cuesHandler],
   ["groups", groupsHandler],
   ["member", memberHandler],

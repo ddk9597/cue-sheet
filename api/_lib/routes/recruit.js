@@ -5,6 +5,18 @@ const { resolveProfilePictureUrl } = require("../r2");
 
 const INTENTS = new Set(["구해요", "할래요"]);
 const INSTRUMENTS = new Set(["일렉", "드럼", "기타", "베이스", "보컬", "신디"]);
+const REGION_CATEGORIES = new Set([
+  "서울",
+  "경기",
+  "인천",
+  "강원",
+  "대전·세종·충청",
+  "광주·전라",
+  "대구·경북",
+  "부산·울산·경남",
+  "제주",
+  "전국·온라인",
+]);
 const MAX_POSTS = 100;
 const MAX_COMMENT_LENGTH = 800;
 const MAX_DIRECT_MESSAGE_LENGTH = 1000;
@@ -117,9 +129,10 @@ async function handleListPosts(sql, response) {
 
 async function handleCreatePost(sql, response, sessionUser, payload) {
   const intent = normalizeText(payload.intent, 10);
-  const instrument = normalizeText(payload.instrument, 20);
+  const instruments = normalizeInstrumentSelection(payload.instruments, payload.instrument);
+  const instrument = instruments[0] || "";
+  const regionCategory = normalizeRequestedRegionCategory(payload.regionCategory, payload.region);
   const title = normalizeText(payload.title, 100);
-  const region = normalizeText(payload.region, 40);
   const genre = normalizeText(payload.genre, 60);
   const schedule = normalizeText(payload.schedule, 80);
   const content = normalizeText(payload.content, 2000);
@@ -129,8 +142,12 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
     throwHttpError(400, "invalid_recruit_intent", "모집 유형을 선택해 주세요.");
   }
 
-  if (!INSTRUMENTS.has(instrument)) {
-    throwHttpError(400, "invalid_recruit_instrument", "악기 파트를 선택해 주세요.");
+  if (!instruments.length) {
+    throwHttpError(400, "invalid_recruit_instruments", "악기 파트를 하나 이상 선택해 주세요.");
+  }
+
+  if (!regionCategory) {
+    throwHttpError(400, "invalid_recruit_region", "활동 지역을 선택해 주세요.");
   }
 
   if (!title) {
@@ -147,15 +164,17 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
 
   const rows = await sql.query([
     "INSERT INTO recruit_posts",
-    "(user_id, intent, instrument, title, region, genre, schedule, content, contact)",
-    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    "(user_id, intent, instrument, instruments, region, region_category, title, genre, schedule, content, contact)",
+    "VALUES ($1, $2, $3, $4::text[], $5, $6, $7, $8, $9, $10, $11)",
     "RETURNING id",
   ].join(" "), [
     sessionUser.id,
     intent,
     instrument,
+    instruments,
+    regionCategory,
+    regionCategory,
     title,
-    region,
     genre,
     schedule,
     content,
@@ -265,8 +284,8 @@ async function requireRecruitPost(sql, postId) {
 
 function getPostSelectSql() {
   return [
-    "SELECT recruit_posts.id, recruit_posts.intent, recruit_posts.instrument,",
-    "recruit_posts.title, recruit_posts.region, recruit_posts.genre, recruit_posts.schedule,",
+    "SELECT recruit_posts.id, recruit_posts.intent, recruit_posts.instrument, recruit_posts.instruments,",
+    "recruit_posts.title, recruit_posts.region, recruit_posts.region_category, recruit_posts.genre, recruit_posts.schedule,",
     "recruit_posts.content, recruit_posts.contact, recruit_posts.created_at,",
     "(SELECT COUNT(*)::int FROM recruit_comments WHERE recruit_comments.post_id = recruit_posts.id) AS comment_count,",
     "app_users.id AS author_user_id, app_users.email AS author_email,",
@@ -289,12 +308,17 @@ function getCommentSelectSql() {
 }
 
 function normalizePostRow(row) {
+  const instruments = normalizeStoredInstruments(row.instruments, row.instrument);
+  const regionCategory = normalizeStoredRegionCategory(row.region_category, row.region);
+
   return {
     id: String(row.id),
     intent: row.intent,
-    instrument: row.instrument,
+    instrument: instruments[0] || row.instrument,
+    instruments,
     title: row.title,
-    region: row.region,
+    region: regionCategory,
+    regionCategory,
     genre: row.genre,
     schedule: row.schedule,
     content: row.content,
@@ -362,6 +386,69 @@ function getPublicAuthorId(email, userId) {
 
 function normalizeText(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+function normalizeInstrumentSelection(value, legacyValue = "") {
+  const rawValues = Array.isArray(value)
+    ? value
+    : value === undefined || value === null
+      ? [legacyValue]
+      : [value];
+  const normalizedValues = rawValues
+    .map((instrument) => normalizeText(instrument, 20))
+    .filter(Boolean);
+
+  if (
+    !normalizedValues.length
+    || normalizedValues.length > INSTRUMENTS.size
+    || normalizedValues.some((instrument) => !INSTRUMENTS.has(instrument))
+  ) {
+    return [];
+  }
+
+  return [...new Set(normalizedValues)];
+}
+
+function normalizeStoredInstruments(value, legacyValue = "") {
+  const values = Array.isArray(value) && value.length ? value : [legacyValue];
+
+  return [...new Set(values
+    .map((instrument) => normalizeText(instrument, 20))
+    .filter((instrument) => INSTRUMENTS.has(instrument)))];
+}
+
+function normalizeRequestedRegionCategory(value, legacyValue = "") {
+  const requestedValue = normalizeText(value, 40);
+
+  if (requestedValue) {
+    return REGION_CATEGORIES.has(requestedValue) ? requestedValue : "";
+  }
+
+  return inferLegacyRegionCategory(legacyValue);
+}
+
+function normalizeStoredRegionCategory(value, legacyValue = "") {
+  const regionCategory = normalizeText(value, 40);
+
+  return REGION_CATEGORIES.has(regionCategory)
+    ? regionCategory
+    : inferLegacyRegionCategory(legacyValue);
+}
+
+function inferLegacyRegionCategory(value) {
+  const region = normalizeText(value, 80);
+
+  if (!region) return "전국·온라인";
+  if (region.includes("서울")) return "서울";
+  if (["경기", "수원", "성남", "고양"].some((keyword) => region.includes(keyword))) return "경기";
+  if (region.includes("인천")) return "인천";
+  if (region.includes("강원")) return "강원";
+  if (["대전", "세종", "충청", "충북", "충남"].some((keyword) => region.includes(keyword))) return "대전·세종·충청";
+  if (["광주", "전라", "전북", "전남"].some((keyword) => region.includes(keyword))) return "광주·전라";
+  if (["대구", "경북"].some((keyword) => region.includes(keyword))) return "대구·경북";
+  if (["부산", "울산", "경남"].some((keyword) => region.includes(keyword))) return "부산·울산·경남";
+  if (region.includes("제주")) return "제주";
+  return "전국·온라인";
 }
 
 function throwHttpError(statusCode, errorCode, message) {

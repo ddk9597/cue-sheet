@@ -9,10 +9,23 @@
     보컬: "VO",
     신디: "SY",
   };
+  const REGION_CATEGORIES = new Set([
+    "서울",
+    "경기",
+    "인천",
+    "강원",
+    "대전·세종·충청",
+    "광주·전라",
+    "대구·경북",
+    "부산·울산·경남",
+    "제주",
+    "전국·온라인",
+  ]);
   const state = {
     posts: [],
     intent: "전체",
-    instrument: "전체",
+    region: "전체",
+    instruments: new Set(),
     search: "",
     authenticated: null,
     userId: "",
@@ -24,6 +37,9 @@
   const list = document.querySelector("#recruitPostList");
   const summary = document.querySelector("#recruitResultSummary");
   const searchInput = document.querySelector("#recruitSearchInput");
+  const selectionSummary = document.querySelector("#recruitSelectionSummary");
+  const resetFiltersButton = document.querySelector("#resetRecruitFiltersButton");
+  const advancedSearch = document.querySelector("#recruitAdvancedSearch");
   const openFormButton = document.querySelector("#openPostFormButton");
   const formDialog = document.querySelector("#postFormDialog");
   const postForm = document.querySelector("#recruitPostForm");
@@ -51,10 +67,27 @@
       });
     }
 
+    for (const button of document.querySelectorAll("[data-region-filter]")) {
+      button.addEventListener("click", () => {
+        state.region = button.dataset.regionFilter;
+        setActiveFilter("[data-region-filter]", button);
+        renderPosts();
+      });
+    }
+
     for (const button of document.querySelectorAll("[data-instrument-filter]")) {
       button.addEventListener("click", () => {
-        state.instrument = button.dataset.instrumentFilter;
-        setActiveFilter("[data-instrument-filter]", button);
+        const instrument = button.dataset.instrumentFilter;
+
+        if (instrument === "전체") {
+          state.instruments.clear();
+        } else if (state.instruments.has(instrument)) {
+          state.instruments.delete(instrument);
+        } else {
+          state.instruments.add(instrument);
+        }
+
+        syncInstrumentFilterButtons();
         renderPosts();
       });
     }
@@ -63,6 +96,8 @@
       state.search = searchInput.value.trim().toLocaleLowerCase("ko");
       renderPosts();
     });
+
+    resetFiltersButton?.addEventListener("click", resetFilters);
 
     openFormButton?.addEventListener("click", () => {
       formMessage.textContent = "";
@@ -141,13 +176,26 @@
 
     try {
       const formData = new FormData(postForm);
+      const instruments = formData.getAll("instruments").map(String);
+
+      if (!instruments.length) {
+        formMessage.textContent = "악기 파트를 하나 이상 선택해 주세요.";
+        postForm.querySelector('[name="instruments"]')?.focus();
+        return;
+      }
+
+      const postPayload = Object.fromEntries(formData.entries());
+
+      delete postPayload.instruments;
+      postPayload.instruments = instruments;
+
       const response = await fetch(API_ENDPOINT, {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(Object.fromEntries(formData.entries())),
+        body: JSON.stringify(postPayload),
       });
       const payload = await readJson(response);
 
@@ -180,6 +228,8 @@
 
   function renderPosts() {
     const filteredPosts = state.posts.filter(matchesCurrentFilters);
+
+    renderFilterSelectionSummary();
 
     summary.replaceChildren(
       document.createTextNode("조건에 맞는 글 "),
@@ -222,18 +272,19 @@
     const top = createElement("div", "", "post-card-top");
     const badges = createElement("div", "", "post-badges");
     const intent = createElement("span", post.intent, "post-intent-badge");
-    const instrument = createElement("span", `${PART_CODES[post.instrument] || "PT"} · ${post.instrument}`, "post-instrument-badge");
     const copy = createElement("div", "", "post-card-copy");
     const meta = createElement("div", "", "post-meta-list");
     const bottom = createElement("div", "", "post-card-bottom");
     const bottomMeta = createElement("span", "", "post-card-bottom-meta");
     const commentCount = createElement("span", `댓글 ${post.commentCount}`, "post-card-comment-count");
+    const instrumentsLabel = post.instruments.join(", ");
 
     button.type = "button";
-    button.setAttribute("aria-label", `${post.intent} ${post.instrument}: ${post.title}`);
+    button.setAttribute("aria-label", `${post.intent} ${instrumentsLabel}: ${post.title}`);
     button.addEventListener("click", () => openPostDetail(post));
     intent.dataset.intent = post.intent;
-    badges.append(intent, instrument);
+    badges.append(intent);
+    appendInstrumentBadges(badges, post.instruments, true);
     top.append(badges, createElement("time", formatRelativeTime(post.createdAt), "post-card-time"));
     copy.append(createElement("strong", post.title), createElement("p", post.content));
 
@@ -267,7 +318,8 @@
 
     facts.className = "post-detail-facts";
     intent.dataset.intent = post.intent;
-    badges.append(intent, createElement("span", post.instrument, "post-instrument-badge"));
+    badges.append(intent);
+    appendInstrumentBadges(badges, post.instruments);
     author.append(
       createAuthorIdentity(post, "post-detail-author-identity"),
       createElement("time", formatDate(post.createdAt)),
@@ -679,7 +731,9 @@
 
   function matchesCurrentFilters(post) {
     const matchesIntent = state.intent === "전체" || post.intent === state.intent;
-    const matchesInstrument = state.instrument === "전체" || post.instrument === state.instrument;
+    const matchesRegion = state.region === "전체" || post.regionCategory === state.region;
+    const matchesInstrument = !state.instruments.size
+      || post.instruments.some((instrument) => state.instruments.has(instrument));
     const searchableText = [
       post.title,
       post.region,
@@ -690,12 +744,57 @@
       post.authorId,
     ].join(" ").toLocaleLowerCase("ko");
 
-    return matchesIntent && matchesInstrument && (!state.search || searchableText.includes(state.search));
+    return matchesIntent && matchesRegion && matchesInstrument
+      && (!state.search || searchableText.includes(state.search));
+  }
+
+  function resetFilters() {
+    state.intent = "전체";
+    state.region = "전체";
+    state.instruments.clear();
+    state.search = "";
+
+    if (searchInput) {
+      searchInput.value = "";
+    }
+
+    setActiveFilter("[data-intent-filter]", document.querySelector('[data-intent-filter="전체"]'));
+    setActiveFilter("[data-region-filter]", document.querySelector('[data-region-filter="전체"]'));
+    syncInstrumentFilterButtons();
+
+    if (advancedSearch) {
+      advancedSearch.open = false;
+    }
+
+    renderPosts();
+  }
+
+  function renderFilterSelectionSummary() {
+    if (!selectionSummary) {
+      return;
+    }
+
+    const intentLabel = state.intent === "전체" ? "전체 모집" : state.intent;
+    const regionLabel = state.region === "전체" ? "전체 지역" : state.region;
+
+    selectionSummary.textContent = `${intentLabel} · ${regionLabel}`;
   }
 
   function setActiveFilter(selector, activeButton) {
     for (const button of document.querySelectorAll(selector)) {
       const active = button === activeButton;
+
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+  }
+
+  function syncInstrumentFilterButtons() {
+    for (const button of document.querySelectorAll("[data-instrument-filter]")) {
+      const instrument = button.dataset.instrumentFilter;
+      const active = instrument === "전체"
+        ? state.instruments.size === 0
+        : state.instruments.has(instrument);
 
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
@@ -708,24 +807,45 @@
     }
 
     return value
-      .map((post) => ({
-        id: String(post?.id || ""),
-        intent: String(post?.intent || ""),
-        instrument: String(post?.instrument || ""),
-        title: String(post?.title || "").trim(),
-        region: String(post?.region || "").trim(),
-        genre: String(post?.genre || "").trim(),
-        schedule: String(post?.schedule || "").trim(),
-        content: String(post?.content || "").trim(),
-        contact: String(post?.contact || "").trim(),
-        commentCount: Math.max(0, Number(post?.commentCount) || 0),
-        authorUserId: String(post?.authorUserId || ""),
-        authorName: String(post?.authorName || "Cue Sheet 멤버").trim(),
-        authorId: String(post?.authorId || "@member").trim(),
-        authorPictureUrl: String(post?.authorPictureUrl || "").trim(),
-        createdAt: post?.createdAt || null,
-      }))
-      .filter((post) => post.id && post.title && post.intent && post.instrument);
+      .map((post) => {
+        const instruments = normalizeInstrumentList(post?.instruments, post?.instrument);
+        const regionCategory = normalizeRegionCategory(post?.regionCategory || post?.region);
+
+        return {
+          id: String(post?.id || ""),
+          intent: String(post?.intent || ""),
+          instrument: instruments[0] || "",
+          instruments,
+          title: String(post?.title || "").trim(),
+          region: regionCategory,
+          regionCategory,
+          genre: String(post?.genre || "").trim(),
+          schedule: String(post?.schedule || "").trim(),
+          content: String(post?.content || "").trim(),
+          contact: String(post?.contact || "").trim(),
+          commentCount: Math.max(0, Number(post?.commentCount) || 0),
+          authorUserId: String(post?.authorUserId || ""),
+          authorName: String(post?.authorName || "Cue Sheet 멤버").trim(),
+          authorId: String(post?.authorId || "@member").trim(),
+          authorPictureUrl: String(post?.authorPictureUrl || "").trim(),
+          createdAt: post?.createdAt || null,
+        };
+      })
+      .filter((post) => post.id && post.title && post.intent && post.instruments.length);
+  }
+
+  function normalizeInstrumentList(value, legacyValue = "") {
+    const instruments = Array.isArray(value) && value.length ? value : [legacyValue];
+
+    return [...new Set(instruments
+      .map((instrument) => String(instrument || "").trim())
+      .filter((instrument) => PART_CODES[instrument]))];
+  }
+
+  function normalizeRegionCategory(value) {
+    const region = String(value || "").trim();
+
+    return REGION_CATEGORIES.has(region) ? region : "전국·온라인";
   }
 
   function normalizeComments(value) {
@@ -780,6 +900,16 @@
     const value = String(post.authorName || post.authorId || "M").trim();
 
     return (value[0] || "M").toUpperCase();
+  }
+
+  function appendInstrumentBadges(container, instruments, showCode = false) {
+    for (const instrument of instruments) {
+      const label = showCode
+        ? `${PART_CODES[instrument] || "PT"} · ${instrument}`
+        : instrument;
+
+      container.append(createElement("span", label, "post-instrument-badge"));
+    }
   }
 
   function createElement(tagName, text = "", className = "") {

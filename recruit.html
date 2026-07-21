@@ -30,36 +30,68 @@
     </section>
 
     <section class="recruit-board" aria-labelledby="boardTitle">
-      <aside class="recruit-filters" aria-label="게시글 필터">
+      <section class="recruit-filters" aria-label="모집 유형과 지역 카테고리">
         <div class="filter-heading">
-          <p class="panel-label">Filter</p>
-          <strong>어떤 만남을 찾나요?</strong>
+          <div>
+            <p class="panel-label">Find by category</p>
+            <strong>모집 유형과 지역을 선택해 한 번에 모아보세요.</strong>
+          </div>
+          <button id="resetRecruitFiltersButton" class="filter-reset-button" type="button">선택 초기화</button>
         </div>
 
-        <div class="filter-group">
-          <span class="filter-label">모집 유형</span>
-          <div class="intent-filter" role="group" aria-label="모집 유형">
-            <button type="button" class="filter-button is-active" data-intent-filter="전체" aria-pressed="true">전체</button>
-            <button type="button" class="filter-button" data-intent-filter="구해요" aria-pressed="false"><i class="filter-dot filter-dot-want"></i>구해요</button>
-            <button type="button" class="filter-button" data-intent-filter="할래요" aria-pressed="false"><i class="filter-dot filter-dot-join"></i>할래요</button>
+        <div class="primary-filter-grid">
+          <div class="filter-group">
+            <span class="filter-label">1. 모집 유형</span>
+            <div class="intent-filter" role="group" aria-label="모집 유형">
+              <button type="button" class="filter-button is-active" data-intent-filter="전체" aria-pressed="true">전체</button>
+              <button type="button" class="filter-button" data-intent-filter="구해요" aria-pressed="false"><i class="filter-dot filter-dot-want"></i>구해요</button>
+              <button type="button" class="filter-button" data-intent-filter="할래요" aria-pressed="false"><i class="filter-dot filter-dot-join"></i>할래요</button>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">2. 지역</span>
+            <div class="region-filter" role="group" aria-label="활동 지역">
+              <button type="button" class="region-filter-button is-active" data-region-filter="전체" aria-pressed="true">전체</button>
+              <button type="button" class="region-filter-button" data-region-filter="서울" aria-pressed="false">서울</button>
+              <button type="button" class="region-filter-button" data-region-filter="경기" aria-pressed="false">경기</button>
+              <button type="button" class="region-filter-button" data-region-filter="인천" aria-pressed="false">인천</button>
+              <button type="button" class="region-filter-button" data-region-filter="강원" aria-pressed="false">강원</button>
+              <button type="button" class="region-filter-button" data-region-filter="대전·세종·충청" aria-pressed="false">대전·세종·충청</button>
+              <button type="button" class="region-filter-button" data-region-filter="광주·전라" aria-pressed="false">광주·전라</button>
+              <button type="button" class="region-filter-button" data-region-filter="대구·경북" aria-pressed="false">대구·경북</button>
+              <button type="button" class="region-filter-button" data-region-filter="부산·울산·경남" aria-pressed="false">부산·울산·경남</button>
+              <button type="button" class="region-filter-button" data-region-filter="제주" aria-pressed="false">제주</button>
+              <button type="button" class="region-filter-button" data-region-filter="전국·온라인" aria-pressed="false">전국·온라인</button>
+            </div>
           </div>
         </div>
 
-        <div class="filter-group">
-          <span class="filter-label">악기 파트</span>
-          <div class="instrument-filter" role="group" aria-label="악기 파트">
-            <button type="button" class="part-filter is-active" data-instrument-filter="전체" aria-pressed="true"><b>ALL</b><span>전체</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="일렉" aria-pressed="false"><b>EL</b><span>일렉</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="드럼" aria-pressed="false"><b>DR</b><span>드럼</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="기타" aria-pressed="false"><b>GT</b><span>기타</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="베이스" aria-pressed="false"><b>BS</b><span>베이스</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="보컬" aria-pressed="false"><b>VO</b><span>보컬</span></button>
-            <button type="button" class="part-filter" data-instrument-filter="신디" aria-pressed="false"><b>SY</b><span>신디</span></button>
-          </div>
-        </div>
+        <p id="recruitSelectionSummary" class="filter-selection-summary" aria-live="polite">전체 모집 · 전체 지역</p>
 
-        <p class="filter-guide">조건을 선택하면 게시글 목록에 바로 반영됩니다.</p>
-      </aside>
+        <details id="recruitAdvancedSearch" class="recruit-advanced-search">
+          <summary><span>상세 검색</span><small>악기 파트·키워드</small></summary>
+          <div class="advanced-search-body">
+            <div class="filter-group">
+              <span class="filter-label">악기 파트 <small>복수 선택</small></span>
+              <div class="instrument-filter" role="group" aria-label="악기 파트">
+                <button type="button" class="part-filter is-active" data-instrument-filter="전체" aria-pressed="true"><b>ALL</b><span>전체</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="일렉" aria-pressed="false"><b>EL</b><span>일렉</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="드럼" aria-pressed="false"><b>DR</b><span>드럼</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="기타" aria-pressed="false"><b>GT</b><span>기타</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="베이스" aria-pressed="false"><b>BS</b><span>베이스</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="보컬" aria-pressed="false"><b>VO</b><span>보컬</span></button>
+                <button type="button" class="part-filter" data-instrument-filter="신디" aria-pressed="false"><b>SY</b><span>신디</span></button>
+              </div>
+            </div>
+            <label class="recruit-search">
+              <span class="sr-only">게시글 검색</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.4A7.75 7.75 0 1 1 3.5 11.25a7.75 7.75 0 0 1 15.5 0Z"/></svg>
+              <input id="recruitSearchInput" type="search" placeholder="제목, 장르, 활동 내용 검색" autocomplete="off">
+            </label>
+          </div>
+        </details>
+      </section>
 
       <div class="recruit-results">
         <div class="recruit-toolbar">
@@ -71,11 +103,6 @@
         </div>
 
         <div class="recruit-search-row">
-          <label class="recruit-search">
-            <span class="sr-only">게시글 검색</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.4A7.75 7.75 0 1 1 3.5 11.25a7.75 7.75 0 0 1 15.5 0Z"/></svg>
-            <input id="recruitSearchInput" type="search" placeholder="지역, 장르, 제목으로 검색" autocomplete="off">
-          </label>
           <p id="recruitResultSummary" class="recruit-result-summary" aria-live="polite">게시글을 불러오는 중입니다.</p>
         </div>
 
@@ -114,23 +141,36 @@
         </div>
       </fieldset>
 
+      <fieldset class="post-region-fieldset">
+        <legend>활동 지역</legend>
+        <div class="post-region-options">
+          <label><input type="radio" name="regionCategory" value="서울" checked><span>서울</span></label>
+          <label><input type="radio" name="regionCategory" value="경기"><span>경기</span></label>
+          <label><input type="radio" name="regionCategory" value="인천"><span>인천</span></label>
+          <label><input type="radio" name="regionCategory" value="강원"><span>강원</span></label>
+          <label><input type="radio" name="regionCategory" value="대전·세종·충청"><span>대전·세종·충청</span></label>
+          <label><input type="radio" name="regionCategory" value="광주·전라"><span>광주·전라</span></label>
+          <label><input type="radio" name="regionCategory" value="대구·경북"><span>대구·경북</span></label>
+          <label><input type="radio" name="regionCategory" value="부산·울산·경남"><span>부산·울산·경남</span></label>
+          <label><input type="radio" name="regionCategory" value="제주"><span>제주</span></label>
+          <label><input type="radio" name="regionCategory" value="전국·온라인"><span>전국·온라인</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="post-instrument-fieldset">
+        <legend>악기 파트 <small>복수 선택 가능</small></legend>
+        <div class="post-instrument-options">
+          <label><input type="checkbox" name="instruments" value="일렉"><span><b>EL</b>일렉</span></label>
+          <label><input type="checkbox" name="instruments" value="드럼"><span><b>DR</b>드럼</span></label>
+          <label><input type="checkbox" name="instruments" value="기타"><span><b>GT</b>기타</span></label>
+          <label><input type="checkbox" name="instruments" value="베이스"><span><b>BS</b>베이스</span></label>
+          <label><input type="checkbox" name="instruments" value="보컬"><span><b>VO</b>보컬</span></label>
+          <label><input type="checkbox" name="instruments" value="신디"><span><b>SY</b>신디</span></label>
+        </div>
+        <small class="post-instrument-help">모집하거나 합류하고 싶은 파트를 모두 선택해 주세요.</small>
+      </fieldset>
+
       <div class="post-form-grid">
-        <label class="field">
-          <span>악기 파트</span>
-          <select name="instrument" required>
-            <option value="">선택해 주세요</option>
-            <option value="일렉">일렉</option>
-            <option value="드럼">드럼</option>
-            <option value="기타">기타</option>
-            <option value="베이스">베이스</option>
-            <option value="보컬">보컬</option>
-            <option value="신디">신디</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>활동 지역</span>
-          <input name="region" type="text" maxlength="40" placeholder="예: 서울 마포" autocomplete="address-level2">
-        </label>
         <label class="field post-form-wide">
           <span>제목</span>
           <input name="title" type="text" maxlength="100" placeholder="어떤 멤버나 밴드를 찾고 있나요?" required>
