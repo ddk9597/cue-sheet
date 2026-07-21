@@ -611,12 +611,31 @@
   }
 
   .community-hero {
-    padding: 30px 21px;
-    border-radius: 24px;
+    padding: 18px;
+    border-radius: 20px;
   }
 
   .community-hero h1 {
-    font-size: clamp(2.05rem, 11vw, 3.2rem);
+    margin-top: 2px;
+    font-size: clamp(1.65rem, 7.5vw, 2rem);
+    line-height: 1.14;
+    letter-spacing: -0.045em;
+  }
+
+  .community-hero h1 br {
+    display: none;
+  }
+
+  .community-hero .panel-label {
+    margin-bottom: 5px;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+  }
+
+  .community-hero > div:first-child > p:last-child {
+    margin-top: 10px;
+    font-size: 0.86rem;
+    line-height: 1.5;
   }
 
   .community-board {

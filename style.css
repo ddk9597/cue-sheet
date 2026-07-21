@@ -5855,3 +5855,145 @@ body.has-cue-touch-drag {
     font-size: 0.68rem;
   }
 }
+
+@media (max-width: 760px) {
+  .main-page,
+  .login-page,
+  .about-page {
+    padding-top: 10px;
+  }
+
+  .main-hero,
+  .workspace-hero,
+  .mypage-hero,
+  .login-hero {
+    min-height: auto;
+  }
+
+  .hero,
+  .workspace-hero {
+    padding: 16px 18px;
+    border-radius: 20px;
+  }
+
+  .main-hero-copy,
+  .workspace-hero-copy,
+  .login-hero-copy {
+    gap: 8px;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 2px;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+  }
+
+  .home-title,
+  .login-hero .home-title {
+    max-width: 100%;
+    font-size: clamp(1.55rem, 7vw, 2rem);
+    line-height: 1.12;
+  }
+
+  .hero-copy,
+  .login-hero .hero-copy {
+    max-width: 100%;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 7px;
+    margin-top: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .hero-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hero-actions .primary-button,
+  .hero-actions .ghost-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .workspace-hero-nav {
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .workspace-hero-nav a,
+  .workspace-hero-nav button {
+    padding: 7px 10px;
+    font-size: 0.76rem;
+  }
+
+  .login-page {
+    gap: 12px;
+  }
+
+  .about-hero {
+    min-height: auto;
+    gap: 0;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .about-hero-copy {
+    gap: 10px;
+  }
+
+  .about-eyebrow {
+    margin-bottom: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+  }
+
+  .about-eyebrow span {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 4px rgba(157, 219, 194, 0.2);
+  }
+
+  .about-hero h1 {
+    font-size: clamp(1.65rem, 7.5vw, 2rem);
+    line-height: 1.14;
+  }
+
+  .about-lead {
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .about-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .about-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .about-actions .primary-button,
+  .about-actions .ghost-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .about-hero-points,
+  .about-hero-visual {
+    display: none;
+  }
+}

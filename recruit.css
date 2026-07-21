@@ -755,12 +755,14 @@
   font-weight: 700;
 }
 
+.post-region-fieldset legend,
 .post-instrument-fieldset legend {
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
 
+.post-region-fieldset legend small,
 .post-instrument-fieldset legend small {
   color: var(--recruit-blue);
   font-size: 0.72rem;
@@ -914,6 +916,7 @@
   outline-offset: 2px;
 }
 
+.post-region-help,
 .post-instrument-help {
   display: block;
   margin-top: 9px;
@@ -1370,17 +1373,30 @@
   }
 
   .recruit-hero {
-    padding: 30px 21px;
-    border-radius: 24px;
+    padding: 18px;
+    border-radius: 20px;
   }
 
   .recruit-hero h1 {
-    font-size: clamp(2.15rem, 11.5vw, 3.25rem);
+    font-size: clamp(1.65rem, 7.5vw, 2rem);
+    line-height: 1.14;
+    letter-spacing: -0.045em;
+  }
+
+  .recruit-hero h1 br {
+    display: none;
+  }
+
+  .recruit-hero .eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
   }
 
   .recruit-hero-copy > p:last-child {
-    margin-top: 18px;
-    font-size: 0.94rem;
+    margin-top: 10px;
+    font-size: 0.86rem;
+    line-height: 1.5;
   }
 
   .recruit-filters,

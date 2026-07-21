@@ -423,15 +423,31 @@ body.is-loading .audience-cue-list {
   }
 
   .live-summary {
-    min-height: 190px;
-    padding-top: 38px;
+    min-height: auto;
+    gap: 10px;
+    padding: 18px 2px 12px;
   }
 
   .live-summary h1 {
     max-width: calc(100vw - 28px);
-    font-size: 1.72rem;
+    font-size: 1.55rem;
     line-height: 1.08;
     word-break: keep-all;
+  }
+
+  .live-kicker {
+    margin-bottom: 4px;
+    font-size: 0.68rem;
+  }
+
+  .live-status {
+    margin-top: 6px;
+    font-size: 0.86rem;
+  }
+
+  .browser-guide,
+  .audience-actions {
+    margin-top: 8px;
   }
 
   .summary-stats div {
