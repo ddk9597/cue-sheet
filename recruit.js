@@ -24,7 +24,7 @@
   const state = {
     posts: [],
     intent: "전체",
-    region: "전체",
+    regions: new Set(),
     instruments: new Set(),
     search: "",
     authenticated: null,
@@ -69,8 +69,17 @@
 
     for (const button of document.querySelectorAll("[data-region-filter]")) {
       button.addEventListener("click", () => {
-        state.region = button.dataset.regionFilter;
-        setActiveFilter("[data-region-filter]", button);
+        const region = button.dataset.regionFilter;
+
+        if (region === "전체") {
+          state.regions.clear();
+        } else if (state.regions.has(region)) {
+          state.regions.delete(region);
+        } else {
+          state.regions.add(region);
+        }
+
+        syncRegionFilterButtons();
         renderPosts();
       });
     }
@@ -177,6 +186,13 @@
     try {
       const formData = new FormData(postForm);
       const instruments = formData.getAll("instruments").map(String);
+      const regionCategories = formData.getAll("regionCategories").map(String);
+
+      if (!regionCategories.length) {
+        formMessage.textContent = "활동 지역을 하나 이상 선택해 주세요.";
+        postForm.querySelector('[name="regionCategories"]')?.focus();
+        return;
+      }
 
       if (!instruments.length) {
         formMessage.textContent = "악기 파트를 하나 이상 선택해 주세요.";
@@ -187,7 +203,9 @@
       const postPayload = Object.fromEntries(formData.entries());
 
       delete postPayload.instruments;
+      delete postPayload.regionCategories;
       postPayload.instruments = instruments;
+      postPayload.regionCategories = regionCategories;
 
       const response = await fetch(API_ENDPOINT, {
         method: "POST",
@@ -731,7 +749,8 @@
 
   function matchesCurrentFilters(post) {
     const matchesIntent = state.intent === "전체" || post.intent === state.intent;
-    const matchesRegion = state.region === "전체" || post.regionCategory === state.region;
+    const matchesRegion = !state.regions.size
+      || post.regionCategories.some((region) => state.regions.has(region));
     const matchesInstrument = !state.instruments.size
       || post.instruments.some((instrument) => state.instruments.has(instrument));
     const searchableText = [
@@ -750,7 +769,7 @@
 
   function resetFilters() {
     state.intent = "전체";
-    state.region = "전체";
+    state.regions.clear();
     state.instruments.clear();
     state.search = "";
 
@@ -759,7 +778,7 @@
     }
 
     setActiveFilter("[data-intent-filter]", document.querySelector('[data-intent-filter="전체"]'));
-    setActiveFilter("[data-region-filter]", document.querySelector('[data-region-filter="전체"]'));
+    syncRegionFilterButtons();
     syncInstrumentFilterButtons();
 
     if (advancedSearch) {
@@ -775,7 +794,7 @@
     }
 
     const intentLabel = state.intent === "전체" ? "전체 모집" : state.intent;
-    const regionLabel = state.region === "전체" ? "전체 지역" : state.region;
+    const regionLabel = state.regions.size ? [...state.regions].join(", ") : "전체 지역";
 
     selectionSummary.textContent = `${intentLabel} · ${regionLabel}`;
   }
@@ -801,6 +820,18 @@
     }
   }
 
+  function syncRegionFilterButtons() {
+    for (const button of document.querySelectorAll("[data-region-filter]")) {
+      const region = button.dataset.regionFilter;
+      const active = region === "전체"
+        ? state.regions.size === 0
+        : state.regions.has(region);
+
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+  }
+
   function normalizePosts(value) {
     if (!Array.isArray(value)) {
       return [];
@@ -809,7 +840,11 @@
     return value
       .map((post) => {
         const instruments = normalizeInstrumentList(post?.instruments, post?.instrument);
-        const regionCategory = normalizeRegionCategory(post?.regionCategory || post?.region);
+        const regionCategories = normalizeRegionList(
+          post?.regionCategories,
+          post?.regionCategory || post?.region,
+        );
+        const regionCategory = regionCategories[0] || "전국·온라인";
 
         return {
           id: String(post?.id || ""),
@@ -817,8 +852,9 @@
           instrument: instruments[0] || "",
           instruments,
           title: String(post?.title || "").trim(),
-          region: regionCategory,
+          region: regionCategories.join(", "),
           regionCategory,
+          regionCategories,
           genre: String(post?.genre || "").trim(),
           schedule: String(post?.schedule || "").trim(),
           content: String(post?.content || "").trim(),
@@ -846,6 +882,16 @@
     const region = String(value || "").trim();
 
     return REGION_CATEGORIES.has(region) ? region : "전국·온라인";
+  }
+
+  function normalizeRegionList(value, legacyValue = "") {
+    const regions = Array.isArray(value) && value.length
+      ? [...new Set(value
+        .map((region) => String(region || "").trim())
+        .filter((region) => REGION_CATEGORIES.has(region)))]
+      : [];
+
+    return regions.length ? regions : [normalizeRegionCategory(legacyValue)];
   }
 
   function normalizeComments(value) {

@@ -276,6 +276,7 @@ async function ensureSchemaLocked(sql) {
       "title TEXT NOT NULL DEFAULT '',",
       "region TEXT NOT NULL DEFAULT '',",
       "region_category TEXT NOT NULL DEFAULT '전국·온라인',",
+      "region_categories TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],",
       "genre TEXT NOT NULL DEFAULT '',",
       "schedule TEXT NOT NULL DEFAULT '',",
       "content TEXT NOT NULL DEFAULT '',",
@@ -290,6 +291,9 @@ async function ensureSchemaLocked(sql) {
     );
     await sql.query(
       "ALTER TABLE recruit_posts ADD COLUMN IF NOT EXISTS region_category TEXT NOT NULL DEFAULT '전국·온라인'",
+    );
+    await sql.query(
+      "ALTER TABLE recruit_posts ADD COLUMN IF NOT EXISTS region_categories TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]",
     );
     await sql.query([
       "UPDATE recruit_posts",
@@ -311,6 +315,11 @@ async function ensureSchemaLocked(sql) {
       "ELSE '전국·온라인' END",
       "WHERE region_category = '전국·온라인' AND region <> ''",
     ].join(" "));
+    await sql.query([
+      "UPDATE recruit_posts",
+      "SET region_categories = ARRAY[region_category]",
+      "WHERE cardinality(region_categories) = 0",
+    ].join(" "));
 
     await sql.query([
       "CREATE INDEX IF NOT EXISTS recruit_posts_created_at_idx",
@@ -330,6 +339,11 @@ async function ensureSchemaLocked(sql) {
     await sql.query([
       "CREATE INDEX IF NOT EXISTS recruit_posts_region_category_idx",
       "ON recruit_posts (intent, region_category, created_at DESC)",
+    ].join(" "));
+
+    await sql.query([
+      "CREATE INDEX IF NOT EXISTS recruit_posts_region_categories_idx",
+      "ON recruit_posts USING GIN (region_categories)",
     ].join(" "));
 
     await sql.query([

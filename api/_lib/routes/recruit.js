@@ -131,7 +131,12 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
   const intent = normalizeText(payload.intent, 10);
   const instruments = normalizeInstrumentSelection(payload.instruments, payload.instrument);
   const instrument = instruments[0] || "";
-  const regionCategory = normalizeRequestedRegionCategory(payload.regionCategory, payload.region);
+  const regionCategories = normalizeRequestedRegionSelection(
+    payload.regionCategories,
+    payload.regionCategory,
+    payload.region,
+  );
+  const regionCategory = regionCategories[0] || "";
   const title = normalizeText(payload.title, 100);
   const genre = normalizeText(payload.genre, 60);
   const schedule = normalizeText(payload.schedule, 80);
@@ -146,8 +151,8 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
     throwHttpError(400, "invalid_recruit_instruments", "악기 파트를 하나 이상 선택해 주세요.");
   }
 
-  if (!regionCategory) {
-    throwHttpError(400, "invalid_recruit_region", "활동 지역을 선택해 주세요.");
+  if (!regionCategories.length) {
+    throwHttpError(400, "invalid_recruit_region", "활동 지역을 하나 이상 선택해 주세요.");
   }
 
   if (!title) {
@@ -164,16 +169,17 @@ async function handleCreatePost(sql, response, sessionUser, payload) {
 
   const rows = await sql.query([
     "INSERT INTO recruit_posts",
-    "(user_id, intent, instrument, instruments, region, region_category, title, genre, schedule, content, contact)",
-    "VALUES ($1, $2, $3, $4::text[], $5, $6, $7, $8, $9, $10, $11)",
+    "(user_id, intent, instrument, instruments, region, region_category, region_categories, title, genre, schedule, content, contact)",
+    "VALUES ($1, $2, $3, $4::text[], $5, $6, $7::text[], $8, $9, $10, $11, $12)",
     "RETURNING id",
   ].join(" "), [
     sessionUser.id,
     intent,
     instrument,
     instruments,
+    regionCategories.join(", "),
     regionCategory,
-    regionCategory,
+    regionCategories,
     title,
     genre,
     schedule,
@@ -285,7 +291,7 @@ async function requireRecruitPost(sql, postId) {
 function getPostSelectSql() {
   return [
     "SELECT recruit_posts.id, recruit_posts.intent, recruit_posts.instrument, recruit_posts.instruments,",
-    "recruit_posts.title, recruit_posts.region, recruit_posts.region_category, recruit_posts.genre, recruit_posts.schedule,",
+    "recruit_posts.title, recruit_posts.region, recruit_posts.region_category, recruit_posts.region_categories, recruit_posts.genre, recruit_posts.schedule,",
     "recruit_posts.content, recruit_posts.contact, recruit_posts.created_at,",
     "(SELECT COUNT(*)::int FROM recruit_comments WHERE recruit_comments.post_id = recruit_posts.id) AS comment_count,",
     "app_users.id AS author_user_id, app_users.email AS author_email,",
@@ -309,7 +315,12 @@ function getCommentSelectSql() {
 
 function normalizePostRow(row) {
   const instruments = normalizeStoredInstruments(row.instruments, row.instrument);
-  const regionCategory = normalizeStoredRegionCategory(row.region_category, row.region);
+  const regionCategories = normalizeStoredRegionCategories(
+    row.region_categories,
+    row.region_category,
+    row.region,
+  );
+  const regionCategory = regionCategories[0] || "전국·온라인";
 
   return {
     id: String(row.id),
@@ -317,8 +328,9 @@ function normalizePostRow(row) {
     instrument: instruments[0] || row.instrument,
     instruments,
     title: row.title,
-    region: regionCategory,
+    region: regionCategories.join(", "),
     regionCategory,
+    regionCategories,
     genre: row.genre,
     schedule: row.schedule,
     content: row.content,
@@ -417,22 +429,49 @@ function normalizeStoredInstruments(value, legacyValue = "") {
     .filter((instrument) => INSTRUMENTS.has(instrument)))];
 }
 
-function normalizeRequestedRegionCategory(value, legacyValue = "") {
-  const requestedValue = normalizeText(value, 40);
+function normalizeRequestedRegionSelection(value, legacyCategory = "", legacyRegion = "") {
+  if (value !== undefined && value !== null) {
+    const rawValues = Array.isArray(value) ? value : [value];
+    const normalizedValues = rawValues
+      .map((region) => normalizeText(region, 40))
+      .filter(Boolean);
 
-  if (requestedValue) {
-    return REGION_CATEGORIES.has(requestedValue) ? requestedValue : "";
+    if (
+      !normalizedValues.length
+      || normalizedValues.length > REGION_CATEGORIES.size
+      || normalizedValues.some((region) => !REGION_CATEGORIES.has(region))
+    ) {
+      return [];
+    }
+
+    return [...new Set(normalizedValues)];
   }
 
-  return inferLegacyRegionCategory(legacyValue);
+  const regionCategory = normalizeText(legacyCategory, 40);
+
+  if (regionCategory) {
+    return REGION_CATEGORIES.has(regionCategory) ? [regionCategory] : [];
+  }
+
+  return [inferLegacyRegionCategory(legacyRegion)];
 }
 
-function normalizeStoredRegionCategory(value, legacyValue = "") {
-  const regionCategory = normalizeText(value, 40);
+function normalizeStoredRegionCategories(value, legacyCategory = "", legacyRegion = "") {
+  if (Array.isArray(value) && value.length) {
+    const regions = [...new Set(value
+      .map((region) => normalizeText(region, 40))
+      .filter((region) => REGION_CATEGORIES.has(region)))];
 
-  return REGION_CATEGORIES.has(regionCategory)
+    if (regions.length) {
+      return regions;
+    }
+  }
+
+  const regionCategory = normalizeText(legacyCategory, 40);
+
+  return [REGION_CATEGORIES.has(regionCategory)
     ? regionCategory
-    : inferLegacyRegionCategory(legacyValue);
+    : inferLegacyRegionCategory(legacyRegion)];
 }
 
 function inferLegacyRegionCategory(value) {
