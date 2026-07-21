@@ -368,6 +368,11 @@ async function createSession(sql, request, response, userId) {
     [
       "INSERT INTO user_sessions (user_id, token_hash, expires_at)",
       "VALUES ($1, $2, NOW() + ($3 * INTERVAL '1 day'))",
+      "ON CONFLICT (user_id) DO UPDATE SET",
+      "token_hash = EXCLUDED.token_hash,",
+      "expires_at = EXCLUDED.expires_at,",
+      "created_at = NOW(),",
+      "last_seen_at = NOW()",
     ].join(" "),
     [userId, tokenHash, AUTH_SESSION_DAYS],
   );
