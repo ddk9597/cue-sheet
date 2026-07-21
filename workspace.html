@@ -20,7 +20,7 @@
         <nav class="workspace-hero-nav" aria-label="작업 공간 바로가기">
           <button type="button" data-modal-target="workspaceModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="workspaceModal">내 작업공간</button>
           <button type="button" data-modal-target="groupModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="groupModal">그룹</button>
-          <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함</button>
+          <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함 <span class="workspace-direct-message-count" hidden data-direct-message-count>0</span></button>
         </nav>
       </div>
     </section>
@@ -130,7 +130,7 @@
           <nav class="workspace-member-nav" aria-label="계정 작업 바로가기">
             <button type="button" data-modal-target="workspaceModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="workspaceModal">내 작업공간</button>
             <button type="button" data-modal-target="groupModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="groupModal">그룹</button>
-            <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함</button>
+            <button type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">메시지함 <span class="workspace-direct-message-count" hidden data-direct-message-count>0</span></button>
           </nav>
         </div>
         <div class="member-login-gate" aria-label="로그인 안내">
@@ -158,7 +158,7 @@
             </button>
             <button class="workspace-management-card is-messages" type="button" data-modal-target="messagesModal" data-member-modal-trigger aria-haspopup="dialog" aria-controls="messagesModal">
               <span class="workspace-management-icon" aria-hidden="true">M</span>
-              <span><small>Inbox</small><strong>메시지함</strong><em>받은 쪽지, 그룹 초대와 새 알림을 확인합니다.</em></span>
+              <span><small>Inbox</small><strong>메시지함 <b class="workspace-direct-message-count" hidden data-direct-message-count>0</b></strong><em>받은 쪽지, 그룹 초대와 새 알림을 확인합니다.</em></span>
               <i aria-hidden="true">→</i>
             </button>
           </section>

@@ -136,6 +136,7 @@ const audienceModal = document.querySelector("#audienceModal");
 const workspaceModal = document.querySelector("#workspaceModal");
 const groupModal = document.querySelector("#groupModal");
 const messagesModal = document.querySelector("#messagesModal");
+const directMessageNavigationLinks = document.querySelectorAll("[data-direct-message-link]");
 const workspaceAudienceStatus = document.querySelector("#workspaceAudienceStatus");
 const workspaceAudienceCount = document.querySelector("#workspaceAudienceCount");
 const workspaceAudienceRefreshButton = document.querySelector("#workspaceAudienceRefreshButton");
@@ -213,6 +214,8 @@ let memberNotice = "";
 let memberNoticeIsError = false;
 let memberWorkspaceInFlight = false;
 let memberActionInFlight = false;
+let memberMessageRefreshInFlight = false;
+const expandedDirectMessageIds = new Set();
 let memberGroupDetailInFlight = false;
 let memberGroupDetailLoadVersion = 0;
 let pendingMemberGroupFocusId = "";
@@ -261,6 +264,18 @@ for (const trigger of modalTriggers) {
   });
 }
 
+for (const link of directMessageNavigationLinks) {
+  link.addEventListener("click", (event) => {
+    if (!messagesModal) {
+      return;
+    }
+
+    event.preventDefault();
+    openModalById(messagesModal.id);
+    void refreshMemberMessages();
+  });
+}
+
 for (const closeButton of modalCloseButtons) {
   closeButton.addEventListener("click", () => {
     closeModal(closeButton.closest("dialog"));
@@ -284,6 +299,7 @@ for (const modal of blockingModals) {
 }
 
 window.addEventListener("hashchange", openWorkspaceCueEditorFromUrl);
+window.addEventListener("cue-sheet:direct-message-count", handleDirectMessageCountChange);
 openWorkspaceCueEditorFromUrl();
 
 workspaceAudienceRefreshButton?.addEventListener("click", () => {
@@ -439,6 +455,12 @@ memberMessageList?.addEventListener("click", (event) => {
   const rejectButton = event.target.closest("[data-member-invite-reject]");
   const readButton = event.target.closest("[data-member-message-read]");
   const groupLink = event.target.closest("[data-member-message-group]");
+  const directMessageToggle = event.target.closest("[data-member-direct-message-toggle]");
+
+  if (directMessageToggle) {
+    toggleMemberDirectMessage(directMessageToggle.dataset.memberDirectMessageToggle);
+    return;
+  }
 
   if (acceptButton) {
     acceptMemberInvite(acceptButton.dataset.memberInviteAccept);
@@ -1266,6 +1288,12 @@ function syncModalState() {
 function openWorkspaceCueEditorFromUrl() {
   const cueEditorHashRequested = window.location.hash === "#cue-editor";
   const cueEditorQueryRequested = /(?:^|[?&])tool=cue(?:&|$)/.test(window.location.search || "");
+  const messagesQueryRequested = /(?:^|[?&])tool=messages(?:&|$)/.test(window.location.search || "");
+
+  if (messagesQueryRequested && messagesModal) {
+    openModalById(messagesModal.id);
+    return;
+  }
 
   if (!hasCueEditor || (!cueEditorHashRequested && !cueEditorQueryRequested)) {
     return;
@@ -2692,6 +2720,47 @@ async function loadMemberWorkspace() {
   }
 }
 
+async function refreshMemberMessages() {
+  if (
+    !authSession.authenticated
+    || memberMessageRefreshInFlight
+    || memberWorkspaceInFlight
+    || memberActionInFlight
+  ) {
+    return;
+  }
+
+  memberMessageRefreshInFlight = true;
+
+  try {
+    const [dashboardResult, messagesResult] = await Promise.all([
+      fetchMemberJson("dashboard"),
+      fetchMemberJson("messages"),
+    ]);
+
+    if (!dashboardResult.ok || !messagesResult.ok) {
+      return;
+    }
+
+    memberDashboard = normalizeMemberDashboard(dashboardResult.payload.dashboard);
+    memberMessages = normalizeMemberMessages(messagesResult.payload.messages);
+    updateMemberUi();
+  } catch {
+    return;
+  } finally {
+    memberMessageRefreshInFlight = false;
+  }
+}
+
+function handleDirectMessageCountChange(event) {
+  const count = Math.max(0, Number(event.detail?.count) || 0);
+  const currentCount = Number(memberDashboard?.unreadDirectMessageCount || 0);
+
+  if (authSession.authenticated && count !== currentCount) {
+    void refreshMemberMessages();
+  }
+}
+
 function resetMemberWorkspace() {
   memberProfile = null;
   memberDashboard = null;
@@ -2703,6 +2772,8 @@ function resetMemberWorkspace() {
   memberNoticeIsError = false;
   memberWorkspaceInFlight = false;
   memberActionInFlight = false;
+  memberMessageRefreshInFlight = false;
+  expandedDirectMessageIds.clear();
   memberGroupDetailInFlight = false;
   memberGroupDetailLoadVersion += 1;
   pendingMemberGroupFocusId = "";
@@ -3043,12 +3114,38 @@ async function markMemberMessageRead(messageId, type = "invite") {
     }
 
     await loadMemberWorkspace();
+    await window.CueSheetAuthNav?.refreshMessages?.({ announce: false });
     memberNotice = "메시지를 읽음 처리했습니다.";
   } catch {
     memberNotice = "읽음 처리하지 못했습니다.";
   } finally {
     memberActionInFlight = false;
     updateMemberUi();
+  }
+}
+
+function toggleMemberDirectMessage(messageId) {
+  const normalizedMessageId = String(messageId || "");
+  const message = memberMessages.find((item) => (
+    item.type === "direct_message" && item.id === normalizedMessageId
+  ));
+
+  if (!message) {
+    return;
+  }
+
+  const opening = !expandedDirectMessageIds.has(normalizedMessageId);
+
+  if (opening) {
+    expandedDirectMessageIds.add(normalizedMessageId);
+  } else {
+    expandedDirectMessageIds.delete(normalizedMessageId);
+  }
+
+  renderMemberMessages(authSession.authenticated, memberWorkspaceInFlight || memberActionInFlight);
+
+  if (opening && !message.isRead) {
+    void markMemberMessageRead(normalizedMessageId, "direct_message");
   }
 }
 
@@ -3579,6 +3676,7 @@ function normalizeMemberDashboard(value) {
     practiceTotalMinutes: Number(value?.practiceTotalMinutes || 0),
     todoCount: Number(value?.todoCount || 0),
     unreadMessageCount: Number(value?.unreadMessageCount || 0),
+    unreadDirectMessageCount: Number(value?.unreadDirectMessageCount || 0),
     groupCount: Number(value?.groupCount || 0),
   };
 }
@@ -5207,6 +5305,7 @@ function renderMemberDashboard(isLoggedIn) {
     ["연습 기록", `${dashboard.practiceDayCount}일 · ${formatMinutesLabel(dashboard.practiceTotalMinutes)}`],
     ["내 할 일", `${dashboard.todoCount}개`],
     ["안읽은 메시지", `${dashboard.unreadMessageCount}개`],
+    ["안읽은 쪽지", `${dashboard.unreadDirectMessageCount}개`],
     ["내 그룹", `${dashboard.groupCount}개`],
   ];
 
@@ -5463,9 +5562,11 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     const readButton = document.createElement("button");
     const acceptButton = document.createElement("button");
     const rejectButton = document.createElement("button");
+    const directMessageToggle = document.createElement("button");
     const inviter = message.inviterName || message.inviterEmail;
     const isInvite = message.type === "invite";
     const isDirectMessage = message.type === "direct_message";
+    const isDirectMessageExpanded = isDirectMessage && expandedDirectMessageIds.has(message.id);
     const sender = [message.senderName, message.senderId].filter(Boolean).join(" ");
     const canOpenGroup = memberGroups.some((group) => String(group.id) === String(message.groupId));
     const typeLabel = isDirectMessage ? "쪽지" : isInvite ? "초대" : "공지";
@@ -5493,7 +5594,10 @@ function renderMemberMessages(isLoggedIn, isBusy) {
       formatMemberDate(message.createdAt),
     ].filter(Boolean).join(" · ");
     body.textContent = message.body || "";
-    body.hidden = !message.body;
+    body.hidden = !message.body || (isDirectMessage && !isDirectMessageExpanded);
+    if (isDirectMessage) {
+      body.id = `memberDirectMessageBody-${message.id}`;
+    }
     groupButton.className = "ghost-button member-small-button";
     groupButton.type = "button";
     groupButton.textContent = "그룹";
@@ -5515,12 +5619,23 @@ function renderMemberMessages(isLoggedIn, isBusy) {
     rejectButton.textContent = "거절";
     rejectButton.disabled = isBusy || message.status !== "pending";
     rejectButton.dataset.memberInviteReject = message.id;
+    directMessageToggle.className = "ghost-button member-small-button";
+    directMessageToggle.type = "button";
+    directMessageToggle.textContent = isDirectMessageExpanded ? "내용 닫기" : "내용 보기";
+    directMessageToggle.disabled = isBusy || !message.body;
+    directMessageToggle.dataset.memberDirectMessageToggle = message.id;
+    directMessageToggle.setAttribute("aria-expanded", String(isDirectMessageExpanded));
+    directMessageToggle.setAttribute("aria-controls", body.id);
 
     main.append(title, meta, body);
     if (canOpenGroup) {
       actions.append(groupButton);
     }
-    actions.append(readButton);
+    if (isDirectMessage) {
+      actions.append(directMessageToggle);
+    } else {
+      actions.append(readButton);
+    }
     if (isInvite) {
       actions.append(acceptButton, rejectButton);
     }

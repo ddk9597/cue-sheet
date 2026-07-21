@@ -38,6 +38,7 @@ const ROUTE_METHODS = {
   "invites/accept": ["POST"],
   "invites/reject": ["POST"],
   messages: ["GET"],
+  "messages/unread-count": ["GET"],
   "messages/read": ["POST"],
   "messages/accept": ["POST"],
   memo: ["GET", "PUT"],
@@ -156,6 +157,11 @@ module.exports = async (request, response) => {
 
     if (route === "messages") {
       await handleGetMessages(sql, response, sessionUser);
+      return;
+    }
+
+    if (route === "messages/unread-count") {
+      await handleGetUnreadDirectMessageCount(sql, response, sessionUser);
       return;
     }
 
@@ -397,6 +403,7 @@ async function handleGetDashboard(sql, response, sessionUser) {
       practiceTotalMinutes: practiceSummary.totalMinutes,
       todoCount: countTodoItems(todoRows[0]?.html),
       unreadMessageCount: unreadMessages,
+      unreadDirectMessageCount: Number(unreadDirectMessageRows[0]?.unread_count || 0),
       groupCount: Number(groupRows[0]?.group_count || 0),
     },
   });
@@ -892,6 +899,21 @@ async function handleGetMessages(sql, response, sessionUser) {
 
   sendJson(response, 200, {
     messages: messages.slice(0, 40),
+  });
+}
+
+async function handleGetUnreadDirectMessageCount(sql, response, sessionUser) {
+  const rows = await sql.query(
+    [
+      "SELECT COUNT(*)::int AS unread_count",
+      "FROM direct_messages",
+      "WHERE recipient_user_id = $1 AND is_read = FALSE",
+    ].join(" "),
+    [sessionUser.id],
+  );
+
+  sendJson(response, 200, {
+    unreadDirectMessageCount: Number(rows[0]?.unread_count || 0),
   });
 }
 
