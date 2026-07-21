@@ -18,6 +18,7 @@ const migration = read("migrations/005_add_community_board.sql");
 test("커뮤니티는 구인 게시판과 분리된 독립 페이지로 제공된다", () => {
   assert.match(html, /data-current="community"/);
   assert.match(html, /id="communityPostList"/);
+  assert.doesNotMatch(html, /community-hero-categories/);
   assert.match(siteHeader, /href: "\.\/community\.html"/);
   assert.match(indexHtml, /href="\.\/community\.html"/);
   assert.match(router, /\["community", communityHandler\]/);

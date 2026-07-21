@@ -17,6 +17,8 @@ const router = fs.readFileSync(path.join(ROOT, "api/_lib/routes/router.js"), "ut
 const workspaceClient = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
 
 test("구인 게시판은 요청된 모집 유형과 악기 분류를 모두 제공한다", () => {
+  assert.doesNotMatch(html, /recruit-hero-parts/);
+
   for (const intent of ["구해요", "할래요"]) {
     assert.match(html, new RegExp(`value="${intent}"`));
     assert.match(html, new RegExp(`data-intent-filter="${intent}"`));

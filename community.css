@@ -25,10 +25,7 @@
 }
 
 .community-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-  gap: clamp(28px, 6vw, 70px);
-  align-items: center;
+  min-height: 300px;
   padding: clamp(34px, 6vw, 68px);
   border: 1px solid rgba(91, 82, 166, 0.15);
   border-radius: 32px;
@@ -53,39 +50,6 @@
   margin: 22px 0 0;
   color: var(--text-subtle);
   line-height: 1.75;
-}
-
-.community-hero-categories {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.community-hero-categories span {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  min-height: 112px;
-  padding: 14px 8px;
-  border: 1px solid rgba(110, 91, 213, 0.13);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--text-subtle);
-  font-size: 0.82rem;
-  font-weight: 850;
-}
-
-.community-hero-categories b {
-  display: grid;
-  place-items: center;
-  min-width: 48px;
-  height: 36px;
-  padding: 0 8px;
-  border-radius: 11px;
-  background: var(--community-purple-soft);
-  color: var(--community-purple);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
 }
 
 .community-board {
@@ -628,11 +592,7 @@
 
 @media (max-width: 820px) {
   .community-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .community-hero-categories {
-    max-width: 560px;
+    min-height: auto;
   }
 
   .community-controls {
@@ -651,17 +611,12 @@
   }
 
   .community-hero {
-    gap: 28px;
     padding: 30px 21px;
     border-radius: 24px;
   }
 
   .community-hero h1 {
     font-size: clamp(2.05rem, 11vw, 3.2rem);
-  }
-
-  .community-hero-categories span {
-    min-height: 92px;
   }
 
   .community-board {

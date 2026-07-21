@@ -26,11 +26,7 @@
 
 .recruit-hero {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
-  gap: clamp(28px, 6vw, 80px);
-  align-items: center;
-  min-height: 360px;
+  min-height: 300px;
   overflow: hidden;
   padding: clamp(34px, 6vw, 72px);
   border: 1px solid rgba(83, 102, 145, 0.14);
@@ -56,6 +52,7 @@
 .recruit-hero-copy {
   position: relative;
   z-index: 1;
+  max-width: 780px;
 }
 
 .recruit-hero h1 {
@@ -84,30 +81,6 @@
   color: var(--recruit-blue);
 }
 
-.recruit-hero-parts {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.recruit-hero-parts span {
-  display: grid;
-  place-items: center;
-  gap: 7px;
-  min-height: 94px;
-  padding: 13px 8px;
-  border: 1px solid rgba(82, 118, 217, 0.13);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.68);
-  color: var(--text-subtle);
-  font-size: 0.82rem;
-  font-weight: 800;
-  backdrop-filter: blur(8px);
-}
-
-.recruit-hero-parts b,
 .part-filter b,
 .post-part-mark {
   display: grid;
@@ -1368,12 +1341,7 @@
 
 @media (max-width: 900px) {
   .recruit-hero {
-    grid-template-columns: 1fr;
     min-height: auto;
-  }
-
-  .recruit-hero-parts {
-    max-width: 560px;
   }
 
   .recruit-board {
@@ -1402,7 +1370,6 @@
   }
 
   .recruit-hero {
-    gap: 28px;
     padding: 30px 21px;
     border-radius: 24px;
   }
@@ -1414,16 +1381,6 @@
   .recruit-hero-copy > p:last-child {
     margin-top: 18px;
     font-size: 0.94rem;
-  }
-
-  .recruit-hero-parts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-  }
-
-  .recruit-hero-parts span {
-    min-height: 80px;
-    border-radius: 16px;
   }
 
   .recruit-filters,
