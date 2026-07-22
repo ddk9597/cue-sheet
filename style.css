@@ -1701,12 +1701,12 @@ textarea {
 }
 
 .login-page {
-  width: min(1120px, calc(100% - 32px));
+  width: min(560px, calc(100% - 32px));
   min-height: calc(100dvh - 92px);
   margin: 0 auto;
   padding: clamp(24px, 5vw, 56px) 0 34px;
   display: grid;
-  grid-template-columns: minmax(0, 0.96fr) minmax(340px, 440px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: center;
 }

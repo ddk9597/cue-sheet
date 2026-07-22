@@ -3,8 +3,6 @@
 
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   const revealGroups = [
-    { selector: ".about-hero-copy > *", origin: "left", step: 55, maxDelay: 220 },
-    { selector: ".about-hero-visual", origin: "right", delay: 130 },
     { selector: ".about-quick-nav a", origin: "up", step: 45, maxDelay: 135 },
     { selector: ".about-story-section .about-section-heading", origin: "up" },
     { selector: ".about-promise-list article", origin: "right", step: 70, maxDelay: 140 },

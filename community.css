@@ -53,7 +53,7 @@
 }
 
 .community-board {
-  margin-top: 18px;
+  margin-top: 0;
   padding: clamp(20px, 3.5vw, 34px);
   border: 1px solid var(--panel-border);
   border-radius: 28px;

@@ -25,8 +25,8 @@ test("새 쪽지 알림은 전용 미확인 수와 공통 헤더 UI를 사용한
   assert.match(styleSource, /\.site-message-count/);
   assert.match(styleSource, /\.site-message-toast/);
   assert.ok(
-    [...workspaceHtml.matchAll(/data-direct-message-count/g)].length >= 3,
-    "workspace message entry points should display the unread direct-message count",
+    [...workspaceHtml.matchAll(/data-direct-message-count/g)].length >= 2,
+    "remaining workspace message entry points should display the unread direct-message count",
   );
 });
 

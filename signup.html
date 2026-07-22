@@ -30,34 +30,13 @@
       padding: 0;
     }
 
-    .signup-intro {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 18px;
-      padding: 26px;
-      background:
-        linear-gradient(135deg, rgba(24, 32, 25, 0.96), rgba(47, 69, 57, 0.92)),
-        rgba(24, 32, 25, 0.96);
-      color: #fffaf0;
-    }
-
-    .signup-heading {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .signup-intro .panel-label {
-      color: rgba(255, 250, 240, 0.66);
-    }
-
-    .signup-title {
-      display: block;
-      margin-top: 4px;
-      font-size: clamp(1.5rem, 4vw, 2.15rem);
-      line-height: 1.18;
+    .signup-status.signup-inline-status {
+      margin: 14px 14px 0;
+      padding: 12px 14px;
+      border: 1px solid rgba(24, 32, 25, 0.08);
+      border-radius: 14px;
+      background: rgba(24, 32, 25, 0.05);
+      color: var(--text-subtle);
     }
 
     .signup-status {
@@ -68,16 +47,10 @@
       overflow-wrap: anywhere;
     }
 
-    .signup-intro-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 18px;
-      flex-wrap: wrap;
-    }
-
-    .signup-intro-actions .ghost-button {
-      background: rgba(255, 250, 240, 0.12);
-      color: #fffaf0;
+    .signup-status.signup-inline-status.is-error {
+      border-color: rgba(194, 72, 72, 0.18);
+      background: rgba(194, 72, 72, 0.08);
+      color: var(--danger);
     }
 
     .signup-progress {
@@ -538,33 +511,9 @@
         padding-top: 10px;
       }
 
-      .signup-intro {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 14px;
-      }
-
-      .signup-intro .panel-label {
-        margin-bottom: 4px;
-        font-size: 0.68rem;
-        letter-spacing: 0.12em;
-      }
-
-      .signup-title {
-        font-size: 1.35rem;
-      }
-
       .signup-status {
         font-size: 0.84rem;
         line-height: 1.45;
-      }
-
-      .signup-intro-actions {
-        margin-top: 8px;
-      }
-
-      .signup-intro-actions .ghost-button {
-        width: 100%;
       }
 
       .signup-panel {
@@ -642,14 +591,6 @@
     }
 
     @media (max-width: 420px) {
-      .signup-intro {
-        padding: 12px;
-      }
-
-      .signup-title {
-        font-size: 1.28rem;
-      }
-
       .signup-status,
       .email-verification-status,
       .signup-final-status {
@@ -694,25 +635,11 @@
 
   <main class="signup-shell">
     <section class="panel signup-panel" aria-labelledby="signupTitle">
-      <div class="signup-intro">
-        <div class="signup-intro-main">
-          <div class="signup-heading">
-            <div>
-              <p class="panel-label">Sign Up</p>
-              <h1 id="signupTitle" class="signup-title">이메일 아이디 회원가입</h1>
-            </div>
-          </div>
-          <p id="signupStatus" class="signup-status" aria-live="polite">
-            이메일 인증부터 비밀번호 저장까지 한 번에 끝낼 수 있습니다.
-          </p>
-          <div class="signup-intro-actions">
-            <a class="ghost-button" href="./index.html">돌아가기</a>
-            <a class="ghost-button" href="./audience.html">관객용 목록</a>
-          </div>
-        </div>
-      </div>
-
+      <h1 id="signupTitle" class="sr-only">회원가입</h1>
       <form id="signupForm" class="signup-form" autocomplete="on">
+        <p id="signupStatus" class="signup-status signup-inline-status" aria-live="polite">
+          회원가입 정보를 단계별로 입력해 주세요.
+        </p>
         <section id="consentSection" class="signup-section" aria-labelledby="consentTitle">
           <div class="signup-section-header">
             <div>
