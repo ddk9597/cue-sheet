@@ -677,23 +677,67 @@
       <div class="modal-header">
         <div>
           <p class="panel-label">Inbox</p>
-          <strong id="messagesModalTitle" class="modal-title">메시지함</strong>
+          <div class="workspace-messages-title-row">
+            <strong id="messagesModalTitle" class="modal-title">메시지함</strong>
+            <span id="memberMessagesHeaderUnread" class="workspace-messages-header-unread" hidden>새 메시지 0</span>
+          </div>
         </div>
         <button class="modal-close" type="button" data-modal-close aria-label="메시지함 모달 닫기">닫기</button>
       </div>
       <div class="modal-body workspace-messages-modal-body">
-        <p id="memberMessagesModalStatus" class="save-status workspace-modal-status" tabindex="-1" aria-live="polite">
+        <p id="memberMessagesModalStatus" class="save-status workspace-modal-status workspace-messages-status" tabindex="-1" aria-live="polite">
           받은 쪽지, 그룹 초대와 알림을 확인할 수 있습니다.
         </p>
-        <section class="member-block member-messages-block" aria-labelledby="memberMessagesTitle">
-          <div class="member-block-header">
-            <div>
-              <p class="panel-label">Received</p>
-              <strong id="memberMessagesTitle">받은 메시지</strong>
+        <div id="workspaceChatLayout" class="workspace-chat-layout">
+          <aside class="workspace-chat-sidebar" aria-labelledby="memberMessagesTitle">
+            <div class="workspace-chat-sidebar-header">
+              <div>
+                <p class="panel-label">Conversations</p>
+                <strong id="memberMessagesTitle">대화</strong>
+              </div>
+              <span id="memberMessageThreadCount" class="workspace-chat-thread-count">0</span>
             </div>
-          </div>
-          <ul id="memberMessageList" class="member-list workspace-message-list" tabindex="-1" aria-label="받은 메시지 목록"></ul>
-        </section>
+            <div id="memberMessageFilters" class="workspace-message-filters" role="toolbar" aria-label="대화 필터">
+              <button class="workspace-message-filter is-active" type="button" data-member-message-filter="all" aria-pressed="true">
+                <span>전체</span><strong data-member-message-filter-count="all">0</strong>
+              </button>
+              <button class="workspace-message-filter" type="button" data-member-message-filter="unread" aria-pressed="false">
+                <span>안 읽음</span><strong data-member-message-filter-count="unread">0</strong>
+              </button>
+              <button class="workspace-message-filter" type="button" data-member-message-filter="direct_message" aria-pressed="false">
+                <span>쪽지</span><strong data-member-message-filter-count="direct_message">0</strong>
+              </button>
+              <button class="workspace-message-filter" type="button" data-member-message-filter="invite" aria-pressed="false">
+                <span>초대</span><strong data-member-message-filter-count="invite">0</strong>
+              </button>
+              <button class="workspace-message-filter" type="button" data-member-message-filter="group_message" aria-pressed="false">
+                <span>공지</span><strong data-member-message-filter-count="group_message">0</strong>
+              </button>
+            </div>
+            <ul id="memberMessageList" class="workspace-chat-thread-list" tabindex="-1" aria-label="대화 목록"></ul>
+          </aside>
+          <section id="memberConversationPanel" class="workspace-chat-conversation" aria-labelledby="memberConversationTitle">
+            <header class="workspace-chat-conversation-header">
+              <button id="memberConversationBackButton" class="workspace-chat-back" type="button" aria-label="대화 목록으로 돌아가기">‹</button>
+              <span id="memberConversationAvatar" class="workspace-chat-avatar is-placeholder" aria-hidden="true">C</span>
+              <div class="workspace-chat-conversation-heading">
+                <strong id="memberConversationTitle">대화를 선택하세요</strong>
+                <span id="memberConversationMeta">받은 메시지가 이곳에 표시됩니다.</span>
+              </div>
+            </header>
+            <div id="memberConversationMessages" class="workspace-chat-messages" tabindex="0" aria-live="polite">
+              <div class="workspace-chat-empty">
+                <span aria-hidden="true">✦</span>
+                <strong>대화를 선택하세요</strong>
+                <p>왼쪽 목록에서 대화를 선택하면 메시지를 확인할 수 있습니다.</p>
+              </div>
+            </div>
+            <footer class="workspace-chat-footer">
+              <span class="workspace-chat-footer-icon" aria-hidden="true">i</span>
+              <p>현재 메시지함은 받은 쪽지와 그룹 알림을 확인하는 공간입니다.</p>
+            </footer>
+          </section>
+        </div>
       </div>
     </div>
   </dialog>

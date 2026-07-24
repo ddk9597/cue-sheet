@@ -118,6 +118,6 @@ test("메시지의 그룹 버튼은 권한을 확인한 뒤 그룹 모달로 전
   assert.match(scriptSource, /function openMemberGroupFromMessage\(groupId\)/);
   assert.match(scriptSource, /closeModal\(messagesModal\)/);
   assert.match(scriptSource, /openModalById\(groupModal\.id\)/);
-  assert.match(scriptSource, /if \(canOpenGroup\) \{\s+actions\.append\(groupButton\)/);
+  assert.match(scriptSource, /if \(canOpenGroup\) \{[\s\S]*groupButton\.dataset\.memberMessageGroup = message\.groupId/);
   assert.match(scriptSource, /function focusMemberMessagesFeedback\(\)/);
 });

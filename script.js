@@ -80,6 +80,16 @@ const memberInviteGroupSelect = document.querySelector("#memberInviteGroupSelect
 const memberInviteEmailInput = document.querySelector("#memberInviteEmailInput");
 const memberInviteButton = document.querySelector("#memberInviteButton");
 const memberMessageList = document.querySelector("#memberMessageList");
+const memberMessageFilters = document.querySelector("#memberMessageFilters");
+const workspaceChatLayout = document.querySelector("#workspaceChatLayout");
+const memberMessagesHeaderUnread = document.querySelector("#memberMessagesHeaderUnread");
+const memberMessagesTitle = document.querySelector("#memberMessagesTitle");
+const memberMessageThreadCount = document.querySelector("#memberMessageThreadCount");
+const memberConversationBackButton = document.querySelector("#memberConversationBackButton");
+const memberConversationAvatar = document.querySelector("#memberConversationAvatar");
+const memberConversationTitle = document.querySelector("#memberConversationTitle");
+const memberConversationMeta = document.querySelector("#memberConversationMeta");
+const memberConversationMessages = document.querySelector("#memberConversationMessages");
 const memberGroupDetail = document.querySelector("#memberGroupDetail");
 const memberGroupDetailTitle = document.querySelector("#memberGroupDetailTitle");
 const memberGroupDetailRole = document.querySelector("#memberGroupDetailRole");
@@ -215,7 +225,9 @@ let memberNoticeIsError = false;
 let memberWorkspaceInFlight = false;
 let memberActionInFlight = false;
 let memberMessageRefreshInFlight = false;
-const expandedDirectMessageIds = new Set();
+let memberMessageFilter = "all";
+let selectedMemberMessageThreadKey = "";
+let memberConversationOpen = false;
 let memberGroupDetailInFlight = false;
 let memberGroupDetailLoadVersion = 0;
 let pendingMemberGroupFocusId = "";
@@ -451,35 +463,43 @@ memberInviteForm?.addEventListener("submit", (event) => {
 });
 
 memberMessageList?.addEventListener("click", (event) => {
-  const acceptButton = event.target.closest("[data-member-invite-accept]");
-  const rejectButton = event.target.closest("[data-member-invite-reject]");
-  const readButton = event.target.closest("[data-member-message-read]");
-  const groupLink = event.target.closest("[data-member-message-group]");
-  const directMessageToggle = event.target.closest("[data-member-direct-message-toggle]");
+  const threadButton = event.target.closest("[data-member-message-thread]");
 
-  if (directMessageToggle) {
-    toggleMemberDirectMessage(directMessageToggle.dataset.memberDirectMessageToggle);
+  if (threadButton) {
+    selectMemberMessageThread(threadButton.dataset.memberMessageThread);
+  }
+});
+
+memberConversationMessages?.addEventListener("click", handleMemberMessageAction);
+
+memberConversationBackButton?.addEventListener("click", () => {
+  memberConversationOpen = false;
+  workspaceChatLayout?.classList.remove("has-open-conversation");
+
+  window.requestAnimationFrame(() => {
+    [...memberMessageList?.querySelectorAll("[data-member-message-thread]") || []]
+      .find((button) => button.dataset.memberMessageThread === selectedMemberMessageThreadKey)
+      ?.focus();
+  });
+});
+
+memberMessageFilters?.addEventListener("click", (event) => {
+  const filterButton = event.target.closest("[data-member-message-filter]");
+
+  if (!filterButton || filterButton.disabled) {
     return;
   }
 
-  if (acceptButton) {
-    acceptMemberInvite(acceptButton.dataset.memberInviteAccept);
+  const nextFilter = String(filterButton.dataset.memberMessageFilter || "all");
+
+  if (!["all", "unread", "direct_message", "invite", "group_message"].includes(nextFilter)) {
     return;
   }
 
-  if (rejectButton) {
-    rejectMemberInvite(rejectButton.dataset.memberInviteReject);
-    return;
-  }
-
-  if (readButton) {
-    markMemberMessageRead(readButton.dataset.memberMessageRead, readButton.dataset.memberMessageType);
-    return;
-  }
-
-  if (groupLink) {
-    openMemberGroupFromMessage(groupLink.dataset.memberMessageGroup);
-  }
+  memberMessageFilter = nextFilter;
+  selectedMemberMessageThreadKey = "";
+  memberConversationOpen = false;
+  renderMemberMessages(authSession.authenticated, memberWorkspaceInFlight || memberActionInFlight);
 });
 
 memberMemoForm?.addEventListener("submit", (event) => {
@@ -1258,6 +1278,15 @@ function openModalById(modalId, section = "") {
       const firstMessageAction = memberMessageList?.querySelector("button:not(:disabled)");
 
       (firstMessageAction || memberMessageList)?.focus();
+      if (
+        selectedMemberMessageThreadKey
+        && (
+          typeof window.matchMedia !== "function"
+          || window.matchMedia("(min-width: 761px)").matches
+        )
+      ) {
+        void markMemberConversationRead(selectedMemberMessageThreadKey);
+      }
     }
   });
 }
@@ -2773,7 +2802,9 @@ function resetMemberWorkspace() {
   memberWorkspaceInFlight = false;
   memberActionInFlight = false;
   memberMessageRefreshInFlight = false;
-  expandedDirectMessageIds.clear();
+  memberMessageFilter = "all";
+  selectedMemberMessageThreadKey = "";
+  memberConversationOpen = false;
   memberGroupDetailInFlight = false;
   memberGroupDetailLoadVersion += 1;
   pendingMemberGroupFocusId = "";
@@ -3124,28 +3155,111 @@ async function markMemberMessageRead(messageId, type = "invite") {
   }
 }
 
-function toggleMemberDirectMessage(messageId) {
-  const normalizedMessageId = String(messageId || "");
-  const message = memberMessages.find((item) => (
-    item.type === "direct_message" && item.id === normalizedMessageId
-  ));
+function handleMemberMessageAction(event) {
+  const acceptButton = event.target.closest("[data-member-invite-accept]");
+  const rejectButton = event.target.closest("[data-member-invite-reject]");
+  const readButton = event.target.closest("[data-member-message-read]");
+  const groupLink = event.target.closest("[data-member-message-group]");
 
-  if (!message) {
+  if (acceptButton) {
+    acceptMemberInvite(acceptButton.dataset.memberInviteAccept);
     return;
   }
 
-  const opening = !expandedDirectMessageIds.has(normalizedMessageId);
-
-  if (opening) {
-    expandedDirectMessageIds.add(normalizedMessageId);
-  } else {
-    expandedDirectMessageIds.delete(normalizedMessageId);
+  if (rejectButton) {
+    rejectMemberInvite(rejectButton.dataset.memberInviteReject);
+    return;
   }
 
+  if (readButton) {
+    markMemberMessageRead(readButton.dataset.memberMessageRead, readButton.dataset.memberMessageType);
+    return;
+  }
+
+  if (groupLink) {
+    openMemberGroupFromMessage(groupLink.dataset.memberMessageGroup);
+  }
+}
+
+function selectMemberMessageThread(threadKey, { markRead = true } = {}) {
+  const normalizedThreadKey = String(threadKey || "");
+  const hasThread = memberMessages.some((message) => (
+    getMemberMessageThreadKey(message) === normalizedThreadKey
+  ));
+
+  if (!normalizedThreadKey || !hasThread) {
+    return;
+  }
+
+  selectedMemberMessageThreadKey = normalizedThreadKey;
+  memberConversationOpen = true;
   renderMemberMessages(authSession.authenticated, memberWorkspaceInFlight || memberActionInFlight);
 
-  if (opening && !message.isRead) {
-    void markMemberMessageRead(normalizedMessageId, "direct_message");
+  if (markRead) {
+    void markMemberConversationRead(normalizedThreadKey);
+  }
+
+  window.requestAnimationFrame(() => {
+    memberConversationMessages?.focus({ preventScroll: true });
+    memberConversationMessages?.scrollTo?.({
+      top: memberConversationMessages.scrollHeight,
+      behavior: "smooth",
+    });
+  });
+}
+
+async function markMemberConversationRead(threadKey) {
+  if (!authSession.authenticated || memberActionInFlight || !threadKey) {
+    return;
+  }
+
+  const unreadMessages = memberMessages.filter((message) => (
+    getMemberMessageThreadKey(message) === threadKey && !message.isRead
+  ));
+
+  if (!unreadMessages.length) {
+    return;
+  }
+
+  memberActionInFlight = true;
+  memberNotice = "대화를 읽음 처리하는 중입니다.";
+  updateMemberUi();
+
+  try {
+    for (const message of unreadMessages) {
+      const result = await fetchMemberJson("messages/read", {
+        method: "POST",
+        body: {
+          messageId: message.id,
+          type: message.type,
+        },
+      });
+
+      if (!result.ok) {
+        throw new Error(result.payload.message || "읽음 처리하지 못했습니다.");
+      }
+    }
+
+    const [dashboardResult, messagesResult] = await Promise.all([
+      fetchMemberJson("dashboard"),
+      fetchMemberJson("messages"),
+    ]);
+
+    if (dashboardResult.ok) {
+      memberDashboard = normalizeMemberDashboard(dashboardResult.payload.dashboard);
+    }
+    if (messagesResult.ok) {
+      memberMessages = normalizeMemberMessages(messagesResult.payload.messages);
+    }
+
+    await window.CueSheetAuthNav?.refreshMessages?.({ announce: false });
+    memberNotice = "";
+  } catch (error) {
+    memberNotice = error.message || "대화를 읽음 처리하지 못했습니다.";
+    memberNoticeIsError = true;
+  } finally {
+    memberActionInFlight = false;
+    updateMemberUi();
   }
 }
 
@@ -5535,113 +5649,406 @@ function renderMemberInviteSelect(ownerGroups) {
 }
 
 function renderMemberMessages(isLoggedIn, isBusy) {
-  if (!memberMessageList) {
+  if (!memberMessageList || !memberConversationMessages) {
     return;
   }
 
   memberMessageList.replaceChildren();
+  memberMessageList.setAttribute("aria-busy", String(Boolean(isBusy)));
+
+  const threads = createMemberMessageThreads(memberMessages);
+  const counts = {
+    all: memberMessages.length,
+    unread: memberMessages.filter((message) => !message.isRead).length,
+    direct_message: memberMessages.filter((message) => message.type === "direct_message").length,
+    invite: memberMessages.filter((message) => message.type === "invite").length,
+    group_message: memberMessages.filter((message) => message.type === "group_message").length,
+  };
+  const visibleThreads = threads.filter((thread) => (
+    threadMatchesMemberMessageFilter(thread, memberMessageFilter)
+  ));
+
+  if (!threads.some((thread) => thread.key === selectedMemberMessageThreadKey)) {
+    selectedMemberMessageThreadKey = visibleThreads[0]?.key || "";
+  }
+
+  const selectedThread = threads.find((thread) => (
+    thread.key === selectedMemberMessageThreadKey
+  )) || null;
+
+  syncMemberMessageOverview(isLoggedIn, counts, visibleThreads.length);
+  workspaceChatLayout?.classList.toggle(
+    "has-open-conversation",
+    Boolean(isLoggedIn && selectedThread && memberConversationOpen),
+  );
 
   if (!isLoggedIn) {
-    memberMessageList.appendChild(createMemberEmptyItem("로그인 후 메시지를 확인할 수 있습니다."));
-    return;
-  }
+    memberMessageList.appendChild(createWorkspaceThreadEmptyItem(
+      "로그인이 필요해요",
+      "로그인하면 대화 목록을 확인할 수 있습니다.",
+      "login",
+    ));
+  } else if (!visibleThreads.length) {
+    const emptyCopy = {
+      all: ["아직 대화가 없어요", "새 쪽지나 그룹 알림이 도착하면 표시됩니다."],
+      unread: ["모두 확인했어요", "읽지 않은 대화가 없습니다."],
+      direct_message: ["받은 쪽지가 없어요", "모집 게시글에서 받은 쪽지가 표시됩니다."],
+      invite: ["받은 초대가 없어요", "새 그룹 초대가 도착하면 알려드릴게요."],
+      group_message: ["받은 공지가 없어요", "참여 중인 그룹의 공지가 표시됩니다."],
+    }[memberMessageFilter] || ["표시할 대화가 없어요", "다른 필터를 선택해 보세요."];
 
-  if (!memberMessages.length) {
-    memberMessageList.appendChild(createMemberEmptyItem("받은 메시지가 없습니다."));
-    return;
-  }
-
-  for (const message of memberMessages) {
-    const item = document.createElement("li");
-    const main = document.createElement("div");
-    const title = document.createElement("strong");
-    const meta = document.createElement("span");
-    const body = document.createElement("span");
-    const actions = document.createElement("div");
-    const groupButton = document.createElement("button");
-    const readButton = document.createElement("button");
-    const acceptButton = document.createElement("button");
-    const rejectButton = document.createElement("button");
-    const directMessageToggle = document.createElement("button");
-    const inviter = message.inviterName || message.inviterEmail;
-    const isInvite = message.type === "invite";
-    const isDirectMessage = message.type === "direct_message";
-    const isDirectMessageExpanded = isDirectMessage && expandedDirectMessageIds.has(message.id);
-    const sender = [message.senderName, message.senderId].filter(Boolean).join(" ");
-    const canOpenGroup = memberGroups.some((group) => String(group.id) === String(message.groupId));
-    const typeLabel = isDirectMessage ? "쪽지" : isInvite ? "초대" : "공지";
-    const statusLabel = {
-      pending: "대기",
-      accepted: "수락됨",
-      rejected: "거절됨",
-      notice: "공지",
-      message: "받은 쪽지",
-    }[message.status] || "알림";
-
-    item.className = "member-list-item";
-    item.classList.toggle("is-unread", !message.isRead);
-    main.className = "member-list-main";
-    actions.className = "member-list-actions";
-    title.textContent = message.title || (isDirectMessage
-      ? "게시글 쪽지"
-      : isInvite ? `${message.groupName} 초대` : "그룹 알림");
-    meta.textContent = [
-      typeLabel,
-      message.groupName,
-      isInvite && inviter ? `보낸 사람 ${inviter}` : "",
-      isDirectMessage && sender ? `보낸 사람 ${sender}` : "",
-      statusLabel,
-      formatMemberDate(message.createdAt),
-    ].filter(Boolean).join(" · ");
-    body.textContent = message.body || "";
-    body.hidden = !message.body || (isDirectMessage && !isDirectMessageExpanded);
-    if (isDirectMessage) {
-      body.id = `memberDirectMessageBody-${message.id}`;
+    memberMessageList.appendChild(createWorkspaceThreadEmptyItem(
+      emptyCopy[0],
+      emptyCopy[1],
+      memberMessageFilter === "unread" ? "done" : "empty",
+    ));
+  } else {
+    for (const thread of visibleThreads) {
+      memberMessageList.appendChild(createMemberMessageThreadItem(thread, isBusy));
     }
+  }
+
+  renderMemberConversation(isLoggedIn, isBusy, selectedThread);
+}
+
+function createMemberMessageThreads(messages) {
+  const threadMap = new Map();
+
+  for (const message of messages) {
+    const key = getMemberMessageThreadKey(message);
+    const isDirectMessage = message.type === "direct_message";
+    const sender = message.senderName || message.senderId || "Cue Sheet 멤버";
+    const label = isDirectMessage
+      ? sender
+      : message.groupName || (message.type === "invite" ? "그룹 초대" : "그룹 알림");
+
+    if (!threadMap.has(key)) {
+      threadMap.set(key, {
+        key,
+        label,
+        kind: isDirectMessage ? "direct_message" : "group",
+        groupId: message.groupId,
+        messages: [],
+      });
+    }
+
+    const thread = threadMap.get(key);
+
+    thread.messages.push(message);
+    if (!thread.groupId && message.groupId) {
+      thread.groupId = message.groupId;
+    }
+  }
+
+  return [...threadMap.values()]
+    .map((thread) => {
+      thread.messages.sort((left, right) => (
+        getMemberMessageTimestamp(left) - getMemberMessageTimestamp(right)
+      ));
+      thread.latest = thread.messages.at(-1);
+      thread.unreadCount = thread.messages.filter((message) => !message.isRead).length;
+      return thread;
+    })
+    .sort((left, right) => (
+      getMemberMessageTimestamp(right.latest) - getMemberMessageTimestamp(left.latest)
+    ));
+}
+
+function getMemberMessageThreadKey(message) {
+  if (message?.type === "direct_message") {
+    return `direct:${message.senderId || message.senderName || message.id}`;
+  }
+
+  return `group:${message?.groupId || message?.groupName || message?.id}`;
+}
+
+function getMemberMessageTimestamp(message) {
+  const timestamp = new Date(message?.createdAt).getTime();
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function threadMatchesMemberMessageFilter(thread, filter) {
+  if (filter === "all") {
+    return true;
+  }
+
+  if (filter === "unread") {
+    return thread.unreadCount > 0;
+  }
+
+  return thread.messages.some((message) => message.type === filter);
+}
+
+function createMemberMessageThreadItem(thread, isBusy) {
+  const item = document.createElement("li");
+  const button = document.createElement("button");
+  const avatar = document.createElement("span");
+  const content = document.createElement("span");
+  const heading = document.createElement("span");
+  const name = document.createElement("strong");
+  const time = document.createElement("time");
+  const preview = document.createElement("span");
+  const unreadCount = document.createElement("span");
+  const selected = thread.key === selectedMemberMessageThreadKey;
+
+  item.className = "workspace-chat-thread-item";
+  button.className = "workspace-chat-thread";
+  button.classList.toggle("is-active", selected);
+  button.classList.toggle("is-unread", thread.unreadCount > 0);
+  button.type = "button";
+  button.disabled = isBusy;
+  button.dataset.memberMessageThread = thread.key;
+  button.setAttribute("aria-current", selected ? "true" : "false");
+  avatar.className = `workspace-chat-avatar is-${thread.kind}`;
+  avatar.textContent = getMemberMessageAvatarText(thread.label);
+  avatar.setAttribute("aria-hidden", "true");
+  content.className = "workspace-chat-thread-content";
+  heading.className = "workspace-chat-thread-heading";
+  name.textContent = thread.label;
+  time.textContent = formatMemberChatTime(thread.latest?.createdAt);
+  preview.className = "workspace-chat-thread-preview";
+  preview.textContent = thread.latest?.body || thread.latest?.title || "새 메시지";
+  unreadCount.className = "workspace-chat-thread-unread";
+  unreadCount.textContent = thread.unreadCount > 99 ? "99+" : String(thread.unreadCount);
+  unreadCount.hidden = thread.unreadCount === 0;
+
+  heading.append(name);
+  if (time.textContent) {
+    heading.append(time);
+  }
+  content.append(heading, preview);
+  button.append(avatar, content, unreadCount);
+  item.append(button);
+
+  return item;
+}
+
+function renderMemberConversation(isLoggedIn, isBusy, thread) {
+  if (!memberConversationMessages) {
+    return;
+  }
+
+  memberConversationMessages.replaceChildren();
+  memberConversationMessages.setAttribute("aria-busy", String(Boolean(isBusy)));
+
+  if (!isLoggedIn || !thread) {
+    memberConversationAvatar.textContent = "C";
+    memberConversationAvatar.className = "workspace-chat-avatar is-placeholder";
+    memberConversationTitle.textContent = isLoggedIn ? "대화를 선택하세요" : "로그인이 필요해요";
+    memberConversationMeta.textContent = isLoggedIn
+      ? "대화 목록에서 확인할 메시지를 선택하세요."
+      : "로그인하면 받은 메시지를 확인할 수 있습니다.";
+    memberConversationMessages.appendChild(createMemberConversationEmpty(isLoggedIn));
+    return;
+  }
+
+  memberConversationAvatar.textContent = getMemberMessageAvatarText(thread.label);
+  memberConversationAvatar.className = `workspace-chat-avatar is-${thread.kind}`;
+  memberConversationTitle.textContent = thread.label;
+  memberConversationMeta.textContent = [
+    thread.kind === "direct_message" ? "받은 쪽지" : "그룹 대화",
+    `메시지 ${thread.messages.length}개`,
+    thread.unreadCount ? `안 읽음 ${thread.unreadCount}개` : "",
+  ].filter(Boolean).join(" · ");
+
+  for (const message of thread.messages) {
+    memberConversationMessages.appendChild(createMemberConversationMessage(message, isBusy));
+  }
+
+  window.requestAnimationFrame(() => {
+    memberConversationMessages.scrollTop = memberConversationMessages.scrollHeight;
+  });
+}
+
+function createMemberConversationMessage(message, isBusy) {
+  const row = document.createElement("article");
+  const avatar = document.createElement("span");
+  const stack = document.createElement("div");
+  const senderLabel = document.createElement("span");
+  const bubble = document.createElement("div");
+  const title = document.createElement("strong");
+  const body = document.createElement("p");
+  const inviteStatus = document.createElement("span");
+  const footer = document.createElement("div");
+  const time = document.createElement("time");
+  const actions = document.createElement("div");
+  const isDirectMessage = message.type === "direct_message";
+  const isInvite = message.type === "invite";
+  const sender = [message.senderName, message.senderId].filter(Boolean).join(" ") || "Cue Sheet 멤버";
+  const inviter = message.inviterName || message.inviterEmail || "그룹 관리자";
+  const canOpenGroup = memberGroups.some((group) => String(group.id) === String(message.groupId));
+
+  row.className = `workspace-chat-message-row is-${message.type}`;
+  row.classList.toggle("is-unread", !message.isRead);
+  avatar.className = `workspace-chat-message-avatar is-${isDirectMessage ? "direct_message" : "group"}`;
+  avatar.textContent = getMemberMessageAvatarText(isDirectMessage ? sender : message.groupName);
+  avatar.setAttribute("aria-hidden", "true");
+  stack.className = "workspace-chat-message-stack";
+  senderLabel.className = "workspace-chat-message-sender";
+  senderLabel.textContent = isDirectMessage
+    ? `보낸 사람 ${sender}`
+    : message.groupName || (isInvite ? "그룹 초대" : "그룹 공지");
+  bubble.className = "workspace-chat-bubble";
+  title.textContent = message.title || (isInvite ? `${message.groupName} 초대` : "새 메시지");
+  body.textContent = message.body || (isInvite
+    ? `${inviter}님이 ${message.groupName || "그룹"}에 초대했습니다.`
+    : "새 그룹 알림이 도착했습니다.");
+  inviteStatus.className = `workspace-chat-invite-status is-${message.status || "pending"}`;
+  inviteStatus.textContent = {
+    pending: "응답 대기",
+    accepted: "수락한 초대",
+    rejected: "거절한 초대",
+  }[message.status] || "그룹 초대";
+  footer.className = "workspace-chat-message-footer";
+  time.textContent = formatMemberChatTime(message.createdAt, { includeDate: true });
+  if (message.createdAt) {
+    time.dateTime = String(message.createdAt);
+  }
+  actions.className = "workspace-chat-bubble-actions";
+
+  if (canOpenGroup) {
+    const groupButton = document.createElement("button");
+
     groupButton.className = "ghost-button member-small-button";
     groupButton.type = "button";
-    groupButton.textContent = "그룹";
+    groupButton.textContent = "그룹 열기";
     groupButton.disabled = isBusy;
     groupButton.dataset.memberMessageGroup = message.groupId;
+    actions.append(groupButton);
+  }
+
+  if (!message.isRead) {
+    const readButton = document.createElement("button");
+
     readButton.className = "ghost-button member-small-button";
     readButton.type = "button";
-    readButton.textContent = message.isRead ? "읽음" : "읽음 처리";
-    readButton.disabled = isBusy || message.isRead;
+    readButton.textContent = "읽음";
+    readButton.disabled = isBusy;
     readButton.dataset.memberMessageRead = message.id;
     readButton.dataset.memberMessageType = message.type;
+    actions.append(readButton);
+  }
+
+  if (isInvite && message.status === "pending") {
+    const acceptButton = document.createElement("button");
+    const rejectButton = document.createElement("button");
+
     acceptButton.className = "primary-button member-small-button";
     acceptButton.type = "button";
-    acceptButton.textContent = "수락";
-    acceptButton.disabled = isBusy || message.status !== "pending";
+    acceptButton.textContent = "초대 수락";
+    acceptButton.disabled = isBusy;
     acceptButton.dataset.memberInviteAccept = message.id;
     rejectButton.className = "ghost-button member-small-button";
     rejectButton.type = "button";
     rejectButton.textContent = "거절";
-    rejectButton.disabled = isBusy || message.status !== "pending";
+    rejectButton.disabled = isBusy;
     rejectButton.dataset.memberInviteReject = message.id;
-    directMessageToggle.className = "ghost-button member-small-button";
-    directMessageToggle.type = "button";
-    directMessageToggle.textContent = isDirectMessageExpanded ? "내용 닫기" : "내용 보기";
-    directMessageToggle.disabled = isBusy || !message.body;
-    directMessageToggle.dataset.memberDirectMessageToggle = message.id;
-    directMessageToggle.setAttribute("aria-expanded", String(isDirectMessageExpanded));
-    directMessageToggle.setAttribute("aria-controls", body.id);
-
-    main.append(title, meta, body);
-    if (canOpenGroup) {
-      actions.append(groupButton);
-    }
-    if (isDirectMessage) {
-      actions.append(directMessageToggle);
-    } else {
-      actions.append(readButton);
-    }
-    if (isInvite) {
-      actions.append(acceptButton, rejectButton);
-    }
-    item.append(main, actions);
-    memberMessageList.appendChild(item);
+    actions.append(acceptButton, rejectButton);
   }
+
+  bubble.append(title, body);
+  if (isInvite) {
+    bubble.append(inviteStatus);
+  }
+  footer.append(time);
+  if (actions.childElementCount) {
+    footer.append(actions);
+  }
+  stack.append(senderLabel, bubble, footer);
+  row.append(avatar, stack);
+
+  return row;
+}
+
+function syncMemberMessageOverview(isLoggedIn, counts, visibleThreadCount) {
+  if (memberMessagesHeaderUnread) {
+    memberMessagesHeaderUnread.textContent = `새 메시지 ${counts.unread}`;
+    memberMessagesHeaderUnread.hidden = !isLoggedIn || counts.unread === 0;
+  }
+  if (memberMessageThreadCount) {
+    memberMessageThreadCount.textContent = String(isLoggedIn ? visibleThreadCount : 0);
+  }
+  if (memberMessagesTitle) {
+    memberMessagesTitle.textContent = {
+      all: "대화",
+      unread: "안 읽은 대화",
+      direct_message: "받은 쪽지",
+      invite: "그룹 초대",
+      group_message: "그룹 공지",
+    }[memberMessageFilter] || "대화";
+  }
+
+  for (const button of memberMessageFilters?.querySelectorAll("[data-member-message-filter]") || []) {
+    const filter = String(button.dataset.memberMessageFilter || "all");
+    const active = memberMessageFilter === filter;
+    const count = button.querySelector("[data-member-message-filter-count]");
+
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.disabled = !isLoggedIn;
+    if (count) {
+      count.textContent = String(isLoggedIn ? counts[filter] || 0 : 0);
+    }
+  }
+}
+
+function createWorkspaceThreadEmptyItem(title, copy, state = "empty") {
+  const item = document.createElement("li");
+  const icon = document.createElement("span");
+  const heading = document.createElement("strong");
+  const description = document.createElement("p");
+
+  item.className = `workspace-chat-thread-empty is-${state}`;
+  icon.textContent = state === "done" ? "✓" : state === "login" ? "→" : "·";
+  icon.setAttribute("aria-hidden", "true");
+  heading.textContent = title;
+  description.textContent = copy;
+  item.append(icon, heading, description);
+
+  return item;
+}
+
+function createMemberConversationEmpty(isLoggedIn) {
+  const empty = document.createElement("div");
+  const icon = document.createElement("span");
+  const title = document.createElement("strong");
+  const copy = document.createElement("p");
+
+  empty.className = "workspace-chat-empty";
+  icon.textContent = isLoggedIn ? "✦" : "→";
+  icon.setAttribute("aria-hidden", "true");
+  title.textContent = isLoggedIn ? "대화를 선택하세요" : "로그인이 필요해요";
+  copy.textContent = isLoggedIn
+    ? "왼쪽 목록에서 대화를 선택하면 메시지를 확인할 수 있습니다."
+    : "로그인하면 받은 쪽지와 그룹 알림을 볼 수 있습니다.";
+  empty.append(icon, title, copy);
+
+  return empty;
+}
+
+function getMemberMessageAvatarText(value) {
+  return String(value || "C").trim().charAt(0).toUpperCase() || "C";
+}
+
+function formatMemberChatTime(value, { includeDate = false } = {}) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+
+  if (!includeDate && sameDay) {
+    return time;
+  }
+
+  return `${date.getMonth() + 1}.${date.getDate()} ${time}`;
 }
 
 function renderMemberGroupDetail(isLoggedIn, isBusy) {

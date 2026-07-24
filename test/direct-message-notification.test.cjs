@@ -30,13 +30,35 @@ test("새 쪽지 알림은 전용 미확인 수와 공통 헤더 UI를 사용한
   );
 });
 
-test("메시지함은 쪽지 내용 열기와 자동 읽음 처리를 연결한다", () => {
+test("메시지함은 같은 상대의 메시지를 대화로 묶고 열 때 자동 읽음 처리한다", () => {
   assert.match(workspaceClient, /cue-sheet:direct-message-count/);
   assert.match(workspaceClient, /async function refreshMemberMessages\(\)/);
-  assert.match(workspaceClient, /data-member-direct-message-toggle/);
-  assert.match(workspaceClient, /function toggleMemberDirectMessage\(messageId\)/);
-  assert.match(workspaceClient, /markMemberMessageRead\(normalizedMessageId, "direct_message"\)/);
+  assert.match(workspaceClient, /function createMemberMessageThreads\(messages\)/);
+  assert.match(workspaceClient, /function getMemberMessageThreadKey\(message\)/);
+  assert.match(workspaceClient, /function selectMemberMessageThread\(threadKey/);
+  assert.match(workspaceClient, /async function markMemberConversationRead\(threadKey\)/);
+  assert.match(workspaceClient, /getMemberMessageThreadKey\(message\) === threadKey && !message\.isRead/);
   assert.match(workspaceClient, /tool=messages/);
+});
+
+test("메시지함은 대화 목록, 말풍선과 모바일 대화 전환 UI를 제공한다", () => {
+  assert.match(workspaceHtml, /id="workspaceChatLayout"/);
+  assert.match(workspaceHtml, /id="memberConversationPanel"/);
+  assert.match(workspaceHtml, /id="memberConversationMessages"/);
+  assert.match(workspaceHtml, /id="memberConversationBackButton"/);
+  assert.match(workspaceHtml, /id="memberMessageFilters"/);
+  assert.equal(
+    [...workspaceHtml.matchAll(/data-member-message-filter="[^"]+"/g)].length,
+    5,
+  );
+  assert.match(workspaceClient, /let memberMessageFilter = "all"/);
+  assert.match(workspaceClient, /let selectedMemberMessageThreadKey = ""/);
+  assert.match(workspaceClient, /function syncMemberMessageOverview\(/);
+  assert.match(workspaceClient, /function createMemberConversationMessage\(/);
+  assert.match(styleSource, /\.workspace-message-filter\.is-active/);
+  assert.match(styleSource, /\.workspace-chat-thread\.is-active/);
+  assert.match(styleSource, /\.workspace-chat-bubble/);
+  assert.match(styleSource, /\.workspace-chat-layout\.has-open-conversation \.workspace-chat-conversation/);
 });
 
 test("쪽지 수가 증가하면 배지와 도착 토스트가 갱신된다", async () => {
